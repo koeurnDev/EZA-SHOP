@@ -58,6 +58,9 @@ const AdminDashboard = ({
   const [shopLogoUrl, setShopLogoUrl] = useState('');
   const [paymentQrUrl, setPaymentQrUrl] = useState('');
   const [paymentInfo, setPaymentInfo] = useState('');
+  const [receiptShopName, setReceiptShopName] = useState('MO-MO Boutique');
+  const [receiptSubtitle, setReceiptSubtitle] = useState('អីវ៉ាន់បោះដុំ និងរាយ');
+  const [receiptNote, setReceiptNote] = useState('សូមអរគុណសម្រាប់ការគាំទ្រ!');
 
   useEffect(() => {
     if (settingsData?.success) {
@@ -70,6 +73,9 @@ const AdminDashboard = ({
       setShopLogoUrl(s.shop_logo_url || '');
       setPaymentQrUrl(s.payment_qr_url || '');
       setPaymentInfo(s.payment_info || '');
+      setReceiptShopName(s.receipt_shop_name || 'MO-MO Boutique');
+      setReceiptSubtitle(s.receipt_subtitle || 'អីវ៉ាន់បោះដុំ និងរាយ');
+      setReceiptNote(s.receipt_note || 'សូមអរគុណសម្រាប់ការគាំទ្រ!');
     }
   }, [settingsData]);
 
@@ -84,11 +90,12 @@ const AdminDashboard = ({
   const [isAddingProduct, setIsAddingProduct] = useState(false);
   const [newProductData, setNewProductData] = useState({ 
     name: '', price: '', stock: '', category: 'ទឹកអប់ (Perfume)', 
-    image: '', description: '', additional_images: [] 
+    image: '', description: '', additional_images: [], flash_sale_price: '', flash_sale_end: '', video_url: '' 
   });
 
   const [confirmDialog, setConfirmDialog] = useState(null); // Now used for BeautyModal
   const [printingOrder, setPrintingOrder] = useState(null);
+  const [previewFavorited, setPreviewFavorited] = useState(false);
 
   const refetchData = useCallback((isBackground = false) => {
     refetchDashboard();
@@ -159,7 +166,10 @@ const AdminDashboard = ({
           ...newProductData,
           price: parseFloat(newProductData.price),
           stock: parseInt(newProductData.stock) || 0,
-          additional_images: JSON.stringify(newProductData.additional_images || [])
+          additional_images: JSON.stringify(newProductData.additional_images || []),
+          flash_sale_price: newProductData.flash_sale_price ? parseFloat(newProductData.flash_sale_price) : null,
+          flash_sale_end: newProductData.flash_sale_end || null,
+          video_url: newProductData.video_url || null
         })
       });
       if (res.success) {
@@ -185,7 +195,10 @@ const AdminDashboard = ({
           ...editFormData, 
           price: parseFloat(editFormData.price), 
           stock: parseInt(editFormData.stock),
-          additional_images: JSON.stringify(editFormData.additional_images || [])
+          additional_images: JSON.stringify(editFormData.additional_images || []),
+          flash_sale_price: editFormData.flash_sale_price ? parseFloat(editFormData.flash_sale_price) : null,
+          flash_sale_end: editFormData.flash_sale_end || null,
+          video_url: editFormData.video_url || null
         })
       });
       if (res.success) {
@@ -309,7 +322,7 @@ const AdminDashboard = ({
 
   return (
     <>
-      {printingOrder && <PrintableOrder order={printingOrder} />}
+      {printingOrder && <PrintableOrder order={printingOrder} shopName={receiptShopName} subtitle={receiptSubtitle} shopNote={receiptNote} />}
       <div className="admin-dashboard-overhaul animate-in no-print" style={{ paddingBottom: 100 }}>
         <style>{`
           :root {
@@ -325,11 +338,11 @@ const AdminDashboard = ({
             --gold-glow: 0 0 20px rgba(244, 114, 182, 0.3);
           }
           [data-theme='light'] {
-            --bg-midnight: #f1f5f9;
-            --glass-card: rgba(255, 255, 255, 0.9);
-            --glass-border: rgba(0, 0, 0, 0.05);
-            --text-luxury: #0f172a;
-            --text-dim: #64748b;
+            --bg-midnight: #FDFBF0;
+            --glass-card: rgba(253, 251, 240, 0.85);
+            --glass-border: rgba(47, 72, 58, 0.1);
+            --text-luxury: #1c1917;
+            --text-dim: #78716c;
             --admin-shadow: 0 15px 35px -10px rgba(0,0,0,0.1);
           }
           .admin-dashboard-overhaul { 
@@ -401,6 +414,51 @@ const AdminDashboard = ({
             background: rgba(255, 255, 255, 0.07); 
             box-shadow: 0 0 25px -5px rgba(244, 114, 182, 0.25); 
             transform: translateY(-1px);
+          }
+          
+          .button-group-pro {
+            display: flex;
+            gap: 12px;
+            align-items: stretch;
+            width: 100%;
+          }
+          .button-group-pro .ticket-btn-primary {
+            flex: 1;
+            width: auto;
+            margin: 0;
+          }
+          .icon-btn-admin {
+            background: var(--glass-card);
+            border: 1px solid var(--glass-border);
+            border-radius: 22px;
+            width: 58px;
+            height: 58px;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: var(--admin-shadow);
+            color: var(--text-luxury);
+          }
+          .icon-btn-admin:hover {
+            transform: translateY(-4px) scale(1.05);
+            background: var(--bg-midnight);
+            border-color: var(--primary-accent);
+            box-shadow: 0 20px 35px -10px rgba(219, 39, 119, 0.4);
+          }
+
+          .ticket-id-luxury {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid var(--glass-border);
+            padding: 4px 10px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-weight: bold;
+            letter-spacing: 1px;
+            font-size: 11px;
           }
           
           .ticket-btn-primary { 
@@ -615,6 +673,11 @@ const AdminDashboard = ({
                        <div style={{ fontSize: 18, fontWeight: 950 }}>${parseFloat(o.total).toFixed(2)}</div>
                     </div>
                     <div className="button-group-pro">
+                       {o.status === 'pending' && o.receipt_url && (
+                         <button className="ticket-btn-primary" style={{ background: '#3b82f6', flex: 0.5 }} onClick={() => window.open(o.receipt_url, '_blank')}>
+                           👁️ វិក្កយបត្រ
+                         </button>
+                       )}
                        {o.status === 'pending' && <button className="ticket-btn-primary" onClick={() => updateStatus(o.id, 'paid')}>💰 បញ្ជាក់បង់ប្រាក់</button>}
                        {o.status === 'paid' && <button className="ticket-btn-primary" style={{ background: '#f59e0b' }} onClick={() => updateStatus(o.id, 'processing')}>📦 រៀបចំអីវ៉ាន់</button>}
                        {o.status === 'processing' && <button className="ticket-btn-primary" style={{ background: '#a855f7' }} onClick={() => updateStatus(o.id, 'shipped')}>✨ អីវ៉ាន់ចេញ</button>}
@@ -652,7 +715,10 @@ const AdminDashboard = ({
                               category: p.category,
                               description: p.description || '',
                               image: p.image || '',
-                              additional_images: typeof p.additional_images === 'string' ? JSON.parse(p.additional_images) : (p.additional_images || [])
+                              additional_images: typeof p.additional_images === 'string' ? JSON.parse(p.additional_images) : (p.additional_images || []),
+                              flash_sale_price: p.flash_sale_price || '',
+                              flash_sale_end: p.flash_sale_end ? new Date(p.flash_sale_end).toISOString().slice(0, 16) : '',
+                              video_url: p.video_url || ''
                            }); 
                         }}>✏️</button>
                     </div>
@@ -825,6 +891,33 @@ const AdminDashboard = ({
                        💾 រក្សាទុកព័ត៌មានបង់ប្រាក់
                      </button>
                   </div>
+
+                  <div className="glass-card-luxury">
+                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
+                        <div style={{ fontSize: 24 }}>🖨️</div>
+                        <div style={{ flex: 1 }}>
+                           <div style={{ fontWeight: 950, fontSize: 16 }}>ព័ត៌មានវិក្កយបត្រ (Receipt Info)</div>
+                           <div style={{ fontSize: 12, opacity: 0.6 }}>កំណត់ឈ្មោះ និងអក្សររត់ពីក្រោមលើវិក្កយបត្រ</div>
+                        </div>
+                     </div>
+                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 15 }}>
+                        <div>
+                           <label style={{ display: 'block', fontSize: 11, fontWeight: 900, marginBottom: 8, opacity: 0.7 }}>ឈ្មោះហាង (Shop Name)</label>
+                           <input className="input-glass-admin" value={receiptShopName} onChange={e => setReceiptShopName(e.target.value)} />
+                        </div>
+                        <div>
+                           <label style={{ display: 'block', fontSize: 11, fontWeight: 900, marginBottom: 8, opacity: 0.7 }}>អក្សររត់ពីក្រោម (Subtitle)</label>
+                           <input className="input-glass-admin" value={receiptSubtitle} onChange={e => setReceiptSubtitle(e.target.value)} />
+                        </div>
+                     </div>
+                     <div style={{ marginBottom: 15 }}>
+                        <label style={{ display: 'block', fontSize: 11, fontWeight: 900, marginBottom: 8, opacity: 0.7 }}>កំណត់ចំណាំហាង (Shop Note at bottom)</label>
+                        <textarea className="input-glass-admin" rows="2" value={receiptNote} onChange={e => setReceiptNote(e.target.value)} placeholder="សូមអរគុណសម្រាប់ការគាំទ្រ!"></textarea>
+                     </div>
+                     <button className="ticket-btn-primary" onClick={() => { updateSettingValue('receipt_shop_name', receiptShopName); updateSettingValue('receipt_subtitle', receiptSubtitle); updateSettingValue('receipt_note', receiptNote); }}>
+                       💾 រក្សាទុកវិក្កយបត្រ
+                     </button>
+                  </div>
                </div>
           )}
 
@@ -840,7 +933,7 @@ const AdminDashboard = ({
 
       {/* ✅ Modals rendered OUTSIDE the animate-in container so position:fixed works correctly */}
       {editingProduct && (
-        <div style={{ position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(14px)' }}>
+        <div style={{ position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, background: 'rgba(0,0,0,0.65)' }}>
           <div className="glass-card-luxury" style={{ width: '92%', maxWidth: 440, maxHeight: '85vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
             <h3 style={{ marginBottom: 20, flexShrink: 0 }}>✏️ កែប្រែទំនិញ</h3>
             
@@ -849,7 +942,7 @@ const AdminDashboard = ({
                 <label style={{ display: 'block', fontSize: 11, fontWeight: 800, marginBottom: 8, opacity: 0.6 }}>រូបភាពទំនិញ</label>
                 <label className="upload-zone-luxury" style={{ height: 140, position: 'relative' }}>
                   {isUploading && (
-                    <div style={{ position: 'absolute', inset: 0, background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(4px)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', zIndex: 10, borderRadius: 20 }}>
+                    <div style={{ position: 'absolute', inset: 0, background: 'rgba(255,255,255,0.7)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', zIndex: 10, borderRadius: 20 }}>
                       <div className="pd-pulse-loader" style={{ fontSize: 28, marginBottom: 8 }}>⌛</div>
                       <div style={{ fontSize: 12, fontWeight: 800, color: '#1e293b' }}>កំពុងផ្ទុក...</div>
                     </div>
@@ -903,10 +996,47 @@ const AdminDashboard = ({
                   <input className="input-glass-admin" type="number" placeholder="ស្តុក" value={editFormData.stock} onChange={e => setEditFormData({...editFormData, stock: e.target.value})} />
                 </div>
               </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: 11, fontWeight: 800, marginBottom: 8, opacity: 0.6, color: '#fbbf24' }}>⚡ តម្លៃ Flash Sale ($)</label>
+                  <input className="input-glass-admin" type="number" placeholder="តម្លៃ Flash Sale ($)" value={editFormData.flash_sale_price} onChange={e => setEditFormData({...editFormData, flash_sale_price: e.target.value})} />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: 11, fontWeight: 800, marginBottom: 8, opacity: 0.6, color: '#fbbf24' }}>⚡ ថ្ងៃបញ្ចប់ Flash Sale</label>
+                  <input className="input-glass-admin" type="datetime-local" value={editFormData.flash_sale_end} onChange={e => setEditFormData({...editFormData, flash_sale_end: e.target.value})} />
+                </div>
+              </div>
               
               <div style={{ marginBottom: 14 }}>
                 <label style={{ display: 'block', fontSize: 11, fontWeight: 800, marginBottom: 8, opacity: 0.6 }}>ការពណ៌នា</label>
                 <textarea className="input-glass-admin" rows="3" value={editFormData.description} onChange={e => setEditFormData({ ...editFormData, description: e.target.value })} placeholder="ការពណ៌នាចំណុចពិសេស..."></textarea>
+              </div>
+
+              <div style={{ marginBottom: 14 }}>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 800, marginBottom: 8, opacity: 0.6 }}>វីដេអូទំនិញ (Video - សម្រាប់ TikTok Feed)</label>
+                <label className="upload-zone-luxury" style={{ height: 100, position: 'relative' }}>
+                  {isUploading && (
+                    <div style={{ position: 'absolute', inset: 0, background: 'rgba(255,255,255,0.7)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', zIndex: 10, borderRadius: 20 }}>
+                      <div className="pd-pulse-loader" style={{ fontSize: 24, marginBottom: 4 }}>⌛</div>
+                    </div>
+                  )}
+                  {editFormData.video_url ? (
+                    <video src={editFormData.video_url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} muted />
+                  ) : (
+                    <div className="upload-label-content"><div style={{ fontSize: 24 }}>📱</div><div style={{ fontSize: 13, fontWeight: 800 }}>ដាក់វីដេអូ</div></div>
+                  )}
+                  <input type="file" accept="video/mp4,video/webm" disabled={isUploading} onChange={e => {
+                    const file = e.target.files?.[0];
+                    if (file) { 
+                      const fd = new FormData(); 
+                      fd.append('image', file); // Use same 'image' field for multer
+                      setIsUploading(true);
+                      fetchWithRetry(`${BACKEND_URL}/api/admin/upload`, { method: 'POST', headers: { 'Authorization': `tma ${window.Telegram.WebApp.initData}` }, body: fd }).then(res => { 
+                        if (res.success && res.data?.url) setEditFormData(prev => ({ ...prev, video_url: res.data.url })); 
+                      }).finally(() => setIsUploading(false)); 
+                    }
+                  }} />
+                </label>
               </div>
               <div className="admin-gallery-editor" style={{ marginBottom: 16 }}>
                 <label style={{ fontSize: 11, fontWeight: 800, opacity: 0.6 }}>ជំនួយរូបភាព (Gallery)</label>
@@ -952,7 +1082,7 @@ const AdminDashboard = ({
       )}
 
       {isAddingProduct && (
-        <div style={{ position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(14px)' }}>
+        <div style={{ position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, background: 'rgba(0,0,0,0.65)' }}>
           <div className="glass-card-luxury" style={{ width: '92%', maxWidth: 440, maxHeight: '85vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
             <h3 style={{ marginBottom: 20, flexShrink: 0 }}>➕ បន្ថែមទំនិញថ្មី</h3>
 
@@ -961,7 +1091,7 @@ const AdminDashboard = ({
                 <label style={{ display: 'block', fontSize: 11, fontWeight: 800, marginBottom: 8, opacity: 0.6 }}>រូបភាពទំនិញ</label>
                 <label className="upload-zone-luxury" style={{ height: 140, position: 'relative' }}>
                   {isUploading && (
-                    <div style={{ position: 'absolute', inset: 0, background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(4px)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', zIndex: 10, borderRadius: 20 }}>
+                    <div style={{ position: 'absolute', inset: 0, background: 'rgba(255,255,255,0.7)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', zIndex: 10, borderRadius: 20 }}>
                       <div className="pd-pulse-loader" style={{ fontSize: 28, marginBottom: 8 }}>⌛</div>
                       <div style={{ fontSize: 12, fontWeight: 800, color: '#1e293b' }}>កំពុងផ្ទុក...</div>
                     </div>
@@ -1015,10 +1145,47 @@ const AdminDashboard = ({
                   <input className="input-glass-admin" type="number" placeholder="ស្តុក" value={newProductData.stock} onChange={e => setNewProductData({...newProductData, stock: e.target.value})} />
                 </div>
               </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: 11, fontWeight: 800, marginBottom: 8, opacity: 0.6, color: '#fbbf24' }}>⚡ តម្លៃ Flash Sale ($)</label>
+                  <input className="input-glass-admin" type="number" placeholder="តម្លៃ Flash Sale ($)" value={newProductData.flash_sale_price} onChange={e => setNewProductData({...newProductData, flash_sale_price: e.target.value})} />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: 11, fontWeight: 800, marginBottom: 8, opacity: 0.6, color: '#fbbf24' }}>⚡ ថ្ងៃបញ្ចប់ Flash Sale</label>
+                  <input className="input-glass-admin" type="datetime-local" value={newProductData.flash_sale_end} onChange={e => setNewProductData({...newProductData, flash_sale_end: e.target.value})} />
+                </div>
+              </div>
 
               <div style={{ marginBottom: 14 }}>
                 <label style={{ display: 'block', fontSize: 11, fontWeight: 800, marginBottom: 8, opacity: 0.6 }}>ចំណុចពិសេស (Description)</label>
                 <textarea className="input-glass-admin" rows="3" value={newProductData.description} onChange={e => setNewProductData({ ...newProductData, description: e.target.value })} placeholder="ចំណុចពិសេស (Description)..."></textarea>
+              </div>
+
+              <div style={{ marginBottom: 14 }}>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 800, marginBottom: 8, opacity: 0.6 }}>វីដេអូទំនិញ (Video - សម្រាប់ TikTok Feed)</label>
+                <label className="upload-zone-luxury" style={{ height: 100, position: 'relative' }}>
+                  {isUploading && (
+                    <div style={{ position: 'absolute', inset: 0, background: 'rgba(255,255,255,0.7)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', zIndex: 10, borderRadius: 20 }}>
+                      <div className="pd-pulse-loader" style={{ fontSize: 24, marginBottom: 4 }}>⌛</div>
+                    </div>
+                  )}
+                  {newProductData.video_url ? (
+                    <video src={newProductData.video_url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} muted />
+                  ) : (
+                    <div className="upload-label-content"><div style={{ fontSize: 24 }}>📱</div><div style={{ fontSize: 13, fontWeight: 800 }}>ដាក់វីដេអូ</div></div>
+                  )}
+                  <input type="file" accept="video/mp4,video/webm" disabled={isUploading} onChange={e => {
+                    const file = e.target.files?.[0];
+                    if (file) { 
+                      const fd = new FormData(); 
+                      fd.append('image', file); // Use same 'image' field for multer
+                      setIsUploading(true);
+                      fetchWithRetry(`${BACKEND_URL}/api/admin/upload`, { method: 'POST', headers: { 'Authorization': `tma ${window.Telegram.WebApp.initData}` }, body: fd }).then(res => { 
+                        if (res.success && res.data?.url) setNewProductData(prev => ({ ...prev, video_url: res.data.url })); 
+                      }).finally(() => setIsUploading(false)); 
+                    }
+                  }} />
+                </label>
               </div>
               <div className="admin-gallery-editor" style={{ marginBottom: 16 }}>
                 <label style={{ fontSize: 11, fontWeight: 800, opacity: 0.6 }}>ជំនួយរូបភាព (Gallery)</label>
@@ -1069,7 +1236,8 @@ const AdminDashboard = ({
           onClose={() => setIsPreviewing(false)} 
           onAdd={() => showAlert('នេះគ្រាន់តែជារូបភាព Preview!')}
           lang={tg?.language_code === 'kh' ? 'kh' : 'en'}
-          t={(key) => key}
+          isFavorited={previewFavorited}
+          onToggleWishlist={() => setPreviewFavorited(!previewFavorited)}
         />
       )}
 
@@ -1103,20 +1271,23 @@ const BeautyModal = ({ text, icon, isAlert, onConfirm, onCancel }) => (
   </div>
 );
 
-const PrintableOrder = ({ order }) => {
+const PrintableOrder = ({ order, shopName, subtitle, shopNote }) => {
   if (!order) return null;
   const items = JSON.parse(order.items || '[]');
   return (
     <div className="printable-order">
       <div className="print-header">
-        <h2 style={{ margin: 0, fontSize: 24, fontWeight: 950 }}>MO-MO Boutique</h2>
-        <p style={{ margin: '5px 0', fontSize: 14 }}>អីវ៉ាន់បោះដុំ និងរាយ</p>
+        <h2 style={{ margin: 0, fontSize: 24, fontWeight: 950 }}>{shopName || 'MO-MO Boutique'}</h2>
+        <p style={{ margin: '5px 0', fontSize: 14 }}>{subtitle || 'អីវ៉ាន់បោះដុំ និងរាយ'}</p>
       </div>
       <div className="print-divider"></div>
       <div className="print-section">
         <div className="print-row"><span>លេខវិក្កយបត្រ:</span> <strong>{order.order_code || `#MO-${order.id}`}</strong></div>
         <div className="print-row"><span>អតិថិជន:</span> <strong>{order.user_name}</strong></div>
         <div className="print-row"><span>លេខទូរស័ព្ទ:</span> <strong>{order.phone}</strong></div>
+        {order.address && <div className="print-row"><span>ទីតាំង:</span> <strong>{order.address}{order.province ? `, ${order.province}` : ''}</strong></div>}
+        {order.delivery_company && <div className="print-row"><span>ក្រុមហ៊ុនដឹក:</span> <strong style={{ textTransform: 'uppercase' }}>{order.delivery_company}</strong></div>}
+        {order.note && <div className="print-row"><span>ចំណាំ:</span> <strong>{order.note}</strong></div>}
       </div>
       <div className="print-divider"></div>
       <table className="print-table">
@@ -1125,6 +1296,14 @@ const PrintableOrder = ({ order }) => {
       </table>
       <div className="print-divider"></div>
       <div className="print-total"><span>សរុបរួម:</span> <span style={{ fontSize: 20, fontWeight: 950 }}>${parseFloat(order.total).toFixed(2)}</span></div>
+      {shopNote && (
+        <>
+          <div className="print-divider" style={{ borderStyle: 'dashed', marginTop: 15 }}></div>
+          <div style={{ textAlign: 'center', fontSize: 12, marginTop: 15, fontWeight: 800, opacity: 0.8, whiteSpace: 'pre-line' }}>
+            {shopNote}
+          </div>
+        </>
+      )}
     </div>
   );
 };

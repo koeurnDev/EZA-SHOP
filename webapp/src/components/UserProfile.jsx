@@ -37,17 +37,16 @@ const UserProfile = ({ user, setView, BACKEND_URL, onViewInvoice, t, lang, toggl
 
     setIsSubmitting(true);
     try {
-      const res = await fetch(`${BACKEND_URL}/api/orders/review`, {
+      const res = await fetch(`${BACKEND_URL}/api/reviews`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'X-TG-Data': window.Telegram.WebApp.initData
+          'Authorization': `tma ${window.Telegram.WebApp.initData}`
         },
         body: JSON.stringify({
-          productId,
+          product_id: productId,
           rating: data.rating,
-          comment: data.comment || '',
-          userName: user.first_name
+          comment: data.comment || ''
         })
       });
       const result = await res.json();

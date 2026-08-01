@@ -182,6 +182,25 @@ const adminController = {
   updateOrderStatus: async (req, res) => {
     try {
       const updated = await adminService.updateOrderStatus(req.body.orderId, req.body.status, req.body.trackingNumber);
+      
+      // 🚀 Feature 1: Telegram Bot Notifications
+      try {
+        const bot = require('../config/telegram');
+        const statusMap = {
+          'paid': 'បានបង់ប្រាក់រូចរាល់ ✅',
+          'processing': 'កំពុងរៀបចំ 📦',
+          'shipped': 'កំពុងដឹកជញ្ជូន 🚚'
+        };
+        const statusText = statusMap[updated.status] || updated.status;
+        let msg = `សួស្តីបង! ការកម្ម៉ង់របស់បងលេខ #${(updated.order_code || updated.id).toString().substring(0,8)} ត្រូវបានប្តូរស្ថានភាពទៅជា៖ *${statusText}*`;
+        if (req.body.trackingNumber) {
+          msg += `\nលេខ Tracking របស់បងគឺ៖ \`${req.body.trackingNumber}\``;
+        }
+        await bot.telegram.sendMessage(updated.user_id, msg, { parse_mode: 'Markdown' });
+      } catch (tgErr) {
+        console.warn('⚠️ Could not send telegram notification:', tgErr.message);
+      }
+
       res.json({ success: true, order: updated });
     } catch (err) {
       res.status(500).json({ success: false, error: err.message });

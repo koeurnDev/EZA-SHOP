@@ -1,4 +1,5 @@
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const { validateInitData } = require('../utils/auth');
 
 /**
@@ -7,14 +8,17 @@ const { validateInitData } = require('../utils/auth');
  * Zero-Trust Session Management.
  */
 
-const SESSION_SECRET = process.env.SESSION_SECRET || 'momo_secret_2024_!@#';
+// 🛡 Security: Use dynamic secure random string if not provided in environment
+const SESSION_SECRET = process.env.SESSION_SECRET || crypto.randomBytes(32).toString('hex');
 const SESSION_EXPIRY = '2h'; // Short sessions for maximum safety
 
 const checkBypass = () => {
-  const isProd = process.env.NODE_ENV === 'production';
+  // 🛡 Strict Security: Bypass ONLY allowed in explicitly designated development environments
+  const isDev = process.env.NODE_ENV === 'development';
   const isBypassEnabled = process.env.DEBUG_ADMIN_BYPASS === 'true';
-  // 🛡 Security: Bypass MUST be disabled in production regardless of flag
-  if (isProd) return false;
+  
+  if (!isDev) return false;
+  
   return isBypassEnabled;
 };
 

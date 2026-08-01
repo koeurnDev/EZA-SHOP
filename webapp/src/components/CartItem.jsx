@@ -17,6 +17,7 @@ const CartItem = ({ item, updateQty, t, lang }) => {
           alt={item.name} 
           crossOrigin="anonymous" 
           decoding="async"
+          loading="lazy"
         />
       </div>
       

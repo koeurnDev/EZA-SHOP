@@ -18,10 +18,10 @@ const { orderCreationLimiter } = require('./middleware/rateLimiter');
 const multer = require('multer');
 const upload = multer({ 
   storage: multer.memoryStorage(),
-  limits: { fileSize: 5 * 1024 * 1024 }, // 🛡 Limit to 5MB
+  limits: { fileSize: 20 * 1024 * 1024 }, // 🛡 Limit to 20MB for videos
   fileFilter: (req, file, cb) => {
-    if (file.mimetype.startsWith('image/')) cb(null, true);
-    else cb(new Error('Only images are allowed'));
+    if (file.mimetype.startsWith('image/') || file.mimetype.startsWith('video/')) cb(null, true);
+    else cb(new Error('Only images and videos are allowed'));
   }
 });
 
@@ -62,12 +62,24 @@ app.use(cors({
   origin: (origin, callback) => {
     // 🛡️ Strict CORS: localhost only for dev, WEBAPP_URL for production
     const isDev = !process.env.NODE_ENV || process.env.NODE_ENV === 'development';
-    const allowed = [process.env.WEBAPP_URL];
+    const allowed = [process.env.WEBAPP_URL].filter(Boolean);
+
     if (isDev) {
-      allowed.push('http://localhost:5173', 'http://127.0.0.1:5173', 'http://localhost:3000');
+      allowed.push(
+        'http://localhost:5173', 'http://127.0.0.1:5173',
+        'http://localhost:5175', 'http://127.0.0.1:5175',
+        'http://localhost:3000', 'http://127.0.0.1:3000'
+      );
     }
-    
-    if (!origin || allowed.filter(Boolean).includes(origin)) {
+
+    // 🛠️ Dev: Allow all private network IPs (192.168.x.x, 10.x.x.x) for mobile testing
+    const isPrivateNetwork = isDev && origin && (
+      /^http:\/\/192\.168\.\d+\.\d+(:\d+)?$/.test(origin) ||
+      /^http:\/\/10\.\d+\.\d+\.\d+(:\d+)?$/.test(origin) ||
+      /^http:\/\/172\.(1[6-9]|2\d|3[01])\.\d+\.\d+(:\d+)?$/.test(origin)
+    );
+
+    if (!origin || allowed.includes(origin) || isPrivateNetwork) {
       callback(null, true);
     } else {
       console.warn(`⚠️ CORS blocked origin: ${origin}`);
@@ -97,10 +109,19 @@ app.get('/api/settings', publicController.getSettings);
 app.get('/api/products', publicController.getProducts);
 app.get('/api/flags', publicController.getFlags); // 🚀 Combined Feature Flags
 
+// Reviews Routes
+const reviewController = require('./controllers/reviewController');
+app.get('/api/products/:productId/reviews', reviewController.getReviewsByProduct);
+app.post('/api/reviews', verifyUser, reviewController.createReview);
+
 // Order Routes
 app.post('/api/orders', orderCreationLimiter, verifyUser, validator.order, orderController.createOrder);
 app.get('/api/orders/status/:orderCode', verifyUser, orderController.getStatus);
 app.get('/api/user/orders', verifyUser, orderController.getUserOrders);
+app.post('/api/orders/receipt', verifyUser, orderController.uploadReceipt);
+
+// User Upload Route
+app.post('/api/upload', verifyUser, upload.single('image'), adminController.upload);
 
 // Wishlist Routes
 app.get('/api/wishlist/:userId', verifyUser, wishlistController.get);
@@ -112,7 +133,7 @@ app.get('/api/admin/analytics', isAdmin, adminController.getAnalytics);
 app.get('/api/admin/dashboard', isAdmin, (req, res) => adminController.getDashboardData(req, res)); // 🚀 Batch Endpoint (Ensuring visibility)
 app.get('/api/admin/products', isAdmin, adminController.getProducts);
 app.post('/api/admin/products', isAdmin, validator.product, adminController.createProduct);
-app.put('/api/admin/products/:id', isAdmin, adminController.updateProduct);
+app.put('/api/admin/products/:id', isAdmin, validator.product, adminController.updateProduct);
 app.delete('/api/admin/products/:id', isAdmin, adminController.deleteProduct);
 app.get('/api/admin/settings', isAdmin, adminController.getSettings);
 app.post('/api/admin/settings', isAdmin, validator.setting, adminController.updateSetting);

@@ -46,6 +46,13 @@ notificationQueue.process(async (job) => {
                           `🆔 លេខសម្គាល់: \`${order.order_code}\`\n` +
                           `✅ ប្រព័ន្ធបានឆែកឃើញការបង់ប្រាក់របស់អ្នក។ អរគុណដែលបានរង់ចាំ!`;
         await bot.telegram.sendMessage(userId, userTicket, { parse_mode: 'Markdown' });
+      } else if (type === 'receipt_uploaded') {
+        const ticket = `🧾 *វិក្កយបត្របានបញ្ជូនពីអតិថិជន*\n` +
+                       `🆔 លេខសម្គាល់: \`${order.order_code}\`\n` +
+                       `👤 អតិថិជន: *${order.user_name}*\n` +
+                       `💰 សរុប: *$${order.total}*\n\n` +
+                       `👇 សូមពិនិត្យរូបភាពវិក្កយបត្រខាងក្រោម ឬ ក្នុង Admin Dashboard។`;
+        await bot.telegram.sendPhoto(adminId, order.receipt_url, { caption: ticket, parse_mode: 'Markdown' });
       }
     }
   } catch (e) {
@@ -79,6 +86,12 @@ const notificationService = {
   notifyReconciliationSuccess: (adminId, userId, order) => {
     return notificationQueue.add({
       type: 'reconciliation_success', adminId, userId, order
+    }, { attempts: 3, backoff: { type: 'exponential', delay: 2000 } });
+  },
+
+  sendReceiptToAdmin: (adminId, order) => {
+    return notificationQueue.add({
+      type: 'receipt_uploaded', adminId, userId: order.user_id, order
     }, { attempts: 3, backoff: { type: 'exponential', delay: 2000 } });
   }
 };

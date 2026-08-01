@@ -51,17 +51,22 @@ pool.on('error', (err, client) => {
   console.error('🔴 DB Pool Error:', err.message, '(Code:', err.code, ')');
 });
 
-// 🚨 QUERY ERROR TRACKING
-pool.on('query', (query) => {
-  if (query.callback) {
-    const start = Date.now();
-    const originalCallback = query.callback;
-    query.callback = (err, res) => {
+// 🚨 QUERY ERROR & PERFORMANCE TRACKING
+pool.on('query', (req) => {
+  const start = Date.now();
+  const originalCallback = req.callback;
+  
+  if (originalCallback) {
+    req.callback = (err, res) => {
       const duration = Date.now() - start;
+      const queryText = req.text.substring(0, 50).replace(/\n/g, ' ');
+      
       if (err) {
-        console.error(`⚠️ SLOW QUERY (${duration}ms):`, query.text.substring(0, 50), '...');
-      } else if (duration > 5000) {
-        console.warn(`⚠️ SLOW QUERY (${duration}ms):`, query.text.substring(0, 50), '...');
+        console.error(`⚠️ QUERY ERROR (${duration}ms):`, queryText, '...');
+      } else if (duration > 500) {
+        console.warn(`⏳ SLOW QUERY (${duration}ms):`, queryText, '...');
+      } else if (duration > 50) {
+        // console.log(`⏱️ DB Query: ${duration}ms | ${queryText}`);
       }
       originalCallback(err, res);
     };

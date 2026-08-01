@@ -45,7 +45,7 @@ const orderService = {
       // 1. Idempotency Guard (Pre-check outside transaction)
       if (idempotencyKey) {
         let existing = await orderRepository.findByIdempotencyKey(userId, idempotencyKey);
-        if (existing) {
+        if (existing && Math.abs(parseFloat(existing.total) - parseFloat(total)) < 0.05) {
           const now = Date.now();
           const exp = new Date(existing.expires_at).getTime();
           const isExpired = exp <= now;
@@ -125,10 +125,15 @@ const orderService = {
         );
 
         const result = khqr.generateIndividual(individualInfo);
+        console.log('📡 KHQR Generation Result:', JSON.stringify(result));
 
         if (result?.data && result.status.code === 0) {
           qrString = result.data.qr;
+        } else {
+          console.error('🔴 KHQR Generation Failed:', result?.status?.message || 'Unknown error');
         }
+      } else {
+        console.warn('⚠️ KHQR Generation Skipped: bakongId is empty');
       }
 
       // --- TRANSACTION START (Minimized Duration) ---
@@ -147,7 +152,7 @@ const orderService = {
         items: JSON.stringify(items),
         total: calculatedTotal,
         subtotal: subtotal,
-        discount_amount: totalItemDiscount + bundleBonus,
+        discount_amount: totalItemDiscount,
         delivery_fee: deliveryFee,
         gross_total: grossTotal,
         qr_string: qrString,
@@ -164,29 +169,8 @@ const orderService = {
 
       await client.query('COMMIT');
 
-      // 🚀 EDA: Parallel Background Processing
-      QueueService.add('ORDER_POST_PROCESS', { order, items, deliveryInfo, updatedProducts, userId, calculatedTotal }, async (ctx) => {
-        const { order, items, deliveryInfo, updatedProducts, userId, calculatedTotal } = ctx;
-        
-        await Promise.allSettled([
-          // Digital Twin Sync
-          (userId && deliveryInfo) ? userRepository.upsert(userId, deliveryInfo.phone, deliveryInfo.address) : Promise.resolve(),
-          
-          // Loyalty System
-          (userId && calculatedTotal) ? userRepository.addLoyaltyPoints(userId, Math.floor(calculatedTotal)) : Promise.resolve(),
-          
-          // Parallel Inventory Notifications
-          ...updatedProducts.map(p => 
-            p.stock <= 5 ? notificationService.sendLowStockAlert(process.env.SUPERADMIN_ID, p) : Promise.resolve()
-          )
-        ]);
-
-        // Watchdog: Start Auto-Verification
-        const orderStatus = await orderRepository.findById(order.id).then(o => o.status);
-        if (orderStatus === 'pending') {
-          orderService.startPaymentWatcher(order, qrString).catch(console.error);
-        }
-      });
+      // 🚀 persistent Job Queue
+      await QueueService.add('ORDER_POST_PROCESS', { orderId: order.id, items, deliveryInfo, userId, calculatedTotal });
 
       // 🕒 Synchronous UI Hint: Ensure frontend knows this is fresh
       order.expires_in = 300;
@@ -230,6 +214,25 @@ const orderService = {
     
     return updated;
   },
+
+  async uploadReceipt(orderCode, receiptUrl, tgUser) {
+    const order = await orderRepository.findByCode(orderCode);
+    if (!order) throw new Error('Order not found');
+    
+    // 🛡️ Ensure only the owner or system can upload
+    if (String(tgUser.id) !== String(order.user_id) && String(tgUser.id) !== String(process.env.SUPERADMIN_ID)) {
+       throw new Error('Access Denied');
+    }
+
+    // Update DB
+    const updated = await orderRepository.updateReceiptUrl(order.id, receiptUrl);
+
+    // Notify Admin via Telegram
+    await notificationService.sendReceiptToAdmin(process.env.SUPERADMIN_ID, updated).catch(console.error);
+
+    return updated;
+  },
+
   async generateQR(order) {
     try {
       const bakongId = process.env.MERCHANT_BAKONG_ID || await settingsRepository.get('bakong_account_id');
@@ -403,7 +406,42 @@ const orderService = {
     } catch (err) {
       console.error('🔴 Reconciler: Global scan failed:', err.message);
     }
+  },
+
+  /**
+   * Statically defined processor for persistence
+   */
+  async _processOrderPostTasks(ctx) {
+    const { orderId, items, deliveryInfo, userId, calculatedTotal } = ctx;
+    
+    // Re-fetch fresh order to ensure state
+    const order = await orderRepository.findById(orderId);
+    if (!order) return;
+
+    await Promise.allSettled([
+      // 1. Digital Twin Sync
+      (userId && deliveryInfo) ? userRepository.upsert(userId, deliveryInfo.phone, deliveryInfo.address) : Promise.resolve(),
+      
+      // 2. Loyalty System
+      (userId && calculatedTotal) ? userRepository.addLoyaltyPoints(userId, Math.floor(calculatedTotal)) : Promise.resolve(),
+      
+      // 3. Low Stock Alerts (Refetch stock to be sure)
+      ...items.map(async (item) => {
+        const p = await productRepository.findById(item.id);
+        if (p && p.stock <= 5) {
+          await notificationService.sendLowStockAlert(process.env.SUPERADMIN_ID, p).catch(() => {});
+        }
+      })
+    ]);
+
+    // 4. Watchdog: Start Auto-Verification
+    if (order.status === 'pending' && order.qr_string) {
+      orderService.startPaymentWatcher(order, order.qr_string).catch(console.error);
+    }
   }
 };
+
+// 🛡️ Register persistent processor
+QueueService.register('ORDER_POST_PROCESS', orderService._processOrderPostTasks.bind(orderService));
 
 module.exports = orderService;

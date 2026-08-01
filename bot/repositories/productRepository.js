@@ -36,7 +36,7 @@ const productRepository = {
     return await cacheService.getOrFetch(
       CACHE_KEYS.minimalProducts,
       async () => {
-        const res = await pool.query('SELECT id, name, price, stock, category, image FROM products ORDER BY id DESC');
+        const res = await pool.query('SELECT id, name, price, stock, category, image, video_url, flash_sale_price, flash_sale_end FROM products ORDER BY id DESC');
         return res.rows;
       },
       CACHE_TTL.products
@@ -55,21 +55,23 @@ const productRepository = {
 
   create: async (p) => {
     const res = await pool.query(
-      'INSERT INTO products (name, category, price, image, stock, description, additional_images) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
-      [p.name, p.category, p.price, p.image, p.stock || 0, p.description || '', p.additional_images || '[]']
+      'INSERT INTO products (name, category, price, image, stock, description, additional_images, flash_sale_price, flash_sale_end, video_url) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *',
+      [p.name, p.category, p.price, p.image, p.stock || 0, p.description || '', p.additional_images || '[]', p.flash_sale_price || null, p.flash_sale_end || null, p.video_url || null]
     );
     // 🚀 Invalidate cache on create
     await cacheService.clearPattern('products:*');
+    await cacheService.delete('system:init:data');
     return res.rows[0];
   },
 
   update: async (id, p) => {
     const res = await pool.query(
-      'UPDATE products SET name = $1, category = $2, price = $3, image = $4, stock = $5, description = $6, additional_images = $7 WHERE id = $8 RETURNING *',
-      [p.name, p.category, p.price, p.image, p.stock, p.description, p.additional_images, id]
+      'UPDATE products SET name = $1, category = $2, price = $3, image = $4, stock = $5, description = $6, additional_images = $7, flash_sale_price = $8, flash_sale_end = $9, video_url = $10 WHERE id = $11 RETURNING *',
+      [p.name, p.category, p.price, p.image, p.stock, p.description, p.additional_images, p.flash_sale_price, p.flash_sale_end, p.video_url, id]
     );
     // 🚀 Invalidate cache on update
     await cacheService.clearPattern('products:*');
+    await cacheService.delete('system:init:data');
     return res.rows[0];
   },
 
@@ -94,6 +96,7 @@ const productRepository = {
       UPDATE products 
       SET stock = stock - (CASE ${casePhrases} END)::integer 
       WHERE id = ANY($${idsParamIdx}::integer[])
+        AND stock >= (CASE ${casePhrases} END)::integer
       RETURNING *
     `;
 
@@ -104,8 +107,9 @@ const productRepository = {
       throw new Error('Some items are out of stock or invalid');
     }
     
-    // 🚀 Invalidate all relevant caches on stock change
-    await cacheService.clearPattern('products:*');
+    // 🚀 Invalidate all relevant caches on stock change (Non-blocking)
+    cacheService.clearPattern('products:*').catch(() => {});
+    cacheService.delete('system:init:data').catch(() => {});
     
     return res.rows;
   },
@@ -121,11 +125,11 @@ const productRepository = {
   },
 
   getInventoryStats: async () => {
-    // ✅ Optimized: Using Materialized View with caching
+    // ✅ Optimized: Query products table directly to avoid stale statistics from the unrefreshed materialized view
     return await cacheService.getOrFetch(
       CACHE_KEYS.inventoryStats,
       async () => {
-        const res = await pool.query('SELECT COUNT(*) FILTER (WHERE stock > 0) as "inStock", COUNT(*) as total FROM product_stats');
+        const res = await pool.query('SELECT COUNT(*) FILTER (WHERE stock > 0) as "inStock", COUNT(*) as total FROM products');
         return res.rows[0];
       },
       CACHE_TTL.inventory
@@ -136,6 +140,7 @@ const productRepository = {
     const res = await pool.query('DELETE FROM products WHERE id = $1 RETURNING *', [id]);
     // 🚀 Invalidate cache on delete
     await cacheService.clearPattern('products:*');
+    await cacheService.delete('system:init:data');
     return res.rows[0];
   }
 };

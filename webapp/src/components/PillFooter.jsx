@@ -23,7 +23,13 @@ const PillFooter = ({ view, setView, totalPrice, isAdmin, cartCount = 0, t, lang
         <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
       </svg>
     )},
-    { id: 'checkout', label: t('cart_title'), icon: (
+    { id: 'feed', label: lang === 'kh' ? 'វីដេអូ' : 'Video', icon: (
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect>
+        <line x1="12" y1="18" x2="12.01" y2="18"></line>
+      </svg>
+    )},
+    { id: 'checkout', label: lang === 'kh' ? 'កន្ត្រក' : 'Cart', icon: (
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
         <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"></path>
         <path d="M3 6h18"></path>
@@ -43,7 +49,7 @@ const PillFooter = ({ view, setView, totalPrice, isAdmin, cartCount = 0, t, lang
   }
 
   return (
-    <nav className="bottom-nav-fixed animate-in">
+    <nav className="bottom-nav-fixed animate-in" style={{ paddingBottom: 'calc(15px + var(--safe-bottom))' }}>
       {navItems.map(item => (
         <button 
           key={item.id} 

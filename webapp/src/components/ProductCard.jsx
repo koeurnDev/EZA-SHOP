@@ -24,97 +24,82 @@ const ProductCard = memo(({
   const handleQuickAdd = (e) => {
     e.stopPropagation();
     if (isOutOfStock) return;
-    if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
+    if (tg?.isVersionAtLeast?.('6.1') && tg.HapticFeedback) {
+      tg.HapticFeedback.impactOccurred('medium');
+    }
     setIsAdded(true);
     onAdd(product, e);
     setTimeout(() => setIsAdded(false), 2000);
   };
 
-  const bestDiscount = discountLookup[product.id] || discountLookup['all'] || null;
-  const discountedPriceValue = getDiscountedPrice(product, bestDiscount);
-  const isDiscounted = bestDiscount !== null;
-
   const getOptimizedImage = (url) => {
     if (!url || !url.includes('cloudinary')) return url || '';
-    return url.replace('/upload/', '/upload/f_auto,q_auto:eco,w_300,c_fill,g_auto/');
+    return url.replace('/upload/', '/upload/f_auto,q_auto:eco,w_400,c_fill,g_auto/');
   };
+
+  const bestDiscount = discountLookup[product.id] || discountLookup['all'] || null;
+  const hasFlashSale = product.flash_sale_price && product.flash_sale_end && new Date(product.flash_sale_end) > new Date();
+  const finalPrice = hasFlashSale ? product.flash_sale_price : getDiscountedPrice(product, bestDiscount);
+  const isDiscounted = hasFlashSale || bestDiscount !== null || finalPrice < product.price;
+
+  // Short badge text for the top left (e.g. New, Special, Category)
+  let badgeText = product.category || 'ពិសេស';
+  if (badgeText.length > 12) {
+      badgeText = badgeText.substring(0, 12) + '...';
+  }
 
   return (
     <div
-      className={`product-card-luxury ${isOutOfStock ? 'pc-out-of-stock' : ''}`}
+      className={`product-card-standard-green ${isOutOfStock ? 'pc-out-of-stock' : ''}`}
       onClick={handleClick}
     >
-      {/* Image */}
-      <div className="card-image-wrapper">
+      {/* Top Small Badge */}
+      <div className="standard-green-badge">
+        {badgeText.toUpperCase()}
+      </div>
+      
+      {/* Flash Sale Tag */}
+      {hasFlashSale && (
+        <div style={{ position: 'absolute', top: 12, right: 12, background: '#ef4444', color: 'white', padding: '2px 8px', borderRadius: 4, fontSize: 10, fontWeight: 'bold', zIndex: 10 }}>
+           SALE
+        </div>
+      )}
+
+      {/* Image Wrapper */}
+      <div className="standard-image-wrapper">
         <img
           src={getOptimizedImage(product.image)}
           alt={product.name}
-          className="luxury-card-img"
+          className="standard-card-img"
           loading="lazy"
+          decoding="async"
           crossOrigin="anonymous"
         />
-
-        {/* Discount Badge */}
-        {isDiscounted && (
-          <div className="pc-discount-badge">
-            -{bestDiscount.discount_type === 'percent' ? `${bestDiscount.value}%` : `$${bestDiscount.value}`}
-          </div>
-        )}
-
-        {/* Wishlist Button */}
-        <button
-          className={`card-wishlist-btn-lux ${isFavorited ? 'active' : ''}`}
-          onClick={(e) => {
-            e.stopPropagation();
-            if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
-            setIsFavorited(f => !f);
-            if (!isFavorited && showToast) showToast(t('saved_to_wishlist') || 'Saved ✨');
-          }}
-        >
-          <svg width="15" height="15" viewBox="0 0 24 24" fill={isFavorited ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2.5">
-            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l8.82-8.82 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
-          </svg>
-        </button>
       </div>
-
-      <div className="card-content-luxury">
-        {/* Out of Stock Label */}
-        {isOutOfStock && (
-          <div className="pc-out-of-stock-label">
-            {t('out_of_stock')}
+      
+      {/* Content Below Image */}
+      <div className="standard-card-content">
+        <h3 className="standard-card-title">{product.name}</h3>
+        <div className="standard-card-bottom">
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <span className="standard-card-price" style={isDiscounted ? { color: '#ef4444' } : {}}>${finalPrice}</span>
+            {isDiscounted && <span style={{ textDecoration: 'line-through', fontSize: '11px', color: '#999', marginTop: '-2px' }}>${product.price}</span>}
           </div>
-        )}
-        {/* Name */}
-        <h3 className="card-title-luxury">{product.name}</h3>
-
-        {/* Footer: Price + Add Button */}
-        <div className="card-footer-luxury">
-          <div className="pc-price-block">
-            {isDiscounted ? (
-              <>
-                <span className="price-new-luxury">${discountedPriceValue}</span>
-                <span className="price-old-luxury">${product.price}</span>
-              </>
-            ) : (
-              <span className="price-main-luxury">${product.price}</span>
-            )}
-          </div>
-
           {!isOutOfStock && (
-            <div
-              className={`add-btn-luxury ${isAdded ? 'success' : ''}`}
+            <button 
+              className={`standard-add-btn ${isAdded ? 'added' : ''}`}
               onClick={handleQuickAdd}
             >
               {isAdded ? (
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
                   <polyline points="20 6 9 17 4 12"/>
                 </svg>
               ) : (
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
                   <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
                 </svg>
               )}
-            </div>
+            </button>
           )}
         </div>
       </div>

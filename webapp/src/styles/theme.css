@@ -18,8 +18,8 @@
   /* 📐 Layout Tokens */
   --card-radius: 28px;
   --inner-radius: 22px;
-  --shadow-soft: 0 4px 20px rgba(0, 0, 0, 0.04);
-  --shadow-hover: 0 10px 40px rgba(0, 0, 0, 0.08);
+  --shadow-soft: 0 2px 8px rgba(0, 0, 0, 0.05);
+  --shadow-hover: 0 6px 16px rgba(0, 0, 0, 0.08);
   --font-khmer: 'Kantumruy Pro', sans-serif;
 }
 

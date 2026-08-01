@@ -7,7 +7,7 @@ import { useCartDispatch } from '../context/CartContext';
 import { useTelegram } from '../context/TelegramContext';
 
 const SkeletonGrid = () => (
-  <div className="product-grid-main grid grid-cols-2 gap-4 px-5 pb-5">
+  <div className="product-grid-main grid grid-cols-2 gap-3 px-4 pb-5">
     {[1, 2, 3, 4, 5, 6].map(i => (
       <ProductSkeleton key={i} />
     ))}
@@ -40,7 +40,8 @@ const ProductGrid = () => {
     return (products || [])
       .filter(p => {
         const matchesSearch = (p.name || '').toLowerCase().includes((debouncedSearchTerm || '').toLowerCase());
-        const matchesCategory = selectedCategory === 'all' || p.category === selectedCategory;
+        const matchesCategory = selectedCategory === 'all' || 
+                                (selectedCategory === 'flash_sale' ? p.flash_sale_price : p.category === selectedCategory);
         return matchesSearch && matchesCategory;
       })
       .sort((a, b) => {
@@ -56,13 +57,15 @@ const ProductGrid = () => {
   const featured = useMemo(() => (products || []).filter(p => p.stock > 0).slice(0, 3), [products]);
   const showFeatured = searchTerm === '' && selectedCategory === 'all' && featured.length > 0;
 
-  const handleViewProduct = (product) => {
+  const handleViewProduct = React.useCallback((product) => {
     setSelectedProduct(product);
     setView('product_detail');
-  };
+  }, [setSelectedProduct, setView]);
 
   const handleShowMore = () => {
-    if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+    if (tg?.isVersionAtLeast?.('6.1') && tg.HapticFeedback) {
+      tg.HapticFeedback.impactOccurred('light');
+    }
     setLimit(prev => prev + 20);
   };
 
@@ -103,7 +106,7 @@ const ProductGrid = () => {
           <SkeletonGrid />
         ) : (
           <>
-            <div className="product-grid-main grid grid-cols-2 gap-4 pb-4">
+            <div className="product-grid-main grid grid-cols-2 gap-3 pb-4">
               {displayed.length === 0 ? (
                 <div className="col-span-2 text-center py-10 opacity-50">
                   <p>{t('empty_cart')}</p>

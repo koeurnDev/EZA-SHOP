@@ -12,6 +12,15 @@ class CacheService {
     this.maxFallbackSize = 100;              // Limit memory usage
     this.fallbackTTL = new Map();            // Track expiration
     this.initialized = false;
+    this.timeoutLimit = 150; // ⚡ Max Speed: 150ms timeout for Cloud Redis
+  }
+
+  // Helper for performance-critical Cloud operations
+  async _withTimeout(promise, operationName) {
+    const timeout = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error(`TIMEOUT (${operationName})`)), this.timeoutLimit)
+    );
+    return Promise.race([promise, timeout]);
   }
 
   // Check if Redis is available
@@ -24,26 +33,28 @@ class CacheService {
     try {
       const serialized = JSON.stringify(value);
 
-      // Try Redis REST first (Upstash)
-      if (redisRest) {
-        await redisRest.setex(key, ttlSeconds, serialized);
-        // console.log(`✅ Cache SET (REST): ${key} (${ttlSeconds}s)`);
-        return true;
-      }
+      // 1. Memory Fallback (Instant - storing raw object, not string, to save CPU)
+      this._setFallback(key, value, ttlSeconds);
 
-      // Fallback to TCP Redis
+      // 2. TCP Redis (Fast - Non-blocking set)
       if (redisClient?.isOpen) {
-        await redisClient.setEx(key, ttlSeconds, serialized);
-        // console.log(`✅ Cache SET (TCP): ${key} (${ttlSeconds}s)`);
-        return true;
+        redisClient.setEx(key, ttlSeconds, serialized).catch(() => {});
       }
 
-      // Last resort: in-memory cache
-      this._setFallback(key, serialized, ttlSeconds);
+      // 3. Redis REST (Slow - Upstash)
+      if (redisRest) {
+        const restStart = Date.now();
+        try {
+          await this._withTimeout(redisRest.setex(key, ttlSeconds, serialized), 'SET_REST');
+          return true;
+        } catch (e) {
+          // Silent fail for sets, we already have it in memory/local
+        }
+      }
+
       return true;
     } catch (err) {
-      console.error(`⚠️ Cache SET Error (${key}):`, err.message);
-      this._setFallback(key, JSON.stringify(value), ttlSeconds);
+      console.error(`⚠️ [CACHE] SET ERROR (${key}):`, err.message);
       return false;
     }
   }
@@ -53,38 +64,43 @@ class CacheService {
     try {
       let data;
 
-      // Try Redis REST first (Upstash)
-      if (redisRest) {
-        data = await redisRest.get(key);
-        if (data) {
-          if (typeof data === 'object') return data;
-          try {
-            return JSON.parse(data);
-          } catch (e) {
-            return data; // Return as-is if not valid JSON
-          }
-        }
-        return null;
-      }
+      // 🏎️ STRATEGY: LOCAL-FIRST (Memory -> TCP -> Cloud REST)
+      
+      // 1. Memory Fallback (0ms)
+      data = this._getFallback(key);
+      if (data) return data;
 
-      // Fallback to TCP Redis
+      // 2. TCP Redis (Local/Socket - ~1-10ms)
       if (redisClient?.isOpen) {
-        data = await redisClient.get(key);
-        if (data) {
-          if (typeof data === 'object') return data;
-          try {
-            return JSON.parse(data);
-          } catch (e) {
-            return data;
-          }
-        }
-        return null;
+        try {
+          data = await redisClient.get(key);
+          if (data) return JSON.parse(data);
+        } catch (e) {}
       }
 
-      // Last resort: in-memory cache
-      return this._getFallback(key);
+      // 3. Redis REST (Cloud - ~200ms+ or timeout)
+      if (redisRest) {
+        const restStart = Date.now();
+        try {
+          const cloudData = await this._withTimeout(redisRest.get(key), 'GET_REST');
+          const elapsed = Date.now() - restStart;
+          
+          if (cloudData) {
+            if (elapsed > 100) console.log(`⏳ [CACHE] Cloud GET hits limit: ${elapsed}ms`);
+            const parsed = typeof cloudData === 'object' ? cloudData : JSON.parse(cloudData);
+            // Backfill local cache for next time
+            this._setFallback(key, parsed, 300);
+            return parsed;
+          }
+        } catch (e) {
+          if (e.message.includes('TIMEOUT')) {
+             // console.warn(`⚡ [CACHE] Cloud Timeout (150ms) - Bypassed for speed`);
+          }
+        }
+      }
+
+      return null;
     } catch (err) {
-      console.error(`⚠️ Cache GET Error (${key}):`, err.message);
       return this._getFallback(key);
     }
   }
@@ -93,8 +109,12 @@ class CacheService {
   async delete(key) {
     try {
       if (redisRest) {
-        await redisRest.del(key);
-        return true;
+        try {
+          await this._withTimeout(redisRest.del(key), 'DELETE_REST');
+          return true;
+        } catch (e) {
+          // Silent fail
+        }
       }
 
       if (redisClient?.isOpen) {
@@ -152,21 +172,30 @@ class CacheService {
 
   // GET-OR-FETCH: If cache hit, return; else fetch & cache
   async getOrFetch(key, fetchFn, ttlSeconds = 300) {
+    const start = Date.now();
     try {
       // Try cache first
       const cached = await this.get(key);
       if (cached) {
+        const elapsed = Date.now() - start;
+        if (elapsed > 100) console.log(`⏱️ [CACHE] HIT (SlowPath): ${elapsed}ms for ${key}`);
         return cached;
       }
 
       // Cache miss: fetch fresh data
+      const fetchStart = Date.now();
       const fresh = await fetchFn();
+      const dbElapsed = Date.now() - fetchStart;
+      
+      if (dbElapsed > 200) console.log(`⚠️ [DB] Query Slow: ${dbElapsed}ms for ${key}`);
+
       if (fresh) {
-        await this.set(key, fresh, ttlSeconds);
+        // SET is async/non-blocking to user response for better UX
+        this.set(key, fresh, ttlSeconds).catch(() => {});
       }
       return fresh;
     } catch (err) {
-      console.error(`⚠️ Cache GET-OR-FETCH Error (${key}):`, err.message);
+      console.error(`⚠️ [CACHE] Failure (${key}):`, err.message);
       return await fetchFn();
     }
   }
@@ -193,7 +222,7 @@ class CacheService {
     }
 
     const data = this.fallbackCache.get(key);
-    return data ? JSON.parse(data) : null;
+    return data !== undefined ? data : null;
   }
 
   // STATS

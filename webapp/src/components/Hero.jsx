@@ -21,8 +21,8 @@ const Hero = () => {
    const userName = user?.first_name || 'Guest User';
 
    return (
-      <div className="hero-section">
-         <div className="hero-top-row flex justify-between items-center w-full gap-3">
+      <div className="hero-section !px-0"> {/* 🚀 Seamless Flush edges */}
+         <div className="hero-top-row flex justify-between items-center w-full gap-2 overflow-hidden px-4">
             {/* 👤 Ultra-Compact Profile (Left) */}
             <div className="profile-badge-luxury flex-shrink-0 cursor-pointer" onClick={() => setView('profile')}>
                <div className="avatar-mini-lux">
@@ -83,4 +83,4 @@ const Hero = () => {
    );
 };
 
-export default Hero;
+export default React.memo(Hero);

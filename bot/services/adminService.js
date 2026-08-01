@@ -6,23 +6,20 @@ const couponRepository = require('../repositories/couponRepository');
 
 const adminService = {
   getDashboardSummary: async () => {
-    const [revenue, totalOrders, activeOrders, customers, productStats, orderHealth] = await Promise.all([
-      orderRepository.getRevenueSummary(),
-      orderRepository.getTotalCount(),
-      orderRepository.getActiveCount(),
+    const [orderAggregates, customers, productStats] = await Promise.all([
+      orderRepository.getDashboardAggregates(),
       userRepository.getCount(),
-      productRepository.getInventoryStats(),
-      orderRepository.getHealthStats()
+      productRepository.getInventoryStats()
     ]);
 
     const stockScore = (productStats.inStock / (productStats.total || 1)) * 40;
-    const orderScore = (parseInt(orderHealth.healthy) / (parseInt(orderHealth.total) || 1)) * 60;
+    const orderScore = (orderAggregates.healthy / (orderAggregates.total || 1)) * 60;
     const health = Math.round(stockScore + orderScore);
 
     return {
-      totalRevenue: revenue,
-      totalOrders,
-      activeOrders,
+      totalRevenue: orderAggregates.revenue,
+      totalOrders: orderAggregates.totalOrders,
+      activeOrders: orderAggregates.activeOrders,
       totalCustomers: customers,
       businessHealth: Math.max(0, Math.min(100, health))
     };

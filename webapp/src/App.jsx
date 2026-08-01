@@ -9,6 +9,8 @@ import { useCartState, useCartDispatch } from './context/CartContext';
 import { useApi } from './hooks/useApi';
 import { useTelemetry } from './hooks/useTelemetry';
 import { useFeatureFlags } from './context/FeatureFlagContext';
+import { useKeyboardVisibility } from './hooks/useKeyboardVisibility';
+
 
 // Components
 import Hero from './components/Hero';
@@ -21,6 +23,8 @@ import ProductGrid from './components/ProductGrid';
 import ProductDetail from './components/ProductDetail';
 import CartPage from './components/CartPage';
 import PillFooter from './components/PillFooter';
+import VideoFeed from './components/VideoFeed';
+import SplashScreen from './components/ui/SplashScreen';
 import SuccessOverlay from './components/SuccessOverlay';
 import InvoiceModal from './components/InvoiceModal';
 import ProfileSkeleton from './components/ui/Skeletons/ProfileSkeleton';
@@ -56,11 +60,15 @@ function App() {
     cart, totalPrice, totalItemsCount, flyingItems, cartIconRef, idempotencyKey 
   } = useCartState();
 
+  const isKeyboardVisible = useKeyboardVisibility();
+
+
   const { addToCart, clearCart, updateQty, handleBulkAddToCart, prepareIdempotency } = useCartDispatch();
 
   // Local state for specific UI interactions not needed in global context
   const [showInvoice, setShowInvoice] = React.useState(false);
   const [showConfetti, setShowConfetti] = React.useState(false);
+  const [showSplash, setShowSplash] = React.useState(true);
   const [lastOrder, setLastOrder] = React.useState(null);
   const [isPlacingOrder, setIsPlacingOrder] = React.useState(false);
   const [validationErrors, setValidationErrors] = React.useState({});
@@ -177,7 +185,9 @@ function App() {
   };
 
   const handleConfirmPayment = async (orderCode) => {
-    if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
+    if (tg?.isVersionAtLeast?.('6.1') && tg.HapticFeedback) {
+      tg.HapticFeedback.impactOccurred('medium');
+    }
     const result = await fetchWithRetry(`${BACKEND_URL}/api/orders/confirm`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-TG-Data': window.Telegram?.WebApp?.initData || '' },
@@ -193,7 +203,9 @@ function App() {
     }
   };
   const handlePaymentSuccess = () => {
-    if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+    if (tg?.isVersionAtLeast?.('6.1') && tg.HapticFeedback) {
+      tg.HapticFeedback.notificationOccurred('success');
+    }
     setShowConfetti(true);
     setTimeout(() => {
       setShowConfetti(false);
@@ -204,7 +216,10 @@ function App() {
 
   return (
     <ErrorBoundary>
-      <div className="app-container">
+      <div className={`app-container ${isKeyboardVisible ? 'keyboard-visible' : ''}`}>
+        
+        {showSplash && <SplashScreen onComplete={() => setShowSplash(false)} />}
+
         {flyingItems.map(item => (
           <div key={item.id} className="flying-dot-premium" style={{
             '--start-x': `${item.startX}px`, '--start-y': `${item.startY}px`,
@@ -298,12 +313,19 @@ function App() {
                 isPlacingOrder={isPlacingOrder} 
               />
             )}
+            {view === 'feed' && (
+              <VideoFeed 
+                products={products} 
+                onProductSelect={(p) => { setSelectedProduct(p); setView('product_detail'); }} 
+                onAddToCart={addToCart} 
+              />
+            )}
 
           </>
         )}
 
         {view === 'product_detail' && selectedProduct && (
-          <ProductDetail product={selectedProduct} allProducts={products} onAdd={addToCart} onClose={() => setView('home')} onBuyNow={(e) => { addToCart(selectedProduct, e); setView('checkout'); }} activeDiscounts={activeDiscounts} t={t} lang={lang} shopLogoUrl={shopLogoUrl} />
+          <ProductDetail product={selectedProduct} allProducts={products} onAdd={addToCart} onClose={() => setView('home')} onBuyNow={(e) => { addToCart(selectedProduct, e); setView('checkout'); }} activeDiscounts={activeDiscounts} t={t} lang={lang} shopLogoUrl={shopLogoUrl} onSelectRelated={(p) => setSelectedProduct(p)} />
         )}
 
         <PillFooter view={view} setView={setView} totalPrice={totalPrice} isAdmin={isSuperAdmin} cartCount={totalItemsCount} t={t} lang={lang} />

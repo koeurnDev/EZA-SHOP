@@ -86,6 +86,11 @@ const orderRepository = {
     await pool.query('UPDATE orders SET qr_string = $1 WHERE id = $2', [qr, id]);
   },
 
+  updateReceiptUrl: async (id, url) => {
+    const res = await pool.query('UPDATE orders SET receipt_url = $1 WHERE id = $2 RETURNING *', [url, id]);
+    return res.rows[0];
+  },
+
   updateExpiry: async (id, expiresAt) => {
     const res = await pool.query(
       'UPDATE orders SET expires_at = $1, status = $2 WHERE id = $3 RETURNING *',
@@ -94,24 +99,23 @@ const orderRepository = {
     return res.rows[0];
   },
 
-  getRevenueSummary: async () => {
-    const res = await pool.query("SELECT SUM(total) as total FROM orders WHERE status != 'cancelled'");
-    return parseFloat(res.rows[0]?.total || 0);
-  },
-
-  getTotalCount: async () => {
-    const res = await pool.query('SELECT COUNT(*) as count FROM orders');
-    return parseInt(res.rows[0]?.count || 0);
-  },
-
-  getActiveCount: async () => {
-    const res = await pool.query("SELECT COUNT(*) as count FROM orders WHERE status IN ('pending', 'processing', 'shipped')");
-    return parseInt(res.rows[0]?.count || 0);
-  },
-
-  getHealthStats: async () => {
-    const res = await pool.query("SELECT COUNT(*) FILTER (WHERE status IN ('paid', 'processing', 'shipped', 'delivering', 'delivered')) as healthy, COUNT(*) as total FROM orders");
-    return res.rows[0];
+  getDashboardAggregates: async () => {
+    const res = await pool.query(`
+      SELECT 
+        SUM(total) FILTER (WHERE status != 'cancelled') as revenue,
+        COUNT(*) as total_orders,
+        COUNT(*) FILTER (WHERE status IN ('pending', 'processing', 'shipped')) as active_orders,
+        COUNT(*) FILTER (WHERE status IN ('paid', 'processing', 'shipped', 'delivering', 'delivered')) as healthy,
+        COUNT(*) as total
+      FROM orders
+    `);
+    return {
+      revenue: parseFloat(res.rows[0]?.revenue || 0),
+      totalOrders: parseInt(res.rows[0]?.total_orders || 0),
+      activeOrders: parseInt(res.rows[0]?.active_orders || 0),
+      healthy: parseInt(res.rows[0]?.healthy || 0),
+      total: parseInt(res.rows[0]?.total || 0)
+    };
   },
 
   getDailyStats: async (days = 14) => {

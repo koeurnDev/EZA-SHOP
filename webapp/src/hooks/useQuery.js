@@ -56,19 +56,24 @@ export const useQuery = (key, url, options = {}) => {
       setLoading(false);
       inFlight.current = null;
     }
-  }, [key, url, JSON.stringify(options), fetchWithRetry]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key, url, fetchWithRetry]); // ⚡ DO NOT add options here - JSON.stringify(options) creates a new string every render causing infinite re-fetch loop!
 
   useEffect(() => {
-    const cached = localStorage.getItem(`${CACHE_PREFIX}${key}`);
-    const now = Date.now();
-    
-    if (cached) {
-      const { timestamp } = JSON.parse(cached);
-      if (now - timestamp > STALE_TIME) {
-        fetchData(true);
+    try {
+      const cached = localStorage.getItem(`${CACHE_PREFIX}${key}`);
+      if (cached) {
+        // ⚡ Stale-While-Revalidate: serve cached data instantly, then refresh silently in bg
+        const { timestamp } = JSON.parse(cached);
+        if (Date.now() - timestamp > STALE_TIME) {
+          fetchData(true); // silent background refresh, UI already has data
+        }
+        // Data already loaded from initial useState, no blocking needed
+      } else {
+        fetchData(); // cold start - must fetch
       }
-    } else {
-      fetchData();
+    } catch (e) {
+      fetchData(); // corrupt cache - force fresh fetch
     }
   }, [key, fetchData]);
 

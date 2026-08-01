@@ -17,13 +17,14 @@ const globalLimiter = async (req, res, next) => {
   try {
     const count = await redisRest.incr(key);
     
-    // 🛡️ Ensure key ALWAYS has an expiration (Fixes potential race condition)
+    // 🛡️ Fire-and-forget expiration to save ~100ms latency per request!
     if (count === 1) {
-      await redisRest.expire(key, 60);
-    } else {
-      // Periodic check to ensure TTL is set even if first request failed to set it
-      const ttl = await redisRest.ttl(key);
-      if (ttl < 0) await redisRest.expire(key, 60);
+      redisRest.expire(key, 60).catch(() => {});
+    } else if (count % 100 === 0) {
+      // Occasional safety check, done asynchronously
+      redisRest.ttl(key).then(ttl => {
+        if (ttl < 0) redisRest.expire(key, 60).catch(() => {});
+      }).catch(() => {});
     }
     
     if (count > 300) {
@@ -52,7 +53,7 @@ const orderCreationLimiter = async (req, res, next) => {
   
   try {
     const count = await redisRest.incr(key);
-    if (count === 1) await redisRest.expire(key, 600); // 10 minutes
+    if (count === 1) redisRest.expire(key, 600).catch(() => {}); // 10 minutes, fire-and-forget
     
     // 🛡️ Increased limit to 15 orders for better testing/UX flow
     if (count > 15) {

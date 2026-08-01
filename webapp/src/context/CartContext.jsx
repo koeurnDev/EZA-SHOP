@@ -31,6 +31,14 @@ export const CartProvider = ({ children }) => {
   // Persistence
   useEffect(() => {
     localStorage.setItem('momo_cart_v1', JSON.stringify(cart));
+    
+    // 🛡️ Principal: If cart changes, the previous idempotency key is no longer valid for this "attempt".
+    // This prevents price mismatches if the user adds items after a failed/pending checkout.
+    if (idempotencyKey) {
+      localStorage.removeItem('momo_idemp_key');
+      setIdempotencyKey(null);
+    }
+
     if (cart.length === 0) {
       localStorage.removeItem('momo_idemp_key');
       setIdempotencyKey(null);

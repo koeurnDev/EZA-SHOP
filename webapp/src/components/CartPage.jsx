@@ -72,11 +72,21 @@ const CartPage = ({
           </button>
           <h2 className="text-xl font-black text-bold">{t('cart_title')}</h2>
         </div>
-        <div className="flex flex-col items-center justify-center py-20 opacity-50">
-          <div className="text-6xl mb-4">🛍️</div>
-          <p className="text-lg font-bold">{t('empty_cart')}</p>
-          <button className="mt-8 px-8 py-3 bg-primary-accent text-white font-black rounded-full shadow-lg" onClick={() => setView('home')}>
-            {t('order_now')}
+        <div className="flex flex-col items-center justify-center py-16">
+          <div className="relative mb-8 flex justify-center items-center">
+             <div className="absolute bg-primary-accent opacity-20 blur-3xl rounded-full" style={{ width: '120px', height: '120px' }}></div>
+             <svg width="100" height="100" viewBox="0 0 24 24" fill="none" stroke="var(--primary-accent)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="relative z-10" style={{ filter: 'drop-shadow(0 8px 16px rgba(0,0,0,0.08))' }}>
+                <circle cx="9" cy="21" r="1"></circle>
+                <circle cx="20" cy="21" r="1"></circle>
+                <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+             </svg>
+          </div>
+          <h3 className="text-xl font-black text-bold mb-2 text-center">{lang === 'kh' ? 'កន្ត្រករបស់អ្នកទទេស្អាត' : 'Your cart is empty'}</h3>
+          <p className="text-sm font-bold text-muted mb-8 text-center max-w-[260px] leading-relaxed">
+            {lang === 'kh' ? 'សូមចូលទៅកាន់ទំព័រដើម ដើម្បីជ្រើសរើសទំនិញដែលលោកអ្នកពេញចិត្ត!' : 'Looks like you haven\'t added any items to your cart yet.'}
+          </p>
+          <button className="px-10 py-4 bg-emerald-600 text-white font-black rounded-2xl shadow-xl transition-all active:scale-95 hover:scale-105" onClick={() => setView('home')} style={{ letterSpacing: '0.5px' }}>
+            {lang === 'kh' ? 'ទៅទិញឥឡូវនេះ' : 'Shop Now'}
           </button>
         </div>
       </main>
@@ -98,7 +108,13 @@ const CartPage = ({
             <div className="animate-in mb-8">
               <h3 className="text-lg font-black text-bold mb-4">{t('items')} ({totalItemsCount})</h3>
               <div className="flex flex-col gap-4">
-                {cart.map(item => (
+                {cart.map(item => {
+                  const best = calculateBestDiscount(item, activeDiscounts);
+                  const dPrice = best ? getDiscountedPrice(item, best) : null;
+                  const finalPrice = dPrice || item.price;
+                  const isDiscounted = dPrice !== null && dPrice < item.price;
+                  
+                  return (
                   <div key={item.id} className="flex gap-4 p-4 bg-bg-surface rounded-3xl shadow-sm border border-border-subtle">
                     <div className="w-20 h-20 rounded-2xl overflow-hidden flex-shrink-0 bg-bg-soft">
                       <img
@@ -110,13 +126,16 @@ const CartPage = ({
                     <div className="flex-1 flex flex-col justify-between">
                       <div className="flex justify-between items-start">
                         <div className="font-bold text-bold line-clamp-1">{item.name}</div>
-                        <div className="font-black text-bold">${(item.price * item.quantity).toFixed(2)}</div>
+                        <div className={`font-black text-bold ${isDiscounted ? 'text-red-500' : ''}`}>
+                          ${(finalPrice * item.quantity).toFixed(2)}
+                          {isDiscounted && <span className="block text-[10px] text-muted line-through text-right">${(item.price * item.quantity).toFixed(2)}</span>}
+                        </div>
                       </div>
                       <div className="flex justify-between items-end">
-                        <div className="flex items-center gap-3 bg-bg-soft rounded-xl px-2 py-1">
-                          <button className="w-6 h-6 flex items-center justify-center font-black" onClick={() => updateQty(item.id, -1)}>−</button>
-                          <span className="font-black text-sm w-4 text-center">{item.quantity}</span>
-                          <button className="w-6 h-6 flex items-center justify-center font-black" onClick={() => updateQty(item.id, 1)}>+</button>
+                        <div className="flex items-center gap-3 bg-bg-soft rounded-2xl p-1">
+                          <button className="w-10 h-10 flex items-center justify-center font-black text-lg active:scale-90 transition-transform" onClick={() => updateQty(item.id, -1)} aria-label="Decrease quantity">−</button>
+                          <span className="font-black text-base w-6 text-center tabular-nums">{item.quantity}</span>
+                          <button className="w-10 h-10 flex items-center justify-center font-black text-lg active:scale-90 transition-transform" onClick={() => updateQty(item.id, 1)} aria-label="Increase quantity">+</button>
                         </div>
                         <button className="text-[10px] font-black uppercase text-rose-500 tracking-wider" onClick={() => updateQty(item.id, -item.quantity)}>
                           {t('remove')}
@@ -124,7 +143,7 @@ const CartPage = ({
                       </div>
                     </div>
                   </div>
-                ))}
+                )})}
               </div>
             </div>
           ) : (
@@ -136,7 +155,7 @@ const CartPage = ({
               />
               <div className="mt-8 p-6 bg-bg-surface rounded-3xl border border-border-subtle shadow-sm">
                 <h3 className="text-lg font-black text-bold mb-4">{t('paid_by')}</h3>
-                <div className="flex items-center gap-4 p-4 rounded-2xl bg-primary-accent/5 border-2 border-primary-accent shadow-sm">
+                <div className="flex items-center gap-4 p-4 rounded-2xl bg-gray-100 border-2 border-emerald-600 shadow-sm">
                   <div className="w-12 h-12 flex items-center justify-center bg-white rounded-xl shadow-sm overflow-hidden">
                     <img src="Bakong.png" alt="Bakong" className="max-w-[70%]" />
                   </div>
@@ -144,7 +163,7 @@ const CartPage = ({
                     <div className="font-black text-bold">Bakong KHQR</div>
                     <div className="text-[10px] font-bold text-muted">{lang === 'kh' ? 'ទូទាត់បានគ្រប់ធានាគាទាំងអស់' : 'Compatible with all banks'}</div>
                   </div>
-                  <div className="w-6 h-6 flex items-center justify-center bg-primary-accent text-white rounded-full">✓</div>
+                  <div className="w-6 h-6 flex items-center justify-center bg-emerald-600 text-white rounded-full">✓</div>
                 </div>
                 <div className="mt-4 text-[10px] font-black text-rose-500 text-center opacity-75">
                   {lang === 'kh' ? '* រាល់ការបង់ប្រាក់រួចហើយមិនអាចដកវិញទេ' : '* All payments are non-refundable.'}
@@ -180,10 +199,10 @@ const CartPage = ({
         </div>
         <div className="flex justify-between items-center mb-8">
           <span className="text-lg font-black uppercase text-bold">{lang === 'kh' ? 'សរុប:' : 'Total:'}</span>
-          <span className="text-2xl font-black text-primary-accent tabular-nums">${finalTotal.toFixed(2)}</span>
+          <span className="text-2xl font-black text-emerald-600 tabular-nums">${finalTotal.toFixed(2)}</span>
         </div>
         <button
-          className={`w-full py-4 flex items-center justify-center gap-3 bg-primary-accent text-white rounded-2xl font-black uppercase tracking-widest shadow-lg transition-all ${isPlacingOrder ? 'opacity-75 cursor-wait' : 'hover:scale-[1.02] hover:shadow-xl active:scale-[0.98]'} ${(step === 2 && (!isPhoneValid || !isAddressValid)) ? 'opacity-50 grayscale' : ''}`}
+          className={`w-full py-4 flex items-center justify-center gap-3 bg-emerald-600 text-white rounded-2xl font-black uppercase tracking-widest shadow-lg transition-all ${isPlacingOrder ? 'opacity-75 cursor-wait' : 'hover:scale-[1.02] hover:shadow-xl active:scale-[0.98]'} ${(step === 2 && (!isPhoneValid || !isAddressValid)) ? 'opacity-50 grayscale' : ''}`}
           onClick={handlePrimaryAction}
           disabled={isPlacingOrder || totalItemsCount === 0}
         >

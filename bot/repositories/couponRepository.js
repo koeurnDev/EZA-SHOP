@@ -1,4 +1,5 @@
 const pool = require('../config/database');
+const cacheService = require('../services/cacheService');
 
 const couponRepository = {
   findAll: async () => {
@@ -13,16 +14,22 @@ const couponRepository = {
   },
 
   findActiveAuto: async () => {
-    const res = await pool.query(`
-      SELECT c.*, array_agg(cp.product_id) FILTER (WHERE cp.product_id IS NOT NULL) as product_ids
-      FROM coupons c
-      LEFT JOIN coupon_products cp ON c.id = cp.coupon_id
-      WHERE c.is_auto = true AND c.active = true 
-      AND (c.start_date IS NULL OR c.start_date <= CURRENT_TIMESTAMP)
-      AND (c.end_date IS NULL OR c.end_date >= CURRENT_TIMESTAMP)
-      GROUP BY c.id
-    `);
-    return res.rows;
+    return await cacheService.getOrFetch(
+      'coupons:active:auto',
+      async () => {
+        const res = await pool.query(`
+          SELECT c.*, array_agg(cp.product_id) FILTER (WHERE cp.product_id IS NOT NULL) as product_ids
+          FROM coupons c
+          LEFT JOIN coupon_products cp ON c.id = cp.coupon_id
+          WHERE c.is_auto = true AND c.active = true 
+          AND (c.start_date IS NULL OR c.start_date <= CURRENT_TIMESTAMP)
+          AND (c.end_date IS NULL OR c.end_date >= CURRENT_TIMESTAMP)
+          GROUP BY c.id
+        `);
+        return res.rows;
+      },
+      600 // 10 minutes
+    );
   },
 
   create: async (c) => {
@@ -39,12 +46,14 @@ const couponRepository = {
       const coupon = res.rows[0];
       
       if (c.applyTo === 'specific' && c.productIds && c.productIds.length > 0) {
-        for (const pid of c.productIds) {
-          await client.query('INSERT INTO coupon_products (coupon_id, product_id) VALUES ($1, $2)', [coupon.id, pid]);
-        }
+        const values = c.productIds.map((_, idx) => `($1, $${idx + 2})`).join(', ');
+        const queryText = `INSERT INTO coupon_products (coupon_id, product_id) VALUES ${values}`;
+        await client.query(queryText, [coupon.id, ...c.productIds]);
       }
       
       await client.query('COMMIT');
+      // 🚀 Invalidate cache
+      await cacheService.clearPattern('coupons:*');
       return coupon;
     } catch (e) {
       await client.query('ROLLBACK');
@@ -56,6 +65,8 @@ const couponRepository = {
 
   delete: async (id) => {
     await pool.query('DELETE FROM coupons WHERE id = $1', [id]);
+    // 🚀 Invalidate cache
+    await cacheService.clearPattern('coupons:*');
   }
 };
 

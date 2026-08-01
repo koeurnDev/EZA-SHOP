@@ -38,6 +38,9 @@ const InvoiceModal = ({ order, onClose, paymentQrUrl, paymentInfo, BACKEND_URL, 
   const [isVerifying, setIsVerifying] = useState(false);
   const [isOffline, setIsOffline] = useState(false);
   const [attempts, setAttempts] = useState(0);
+  const [qrError, setQrError] = useState('');
+  const [isUploadingReceipt, setIsUploadingReceipt] = useState(false);
+  const [receiptUploaded, setReceiptUploaded] = useState(false);
   
   // 🔄 Sync local order when parent prop updates (Essential for Draft -> Real transition)
   useEffect(() => {
@@ -49,7 +52,7 @@ const InvoiceModal = ({ order, onClose, paymentQrUrl, paymentInfo, BACKEND_URL, 
   const isDraft = localOrder.id === 'DRAFT';
   const displayId = isDraft ? '...' : (localOrder.order_code || localOrder.id);
   const dbId = localOrder.id;
-  const items = typeof localOrder.items === 'string' ? JSON.parse(localOrder.items) : localOrder.items;
+  const items = React.useMemo(() => typeof localOrder.items === 'string' ? JSON.parse(localOrder.items) : localOrder.items, [localOrder.items]);
 
   const orderStatus = localOrder.status;
 
@@ -89,21 +92,30 @@ const InvoiceModal = ({ order, onClose, paymentQrUrl, paymentInfo, BACKEND_URL, 
 
   useEffect(() => {
     if (localOrder?.qr_string) {
-      QRCode.toDataURL(localOrder.qr_string, { 
-        width: 400, 
-        margin: 1,
-        color: { dark: '#000000', light: '#FFFFFF' } // 🛡 Force High Contrast for Scanners
-      })
-        .then(url => setDynamicQr(url))
-        .catch(err => console.error("QR Generate Fail:", err));
+      try {
+        QRCode.toDataURL(localOrder.qr_string, { 
+          width: 400, 
+          margin: 1,
+          color: { dark: '#000000', light: '#FFFFFF' } // 🛡 Force High Contrast for Scanners
+        })
+          .then(url => setDynamicQr(url))
+          .catch(err => {
+            console.error("QR Generate Fail:", err);
+            setQrError(err.message || 'QR Promise Error');
+          });
+      } catch (err) {
+        console.error("QR Sync Error:", err);
+        setQrError(err.message || 'QR Sync Error');
+      }
     }
   }, [localOrder?.qr_string]);
 
   // 🚀 HARDENED: Exponential Backoff Polling with Network Resilience
+  // [DISABLED BY REQUEST - MANUAL CHECK INSTEAD]
   useEffect(() => {
+    /*
     if (orderStatus === 'paid' || isExpired || isDraft) return;
 
-    // 🚀 ULTRA-FAST: 500ms for first 10 attempts (5 seconds), then 1s, then backing off.
     const currentDelay = attempts < 10 ? 500 : attempts < 20 ? 1000 : attempts < 40 ? 3000 : 10000;
 
     const interval = setTimeout(async () => {
@@ -115,7 +127,7 @@ const InvoiceModal = ({ order, onClose, paymentQrUrl, paymentInfo, BACKEND_URL, 
         });
         const data = await res.json();
         
-        setIsOffline(false); // Reset network failure state
+        setIsOffline(false);
         setAttempts(prev => prev + 1);
 
         if (data.success) {
@@ -136,6 +148,7 @@ const InvoiceModal = ({ order, onClose, paymentQrUrl, paymentInfo, BACKEND_URL, 
     }, currentDelay);
 
     return () => clearTimeout(interval);
+    */
   }, [localOrder.order_code, orderStatus, attempts, BACKEND_URL, onPaymentSuccess, isExpired]);
 
   const handleRefreshQR = async () => {
@@ -323,7 +336,7 @@ const InvoiceModal = ({ order, onClose, paymentQrUrl, paymentInfo, BACKEND_URL, 
   );
 
   return (
-    <div className="modal-overlay" style={{ backdropFilter: 'blur(20px)', backgroundColor: 'var(--glass-bg)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+    <div className="modal-overlay" style={{ backgroundColor: 'var(--glass-bg)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div style={{ width: '90%', maxWidth: '400px' }}>
         
         {isExpired ? (
@@ -377,6 +390,11 @@ const InvoiceModal = ({ order, onClose, paymentQrUrl, paymentInfo, BACKEND_URL, 
                             <div style={{ fontSize: '13px', color: 'var(--text-muted)', background: 'var(--bg-soft)', padding: '10px', borderRadius: '12px', wordBreak: 'break-all' }}>
                               {paymentInfo || 'ABA: 000 000 000 (MOMO)'}
                             </div>
+                            {/* DEBUG INFO */}
+                            <div style={{ fontSize: '10px', color: 'red', wordBreak: 'break-all', marginTop: 10 }}>
+                               Debug: QR String length = {localOrder?.qr_string?.length || 0}.
+                               {qrError && ` Error: ${qrError}`}
+                            </div>
                             <div style={{ fontSize: '10px', marginTop: '10px', color: '#ef4444', fontWeight: 700 }}>{lang === 'kh' ? 'សាកល្បងបើកឡើងវិញដើម្បីទទួល QR' : 'Try reopening to refresh QR'}</div>
                           </div>
                         ) : (
@@ -394,15 +412,44 @@ const InvoiceModal = ({ order, onClose, paymentQrUrl, paymentInfo, BACKEND_URL, 
                    {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}
                 </div>
 
-                {/* 🔍 Real-time Status Indicator with Network Awareness */}
-                <div className="animate-pulse" style={{ fontSize: '10px', color: isOffline ? '#ef4444' : 'var(--primary-accent)', fontWeight: 900, textTransform: 'uppercase', letterSpacing: 2, marginBottom: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                  <div className={isOffline ? "" : "dot-pulse"}></div>
-                  {isOffline 
-                    ? (lang === 'kh' ? 'កំពុងព្យាយាមភ្ជាប់ឡើងវិញ...' : 'Reconnecting to Secure Link...') 
-                    : (lang === 'kh' ? 'កំពុងឆែកមើលការបង់ប្រាក់ពី Bakong...' : 'Watching for Bakong Payment...')}
+                {/* 🔍 Manual Check Instructions */}
+                <div style={{ fontSize: '13px', color: 'var(--text-bold)', fontWeight: 900, marginBottom: 16, textAlign: 'center', lineHeight: 1.5, background: 'var(--bg-soft)', padding: 12, borderRadius: 12 }}>
+                  {lang === 'kh' ? 'សូមស្កេនបង់ប្រាក់ រួចថតអេក្រង់ (Screenshot) ផ្ញើទៅកាន់ Admin ដើម្បីបញ្ជាក់ការកម្ម៉ង់។' : 'Please scan to pay and send the screenshot to Admin to confirm.'}
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                   <label className="detail-btn-buy-luxury" style={{ width: '100%', height: 48, borderRadius: 16, fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none', cursor: 'pointer', background: receiptUploaded ? '#10b981' : 'var(--rose-gradient)' }}>
+                     {isUploadingReceipt ? (lang === 'kh' ? '⌛ កំពុងផ្ទុក...' : '⌛ Uploading...') : receiptUploaded ? (lang === 'kh' ? '✅ បានបញ្ជូនជោគជ័យ' : '✅ Uploaded Successfully') : (lang === 'kh' ? '📤 ដាក់វិក្កយបត្របញ្ជាក់ទីនេះ' : 'Upload Receipt Here')}
+                     <input type="file" accept="image/*" style={{ display: 'none' }} disabled={isUploadingReceipt || receiptUploaded} onChange={async (e) => {
+                       const file = e.target.files?.[0];
+                       if (file) {
+                         setIsUploadingReceipt(true);
+                         const fd = new FormData();
+                         fd.append('image', file); // using 'image' as expected by multer
+                         try {
+                           const tgData = window.Telegram?.WebApp?.initData || '';
+                           const res = await fetch(`${BACKEND_URL}/api/upload`, { method: 'POST', headers: { 'X-TG-Data': tgData }, body: fd });
+                           const data = await res.json();
+                           if (data.success) {
+                              // Link to order
+                              await fetch(`${BACKEND_URL}/api/orders/receipt`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json', 'X-TG-Data': tgData },
+                                body: JSON.stringify({ orderCode: localOrder.order_code, receiptUrl: data.url })
+                              });
+                              setReceiptUploaded(true);
+                           } else {
+                              alert(lang === 'kh' ? 'មានបញ្ហាក្នុងការផ្ទុករូបភាព' : 'Upload failed');
+                           }
+                         } catch (err) {
+                           console.error(err);
+                           alert(lang === 'kh' ? 'មានបញ្ហាបណ្តាញទាក់ទង' : 'Network Error');
+                         } finally {
+                           setIsUploadingReceipt(false);
+                         }
+                       }
+                     }} />
+                   </label>
                    <button onClick={onClose} className="back-btn-pill" style={{ width: '100%', height: 40, borderRadius: 16, opacity: 0.6, fontSize: 12 }}>{t('close')}</button>
                 </div>
              </div>

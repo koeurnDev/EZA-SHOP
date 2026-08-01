@@ -17,16 +17,10 @@ export const ShopProvider = ({ children }) => {
     headers: { 'x-tg-data': tg?.initData || '' } 
   }), [tg?.initData]);
 
-  // Use SWR standard pattern with useQuery
-  const { data: productsData, loading: productsLoading, refetch: refetchProducts } = useQuery(
-    'products', 
-    `${BACKEND_URL}/api/products`, 
-    queryOptions
-  );
-
-  const { data: settingsData, loading: settingsLoading, refetch: refetchSettings } = useQuery(
-    'settings', 
-    `${BACKEND_URL}/api/settings`, 
+  // 🚀 CONSOLIDATED INITIAL DATA FETCHING (v6 Performance Pack)
+  const { data: initData, loading: isInitLoading, refetch: refetchInit } = useQuery(
+    'init', 
+    `${BACKEND_URL}/api/init`, 
     queryOptions
   );
 
@@ -72,16 +66,14 @@ export const ShopProvider = ({ children }) => {
     const interval = setInterval(() => {
       // 🛡️ Only sync if tab is visible to save battery/bandwidth
       if (document.visibilityState === 'visible') {
-        refetchProducts(true); // silent refresh
-        refetchSettings(true); // silent refresh
+        refetchInit(true); // silent refresh
       }
     }, 60000); // 1m sync window (Optimized for Real-time Stock Sync)
     
     // 👁️ Auto-Refresh on View: Trigger sync when user focuses the app
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        refetchProducts(true);
-        refetchSettings(true);
+        refetchInit(true);
       }
     };
     document.addEventListener('visibilitychange', handleVisibilityChange);
@@ -90,12 +82,12 @@ export const ShopProvider = ({ children }) => {
       clearInterval(interval);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [refetchProducts, refetchSettings]);
+  }, [refetchInit]);
 
   // Sync settings state with query result
   useEffect(() => {
-    if (settingsData?.settings) {
-      const s = settingsData.settings;
+    if (initData?.settings) {
+      const s = initData.settings;
       if (s.shop_status) setShopStatus(s.shop_status);
       if (s.delivery_threshold) setDeliveryThreshold(s.delivery_threshold);
       if (s.delivery_fee) setDeliveryFee(s.delivery_fee);
@@ -103,16 +95,16 @@ export const ShopProvider = ({ children }) => {
       if (s.promo_banner_url) setPromoBannerUrl(s.promo_banner_url);
       if (s.shop_logo_url) setShopLogoUrl(s.shop_logo_url);
     }
-  }, [settingsData]);
+  }, [initData]);
 
   const state = useMemo(() => {
-    const products = productsData?.products || [];
-    const settings = settingsData?.settings || {};
+    const products = initData?.products || [];
+    const settings = initData?.settings || {};
     
     return {
       products,
       shopStatus,
-      isSettingsLoaded: !settingsLoading,
+      isSettingsLoaded: !isInitLoading,
       selectedCategory,
       searchTerm,
       debouncedSearchTerm, // 🚀 Use this for filtering
@@ -126,9 +118,9 @@ export const ShopProvider = ({ children }) => {
       paymentInfo: settings.payment_info || '',
       promoBannerUrl,
       shopLogoUrl,
-      activeDiscounts: settings.active_discounts || []
+      activeDiscounts: initData?.discounts || []
     };
-  }, [productsData, settingsData, settingsLoading, selectedCategory, searchTerm, debouncedSearchTerm, view, selectedProduct, toast, shopStatus, deliveryThreshold, deliveryFee, promoText, promoBannerUrl, shopLogoUrl]);
+  }, [initData, isInitLoading, selectedCategory, searchTerm, debouncedSearchTerm, view, selectedProduct, toast, shopStatus, deliveryThreshold, deliveryFee, promoText, promoBannerUrl, shopLogoUrl]);
 
   const dispatch = useMemo(() => ({
     setSelectedCategory,
@@ -143,10 +135,9 @@ export const ShopProvider = ({ children }) => {
     setPromoBannerUrl,
     setShopLogoUrl,
     refetchData: () => {
-      refetchProducts();
-      refetchSettings();
+      refetchInit();
     }
-  }), [refetchProducts, refetchSettings, showToast, setShopStatus, setDeliveryThreshold, setDeliveryFee, setPromoText, setPromoBannerUrl, setShopLogoUrl]);
+  }), [refetchInit, showToast, setShopStatus, setDeliveryThreshold, setDeliveryFee, setPromoText, setPromoBannerUrl, setShopLogoUrl]);
 
   return (
     <ShopStateContext.Provider value={state}>

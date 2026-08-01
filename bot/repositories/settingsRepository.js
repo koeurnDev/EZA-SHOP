@@ -60,6 +60,7 @@ const settingsRepository = {
     );
     // 🚀 Invalidate cache on update
     await cacheService.clearPattern('settings:*');
+    await cacheService.delete('system:init:data');
   },
 
   // --- Category Queries ---
@@ -81,6 +82,7 @@ const settingsRepository = {
     );
     // 🚀 Invalidate cache on add
     await cacheService.delete(CACHE_KEYS.categories);
+    await cacheService.delete('system:init:data');
     return res.rows[0];
   },
 
@@ -88,6 +90,7 @@ const settingsRepository = {
     const res = await pool.query('DELETE FROM categories WHERE id = $1 RETURNING *', [id]);
     // 🚀 Invalidate cache on delete
     await cacheService.delete(CACHE_KEYS.categories);
+    await cacheService.delete('system:init:data');
     return res.rows[0];
   },
 

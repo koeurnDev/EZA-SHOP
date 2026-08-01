@@ -8,7 +8,8 @@ const CategoryNavigator = ({ searchTerm, setSearchTerm, selectedCategory, setSel
     { id: 'all', label: t('all') },
     { id: 'perfume', label: t('perfume') },
     { id: 'bodycare', label: t('bodycare') },
-    { id: 'new', label: t('new') }
+    { id: 'new', label: t('new') },
+    { id: 'flash_sale', label: '⚡ Flash Sale' }
   ];
 
   const handleSearchChange = (e) => {
@@ -58,4 +59,4 @@ const CategoryNavigator = ({ searchTerm, setSearchTerm, selectedCategory, setSel
   );
 };
 
-export default CategoryNavigator;
+export default React.memo(CategoryNavigator);
