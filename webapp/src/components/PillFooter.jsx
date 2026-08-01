@@ -49,7 +49,7 @@ const PillFooter = ({ view, setView, totalPrice, isAdmin, cartCount = 0, t, lang
   }
 
   return (
-    <nav className="bottom-nav-fixed animate-in" style={{ paddingBottom: 'calc(15px + var(--safe-bottom))' }}>
+    <nav className="bottom-nav-fixed animate-in" style={{ paddingTop: '6px', paddingBottom: 'calc(6px + var(--safe-bottom, 0px))' }}>
       {navItems.map(item => (
         <button 
           key={item.id} 
