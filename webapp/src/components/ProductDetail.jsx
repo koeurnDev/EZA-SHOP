@@ -29,7 +29,8 @@ const ProductDetail = ({ product, allProducts = [], onAdd, onClose, onBuyNow, ac
     // Fetch Reviews
     if (product?.id) {
       setLoadingReviews(true);
-      fetch(`/api/products/${product.id}/reviews`)
+      const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3005';
+      fetch(`${BACKEND_URL}/api/products/${product.id}/reviews`)
         .then(res => {
           if (!res.ok) throw new Error('Network response was not ok');
           return res.json();
@@ -46,17 +47,23 @@ const ProductDetail = ({ product, allProducts = [], onAdd, onClose, onBuyNow, ac
     if (!newReviewText.trim()) return;
     setSubmittingReview(true);
     try {
-      const tg = window.Telegram?.WebApp;
-      const initData = tg?.initData || '';
-      const res = await fetch('/api/reviews', {
+      const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3005';
+      const initData = window.Telegram?.WebApp?.initData || '';
+      
+      const res = await fetch(`${BACKEND_URL}/api/reviews`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `tma ${initData}` },
-        body: JSON.stringify({ product_id: product.id, rating: newReviewRating, comment: newReviewText })
+        body: JSON.stringify({
+          productId: product.id,
+          rating: newReviewRating,
+          comment: newReviewText
+        })
       });
       const data = await res.json();
       if (data.success) {
         setReviews([data.review, ...reviews]);
         setNewReviewText('');
+        const tg = window.Telegram?.WebApp;
         if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
       }
     } catch (err) {
