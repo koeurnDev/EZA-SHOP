@@ -26,12 +26,8 @@ const orderService = {
       // before we even bother creating the order and showing the QR code.
       const health = await bakongService.checkHealth();
       if (!health.success) {
-        console.error('🔴 Gateway Pre-flight Failed:', health.message);
-        const isAdmin = String(userId) === String(process.env.SUPERADMIN_ID);
-        const errorMessage = isAdmin 
-          ? `🛠 [ADMIN ONLY] Bakong Error: ${health.message}. ពិនិត្យ Render Env Variables!` 
-          : 'ប្រព័ន្ធបង់ប្រាក់កំពុងរវល់ ឬថែទាំ (Maintenance)។ សូមមេត្តាព្យាយាមម្តងទៀតក្នុងរយៈពេល ៥ នាទីទៀត។';
-        throw new Error(errorMessage);
+        console.warn('⚠️ Gateway Pre-flight Failed:', health.message);
+        console.warn('⚠️ Bakong API is unreachable. Proceeding with static QR fallback.');
       }
 
       if (String(tgUser.id) !== String(userId)) {
