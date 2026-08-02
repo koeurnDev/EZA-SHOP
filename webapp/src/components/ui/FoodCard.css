@@ -1,0 +1,82 @@
+.food-card {
+  background-color: #f3f4f6; /* Very light gray matching the image */
+  border-radius: 24px;
+  padding: 16px;
+  width: 180px; /* Standard width for a mobile card grid */
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  font-family: inherit;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.02); /* Extremely subtle shadow, almost flat */
+}
+
+.food-card-heart {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  color: #374151;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.food-card-heart:hover {
+  transform: scale(1.1);
+}
+
+.food-card-heart svg {
+  width: 22px;
+  height: 22px;
+}
+
+.food-card-image-container {
+  height: 110px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 28px; /* Push down to clear the heart icon */
+  margin-bottom: 20px;
+}
+
+.food-card-image-container img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  /* The magic here is using PNGs with transparent backgrounds */
+  filter: drop-shadow(0 10px 10px rgba(0,0,0,0.15)); /* Adds realism to the food image */
+}
+
+.food-card-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #111827;
+  margin: 0 0 16px 0;
+  line-height: 1.3;
+}
+
+.food-card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: auto; /* Pushes footer to the absolute bottom */
+}
+
+.food-card-price {
+  font-size: 15px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.food-card-rating {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #4b5563;
+}
+
+.food-card-rating svg {
+  width: 16px;
+  height: 16px;
+  color: #f59e0b; /* Amber/gold star */
+}

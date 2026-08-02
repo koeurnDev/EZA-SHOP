@@ -104,7 +104,9 @@ const productRepository = {
     
     // Verify all items were updated (if count mismatches, some item was missing or out of stock)
     if (res.rowCount < items.length) {
-      throw new Error('Some items are out of stock or invalid');
+      const updatedIds = res.rows.map(r => r.id);
+      const failedItems = items.filter(i => !updatedIds.includes(parseInt(i.id)));
+      throw new Error(`Out of stock or invalid items: ${failedItems.map(i => i.name || i.id).join(', ')}`);
     }
     
     // 🚀 Invalidate all relevant caches on stock change (Non-blocking)

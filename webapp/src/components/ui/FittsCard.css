@@ -1,0 +1,73 @@
+.fitts-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 32px;
+  background-color: white;
+  border-radius: 16px;
+  box-shadow: 0px 20px 26px rgba(54, 53, 53, 0.16); /* Using the soft shadow */
+  max-width: 320px;
+  text-align: center;
+  gap: 16px;
+}
+
+.fitts-avatar {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background-color: #cbd5e1; /* slate-300 */
+}
+
+.fitts-info {
+  width: 100%;
+}
+
+.fitts-info h3 {
+  margin: 0 0 8px 0;
+  font-size: 20px;
+  color: #111827;
+}
+
+.fitts-info p {
+  margin: 0;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.fitts-actions {
+  display: flex;
+  width: 100%;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.fitts-btn {
+  flex: 1; /* This makes the buttons stretch, increasing the target area (Fitts's Law) */
+  padding: 14px 24px; /* Large padding for height */
+  border: none;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.1s ease, background-color 0.2s ease;
+}
+
+.fitts-btn:active {
+  transform: translateY(2px);
+}
+
+.fitts-btn-primary {
+  background-color: #ec4899; /* pink-500 */
+  color: white;
+}
+.fitts-btn-primary:hover {
+  background-color: #db2777;
+}
+
+.fitts-btn-secondary {
+  background-color: #f3f4f6; /* gray-100 */
+  color: #374151;
+}
+.fitts-btn-secondary:hover {
+  background-color: #e5e7eb;
+}

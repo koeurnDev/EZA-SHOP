@@ -4,14 +4,15 @@ import { useTelegram } from '../context/TelegramContext';
 import { useQuery } from '../hooks/useQuery';
 import { useApi } from '../hooks/useApi';
 import ProductDetail from './ProductDetail';
+import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
-const AdminDashboard = ({ 
-  BACKEND_URL, 
-  setView, 
-  setPromoBannerUrl: setGlobalPromoBannerUrl, 
-  setPromoText: setGlobalPromoText, 
-  setShopStatus: setGlobalShopStatus, 
-  setDeliveryFee: setGlobalDeliveryFee, 
+const AdminDashboard = ({
+  BACKEND_URL,
+  setView,
+  setPromoBannerUrl: setGlobalPromoBannerUrl,
+  setPromoText: setGlobalPromoText,
+  setShopStatus: setGlobalShopStatus,
+  setDeliveryFee: setGlobalDeliveryFee,
   setDeliveryThreshold: setGlobalDeliveryThreshold,
   setShopLogoUrl: setGlobalShopLogoUrl,
   theme
@@ -21,34 +22,54 @@ const AdminDashboard = ({
   const headers = useMemo(() => ({ 'X-TG-Data': initData || '' }), [initData]);
 
 
-  const [activeTab, setActiveTab] = useState('overview'); 
+  const [activeTab, setActiveTab] = useState('overview');
   const [showSuccessToast, setShowSuccessToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
-  const [orderFilter, setOrderFilter] = useState('all'); 
+  const [orderFilter, setOrderFilter] = useState('all');
   const [trackingNumbers, setTrackingNumbers] = useState({});
   const [isBroadcasting, setIsBroadcasting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isPreviewing, setIsPreviewing] = useState(false);
   const [previewData, setPreviewData] = useState(null);
-  
+
   // 🛰️ BATCHED Data Fetching: Reduces 6 parallel connections to 1
-  const { 
-    data: dashboardData, 
-    loading: dashboardLoading, 
-    refetch: refetchDashboard 
+  const {
+    data: dashboardData,
+    loading: dashboardLoading,
+    refetch: refetchDashboard
   } = useQuery('admin-dashboard', `${BACKEND_URL}/api/admin/dashboard`, { headers });
 
   // Derived state from consolidated query
+  const { data: advancedAnalyticsData } = useQuery('admin-advanced-analytics', `${BACKEND_URL}/api/admin/advanced-analytics`, { headers });
+  const advancedAnalytics = advancedAnalyticsData?.data || { topProducts: [], topCustomers: [], aov: { aov: 0, aov_30d: 0 } };
+
   const summary = dashboardData?.summary || { totalRevenue: 0, totalOrders: 0, activeOrders: 0, totalCustomers: 0, businessHealth: 100 };
   const orders = dashboardData?.orders || [];
   const analytics = dashboardData ? { daily: dashboardData.analytics?.daily || [], status: dashboardData.analytics?.status || [] } : { daily: [], status: [] };
+  const paddedDailyAnalytics = useMemo(() => {
+    const daily = analytics.daily || [];
+    const dataMap = new Map(daily.map(d => [d.date.slice(5), d]));
+    const padded = [];
+    for (let i = 13; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const dateStr = d.toISOString().split('T')[0];
+      const shortDate = dateStr.slice(5);
+      if (dataMap.has(shortDate)) {
+        padded.push({ ...dataMap.get(shortDate), dateShort: shortDate, revenue: parseFloat(dataMap.get(shortDate).revenue), orders: parseInt(dataMap.get(shortDate).orders) });
+      } else {
+        padded.push({ date: dateStr, dateShort: shortDate, revenue: 0, orders: 0 });
+      }
+    }
+    return padded;
+  }, [analytics.daily]);
   const products = dashboardData?.products || [];
   const categories = dashboardData?.categories || [];
   const settingsData = dashboardData; // Alias for settings logic compatibility
 
-  
+
   // Settings specific state
   const [shopStatus, setShopStatus] = useState('open');
   const [deliveryThreshold, setDeliveryThreshold] = useState('50');
@@ -88,14 +109,58 @@ const AdminDashboard = ({
   const [editingProduct, setEditingProduct] = useState(null);
   const [editFormData, setEditFormData] = useState({ name: '', price: '', stock: '' });
   const [isAddingProduct, setIsAddingProduct] = useState(false);
-  const [newProductData, setNewProductData] = useState({ 
-    name: '', price: '', stock: '', category: 'ទឹកអប់ (Perfume)', 
-    image: '', description: '', additional_images: [], flash_sale_price: '', flash_sale_end: '', video_url: '' 
+  const [newProductData, setNewProductData] = useState({
+    name: '', price: '', stock: '', category: 'ទឹកអប់ (Perfume)',
+    image: '', description: '', additional_images: [], flash_sale_price: '', flash_sale_end: '', video_url: ''
   });
 
   const [confirmDialog, setConfirmDialog] = useState(null); // Now used for BeautyModal
   const [printingOrder, setPrintingOrder] = useState(null);
   const [previewFavorited, setPreviewFavorited] = useState(false);
+
+  // FAQ State
+  const { data: faqsData, loading: faqsLoading, refetch: refetchFaqs } = useQuery('admin-faqs', `${BACKEND_URL}/api/admin/faqs`, { headers });
+  const faqsList = faqsData?.faqs || [];
+  const [isFaqModalOpen, setIsFaqModalOpen] = useState(false);
+  const [editingFaq, setEditingFaq] = useState(null);
+
+  const handleSaveFaq = async () => {
+    try {
+      const isEdit = !!editingFaq.id;
+      const url = isEdit ? `${BACKEND_URL}/api/admin/faqs/${editingFaq.id}` : `${BACKEND_URL}/api/admin/faqs`;
+      const method = isEdit ? 'PUT' : 'POST';
+
+      const res = await fetchWithRetry(url, {
+        method,
+        headers: { 'Content-Type': 'application/json', ...headers },
+        body: JSON.stringify(editingFaq)
+      });
+
+      if (res.success) {
+        setIsFaqModalOpen(false);
+        refetchFaqs();
+        setToastMessage('រក្សាទុក FAQ ជោគជ័យ!');
+        setShowSuccessToast(true);
+        setTimeout(() => setShowSuccessToast(false), 2500);
+      }
+    } catch (err) {
+      alert('បរាជ័យក្នុងការរក្សាទុក FAQ: ' + err.message);
+    }
+  };
+
+  const handleDeleteFaq = (id) => {
+    showConfirm('តើអ្នកពិតជាចង់លុបសំណួរនេះមែនទេ?', () => {
+      fetchWithRetry(`${BACKEND_URL}/api/admin/faqs/${id}`, {
+        method: 'DELETE',
+        headers
+      }).then(() => {
+        refetchFaqs();
+        setToastMessage('លុប FAQ ជោគជ័យ!');
+        setShowSuccessToast(true);
+        setTimeout(() => setShowSuccessToast(false), 2500);
+      });
+    }, '🗑️');
+  };
 
   const refetchData = useCallback((isBackground = false) => {
     refetchDashboard();
@@ -112,31 +177,36 @@ const AdminDashboard = ({
 
   const updateStatus = async (orderId, status) => {
     const trackingNumber = trackingNumbers[orderId] || '';
-    
+
     fetchWithRetry(`${BACKEND_URL}/api/admin/orders/status`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...headers },
       body: JSON.stringify({ orderId, status, trackingNumber })
-    }).then(() => {
-        setToastMessage('បច្ចុប្បន្នភាពជោគជ័យ!');
-        setShowSuccessToast(true);
-        setTimeout(() => setShowSuccessToast(false), 2500);
-        
-        if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('success');
-        
-        setTrackingNumbers(prev => {
-          const next = {...prev};
-          delete next[orderId];
-          return next;
-        });
-        refetchData(true);
+    }).then((res) => {
+      if (res && !res.success) {
+        return showAlert('បរាជ័យ: ' + (res.error || 'មានបញ្ហាប្រព័ន្ធ'));
+      }
+      setToastMessage('បច្ចុប្បន្នភាពជោគជ័យ!');
+      setShowSuccessToast(true);
+      setTimeout(() => setShowSuccessToast(false), 2500);
+
+      if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('success');
+
+      setTrackingNumbers(prev => {
+        const next = { ...prev };
+        delete next[orderId];
+        return next;
+      });
+      refetchData(true);
+    }).catch(err => {
+      showAlert('បរាជ័យ: ' + err.message);
     });
   };
 
   const showAlert = (msg) => {
-    setConfirmDialog({ 
-      text: msg, 
-      onConfirm: () => setConfirmDialog(null), 
+    setConfirmDialog({
+      text: msg,
+      onConfirm: () => setConfirmDialog(null),
       isAlert: true,
       icon: '✨'
     });
@@ -156,7 +226,7 @@ const AdminDashboard = ({
   };
 
   const submitAddProduct = async () => {
-    if(!newProductData.name || !newProductData.price) return showAlert('សូមបំពេញឈ្មោះ និងតម្លៃ!');
+    if (!newProductData.name || !newProductData.price) return showAlert('សូមបំពេញឈ្មោះ និងតម្លៃ!');
     setIsSaving(true);
     try {
       const res = await fetchWithRetry(`${BACKEND_URL}/api/admin/products`, {
@@ -184,16 +254,16 @@ const AdminDashboard = ({
   };
 
   const submitEditProduct = async () => {
-    if(!editingProduct) return;
+    if (!editingProduct) return;
     setIsSaving(true);
     try {
       const res = await fetchWithRetry(`${BACKEND_URL}/api/admin/products/${editingProduct.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', ...headers },
-        body: JSON.stringify({ 
-          ...editingProduct, 
-          ...editFormData, 
-          price: parseFloat(editFormData.price), 
+        body: JSON.stringify({
+          ...editingProduct,
+          ...editFormData,
+          price: parseFloat(editFormData.price),
           stock: parseInt(editFormData.stock),
           additional_images: JSON.stringify(editFormData.additional_images || []),
           flash_sale_price: editFormData.flash_sale_price ? parseFloat(editFormData.flash_sale_price) : null,
@@ -277,38 +347,54 @@ const AdminDashboard = ({
     formData.append('image', file);
     try {
       const res = await fetchWithRetry(`${BACKEND_URL}/api/admin/upload`, { method: 'POST', headers: headers, body: formData });
-      if (res.success) {
-        await updateSettingValue('promo_banner_url', res.url);
-        setPromoBannerUrl(res.url);
-        setGlobalPromoBannerUrl(res.url);
+      if (res.success && res.data?.url) {
+        const currentBanners = promoBannerUrl ? promoBannerUrl.split(',').map(u => u.trim()).filter(Boolean) : [];
+        currentBanners.push(res.data.url);
+        const newBanners = currentBanners.join(',');
+        await updateSettingValue('promo_banner_url', newBanners);
+        setPromoBannerUrl(newBanners);
+        setGlobalPromoBannerUrl(newBanners);
       }
     } finally { }
+  };
+
+  const removeBanner = async (indexToRemove) => {
+    const currentBanners = promoBannerUrl ? promoBannerUrl.split(',').map(u => u.trim()).filter(Boolean) : [];
+    currentBanners.splice(indexToRemove, 1);
+    const newBanners = currentBanners.join(',');
+    await updateSettingValue('promo_banner_url', newBanners);
+    setPromoBannerUrl(newBanners);
+    setGlobalPromoBannerUrl(newBanners);
   };
 
   const handleLogoUpload = async (file) => {
     const formData = new FormData();
     formData.append('image', file);
-    const tgData = window.Telegram?.WebApp?.initData || '';
+    setIsUploading(true);
     try {
-      const res = await fetch(`${BACKEND_URL}/api/admin/upload`, { method: 'POST', headers: { 'X-TG-Data': tgData }, body: formData });
-      const data = await res.json();
-      if (data.success) {
-        await updateSettingValue('shop_logo_url', data.url);
-        setShopLogoUrl(data.url);
-        setGlobalShopLogoUrl(data.url);
+      const res = await fetchWithRetry(`${BACKEND_URL}/api/admin/upload`, { method: 'POST', headers, body: formData });
+      if (res.success && res.data?.url) {
+        await updateSettingValue('shop_logo_url', res.data.url);
+        setShopLogoUrl(res.data.url);
+        setGlobalShopLogoUrl(res.data.url);
       }
-    } finally { }
+    } finally {
+      setIsUploading(false);
+    }
   };
   const handleQrUpload = async (file) => {
     const formData = new FormData();
     formData.append('image', file);
+    setIsUploading(true);
     try {
       const res = await fetchWithRetry(`${BACKEND_URL}/api/admin/upload`, { method: 'POST', headers, body: formData });
-      if (res.success) {
-        await updateSettingValue('payment_qr_url', res.url);
-        setPaymentQrUrl(res.url);
+      if (res.success && res.data?.url) {
+        await updateSettingValue('payment_qr_url', res.data.url);
+        setPaymentQrUrl(res.data.url);
       }
-    } finally { }
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const statusTags = {
@@ -329,13 +415,13 @@ const AdminDashboard = ({
             --bg-midnight: #020617;
             --glass-card: rgba(15, 23, 42, 0.7);
             --glass-border: rgba(255, 255, 255, 0.08);
-            --rose-gradient: linear-gradient(135deg, #f472b6 0%, #db2777 100%);
-            --nebula-gradient: linear-gradient(135deg, #818cf8 0%, #6366f1 100%);
+            --rose-gradient: linear-gradient(135deg, #8b7fb8 0%, #6d63a0 100%);
+            --nebula-gradient: linear-gradient(135deg, #a89fcc 0%, #8b7fb8 100%);
             --text-luxury: #f8fafc;
             --text-dim: #94a3b8;
             --admin-shadow: 0 20px 50px -12px rgba(0,0,0,0.8);
-            --primary-accent: #f472b6;
-            --gold-glow: 0 0 20px rgba(244, 114, 182, 0.3);
+            --primary-accent: #8b7fb8;
+            --gold-glow: 0 0 20px rgba(139, 127, 184, 0.25);
           }
           [data-theme='light'] {
             --bg-midnight: #FDFBF0;
@@ -355,20 +441,23 @@ const AdminDashboard = ({
           .admin-header-luxury { 
             background: var(--glass-card); 
             border: 1px solid var(--glass-border); 
-            border-radius: 32px; 
-            padding: 22px 28px; 
+            border-radius: 28px; 
+            padding: 18px 20px; 
             display: flex; 
             justify-content: space-between; 
             align-items: center; 
-            margin: 20px 16px 30px 16px; 
+            margin: 16px 12px 24px 12px; 
             backdrop-filter: blur(30px); 
             box-shadow: var(--admin-shadow); 
+            gap: 12px;
+            flex-wrap: wrap;
           }
           .admin-title-pro { 
             margin: 0; 
-            font-size: 22px; 
+            font-size: 15px; 
             font-weight: 950; 
-            letter-spacing: -0.8px;
+            letter-spacing: -0.5px;
+            white-space: nowrap;
             background: linear-gradient(135deg, var(--text-luxury) 0%, var(--primary-accent) 150%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
@@ -379,7 +468,7 @@ const AdminDashboard = ({
             background: var(--glass-card); 
             border: 1px solid var(--glass-border); 
             border-radius: 20px; 
-            padding: 8px 20px; 
+            padding: 8px 16px; 
             font-size: 13px; 
             font-weight: 900; 
             color: var(--text-luxury); 
@@ -390,6 +479,7 @@ const AdminDashboard = ({
             display: flex; 
             align-items: center;
             box-shadow: var(--shadow-soft);
+            white-space: nowrap;
           }
           .back-btn-pill:hover { 
             background: var(--bg-midnight);
@@ -547,6 +637,8 @@ const AdminDashboard = ({
             padding: 4px 10px;
             border-radius: 12px;
             margin-top: 6px;
+            white-space: nowrap;
+            width: fit-content;
           }
           .live-dot-pulse { 
             width: 10px; 
@@ -569,19 +661,19 @@ const AdminDashboard = ({
             box-shadow: 0 25px 50px -10px rgba(219, 39, 119, 0.5);
           }
         `}</style>
-        
+
         <div className="admin-header-luxury">
-           <div>
-              <h2 className="admin-title-pro">⚙️ គ្របគ្រង MO-MO</h2>
-              <div className="live-status-pill">
-                 <div className="live-dot-pulse"></div>
-                 <span style={{ fontSize: 9, fontWeight: 950, color: '#10b981', textTransform: 'uppercase', letterSpacing: 1.2 }}>Real-time Live</span>
-              </div>
-           </div>
-           <div style={{ display: 'flex', gap: 10 }}>
-              <button onClick={() => refetchData(false)} className="icon-btn-admin" aria-label="Refresh Data" title="Refresh">🔄</button>
-              <button onClick={() => setView('home')} className="back-btn-pill">← ចាកចេញ</button>
-           </div>
+          <div>
+            <h2 className="admin-title-pro">⚙️ គ្រប់គ្រង MO-MO</h2>
+            <div className="live-status-pill">
+              <div className="live-dot-pulse"></div>
+              <span style={{ fontSize: 9, fontWeight: 950, color: '#10b981', textTransform: 'uppercase', letterSpacing: 1.2 }}>Real-time Live</span>
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button onClick={() => refetchData(false)} className="icon-btn-admin" aria-label="Refresh Data" title="Refresh">🔄</button>
+            <button onClick={() => setView('home')} className="back-btn-pill">← ចាកចេញ</button>
+          </div>
         </div>
 
         <div className="admin-nav-luxury-grid">
@@ -590,6 +682,7 @@ const AdminDashboard = ({
             { id: 'orders', label: '🎫 កម្មង់' },
             { id: 'products', label: '🛍️ ទំនិញ' },
             { id: 'broadcast', label: '📢 ដំណឹង' },
+            { id: 'faqs', label: '❓ សំណួរ' },
             { id: 'settings', label: '⚙️ កំណត់' }
           ].map(tab => (
             <button key={tab.id} className={`nav-pill-btn ${activeTab === tab.id ? 'active' : ''}`} onClick={() => setActiveTab(tab.id)}>
@@ -601,332 +694,453 @@ const AdminDashboard = ({
         <div style={{ padding: '0 15px' }}>
           {activeTab === 'overview' && (
             <div className="tab-pane-animate">
-               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 15, marginBottom: 25 }}>
-                  <div className="glass-card-luxury" style={{ padding: '20px', background: 'rgba(236,72,153,0.1)', borderColor: 'rgba(236,72,153,0.3)' }}>
-                     <div style={{ fontSize: 10, fontWeight: 900, color: '#ec4899', textTransform: 'uppercase', marginBottom: 8 }}>💰 ចំណូលសរុប</div>
-                     <div style={{ fontSize: 26, fontWeight: 950 }}>${summary.totalRevenue.toLocaleString()}</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 15, marginBottom: 25 }}>
+                <div className="glass-card-luxury" style={{ padding: '20px', background: 'rgba(236,72,153,0.1)', borderColor: 'rgba(236,72,153,0.3)' }}>
+                  <div style={{ fontSize: 10, fontWeight: 900, color: '#ec4899', textTransform: 'uppercase', marginBottom: 8 }}>💰 ចំណូលសរុប</div>
+                  <div style={{ fontSize: 26, fontWeight: 950 }}>${summary.totalRevenue.toLocaleString()}</div>
+                </div>
+                <div className="glass-card-luxury" style={{ padding: '20px' }}>
+                  <div style={{ fontSize: 10, fontWeight: 900, color: '#a855f7', textTransform: 'uppercase', marginBottom: 8 }}>🎫 កម្មង់កំពុងដើរ</div>
+                  <div style={{ fontSize: 26, fontWeight: 950 }}>{summary.activeOrders}</div>
+                </div>
+                <div className="glass-card-luxury" style={{ padding: '20px' }}>
+                  <div style={{ fontSize: 10, fontWeight: 900, color: '#3b82f6', textTransform: 'uppercase', marginBottom: 8 }}>👤 អតិថិជន</div>
+                  <div style={{ fontSize: 26, fontWeight: 950 }}>{summary.totalCustomers}</div>
+                </div>
+                <div className="glass-card-luxury" style={{ padding: '20px' }}>
+                  <div style={{ fontSize: 10, fontWeight: 900, color: '#10b981', textTransform: 'uppercase', marginBottom: 8 }}>✨ សុខភាពហាង</div>
+                  <div style={{ fontSize: 26, fontWeight: 950 }}>{summary.businessHealth}%</div>
+                </div>
+              </div>
+
+              <div className="glass-card-luxury" style={{ marginBottom: 25, padding: 20 }}>
+                <div style={{ fontSize: 14, fontWeight: 900, marginBottom: 15, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span>📈</span> <span>ការវិភាគស៊ីជម្រៅ</span>
+                </div>
+
+                <div style={{ marginBottom: 25, background: 'var(--bg-soft)', padding: 15, borderRadius: 16 }}>
+                  <div style={{ fontSize: 11, fontWeight: 900, opacity: 0.6, marginBottom: 10 }}>កំណើនចំណូល (14 ថ្ងៃចុងក្រោយ)</div>
+                  <div style={{ width: '100%', height: 200 }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={paddedDailyAnalytics}>
+                        <defs>
+                          <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#ec4899" stopOpacity={0.8}/>
+                            <stop offset="95%" stopColor="#ec4899" stopOpacity={0}/>
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.1)" />
+                        <XAxis dataKey="dateShort" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: 'var(--text-muted)' }} />
+                        <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: 'var(--text-muted)' }} />
+                        <Tooltip contentStyle={{ background: 'var(--glass-card)', border: 'none', borderRadius: 8, boxShadow: '0 4px 12px rgba(0,0,0,0.2)' }} itemStyle={{ color: '#ec4899', fontWeight: 900 }} />
+                        <Area type="monotone" dataKey="revenue" stroke="#ec4899" strokeWidth={3} fillOpacity={1} fill="url(#colorRev)" isAnimationActive={true} />
+                      </AreaChart>
+                    </ResponsiveContainer>
                   </div>
-                  <div className="glass-card-luxury" style={{ padding: '20px' }}>
-                     <div style={{ fontSize: 10, fontWeight: 900, color: '#a855f7', textTransform: 'uppercase', marginBottom: 8 }}>🎫 កម្មង់កំពុងដើរ</div>
-                     <div style={{ fontSize: 26, fontWeight: 950 }}>{summary.activeOrders}</div>
+                </div>
+
+                <div style={{ marginBottom: 25, background: 'var(--bg-soft)', padding: 15, borderRadius: 16 }}>
+                  <div style={{ fontSize: 11, fontWeight: 900, opacity: 0.6, marginBottom: 10 }}>ចំនួនកម្ម៉ង់ (14 ថ្ងៃចុងក្រោយ)</div>
+                  <div style={{ width: '100%', height: 180 }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={paddedDailyAnalytics}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.1)" />
+                        <XAxis dataKey="dateShort" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: 'var(--text-muted)' }} />
+                        <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: 'var(--text-muted)' }} allowDecimals={false} />
+                        <Tooltip contentStyle={{ background: 'var(--glass-card)', border: 'none', borderRadius: 8, boxShadow: '0 4px 12px rgba(0,0,0,0.2)' }} itemStyle={{ color: '#3b82f6', fontWeight: 900 }} cursor={{ fill: 'rgba(255,255,255,0.05)' }} />
+                        <Bar dataKey="orders" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={20} isAnimationActive={true} />
+                      </BarChart>
+                    </ResponsiveContainer>
                   </div>
-                  <div className="glass-card-luxury" style={{ padding: '20px' }}>
-                     <div style={{ fontSize: 10, fontWeight: 900, color: '#3b82f6', textTransform: 'uppercase', marginBottom: 8 }}>👤 អតិថិជន</div>
-                     <div style={{ fontSize: 26, fontWeight: 950 }}>{summary.totalCustomers}</div>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 15, marginBottom: 20 }}>
+                  <div style={{ background: 'var(--bg-soft)', padding: 15, borderRadius: 16 }}>
+                    <div style={{ fontSize: 11, fontWeight: 900, opacity: 0.6, marginBottom: 5 }}>តម្លៃមធ្យមក្នុងមួយកម្មង់</div>
+                    <div style={{ fontSize: 24, fontWeight: 950, color: '#f59e0b' }}>${advancedAnalytics.aov?.aov?.toFixed(2) || '0.00'}</div>
+                    <div style={{ fontSize: 10, color: '#10b981', marginTop: 4 }}>30 ថ្ងៃចុងក្រោយ: ${advancedAnalytics.aov?.aov_30d?.toFixed(2) || '0.00'}</div>
                   </div>
-                  <div className="glass-card-luxury" style={{ padding: '20px' }}>
-                     <div style={{ fontSize: 10, fontWeight: 900, color: '#10b981', textTransform: 'uppercase', marginBottom: 8 }}>✨ សុខភាពហាង</div>
-                     <div style={{ fontSize: 26, fontWeight: 950 }}>{summary.businessHealth}%</div>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                  <div>
+                    <div style={{ fontSize: 12, fontWeight: 900, marginBottom: 10, borderBottom: '1px solid var(--border-subtle)', paddingBottom: 5 }}>🔥 ទំនិញលក់ដាច់បំផុត</div>
+                    {(advancedAnalytics.topProducts || []).map((p, i) => (
+                      <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, padding: '6px 0' }}>
+                        <span style={{ fontWeight: 800 }}>{i + 1}. {p.product_name}</span>
+                        <span style={{ color: '#10b981', fontWeight: 900 }}>x{p.total_quantity}</span>
+                      </div>
+                    ))}
                   </div>
-               </div>
-               
-               <div className="glass-card-luxury" style={{ marginBottom: 25 }}>
-                  <div style={{ fontSize: 14, fontWeight: 900, marginBottom: 15 }}>🛍️ កម្ម៉ង់ថ្មីៗ</div>
-                  {orders.slice(0, 3).map(o => (
-                    <div key={o.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid var(--glass-border)' }}>
-                       <div>
-                          <div style={{ fontSize: 13, fontWeight: 800 }}>{o.user_name}</div>
-                          <div className="ticket-id-luxury" style={{ fontSize: 9, padding: '2px 6px', marginTop: 4 }}>{o.order_code || `#MO-${o.id}`}</div>
-                       </div>
-                       <div style={{ textAlign: 'right' }}>
-                          <div style={{ fontSize: 14, fontWeight: 900 }}>${parseFloat(o.total).toFixed(2)}</div>
-                          <div style={{ fontSize: 9, color: '#ec4899', fontWeight: 800 }}>{(statusTags[o.status] || {}).label}</div>
-                       </div>
+                  <div>
+                    <div style={{ fontSize: 12, fontWeight: 900, marginBottom: 10, borderBottom: '1px solid var(--border-subtle)', paddingBottom: 5 }}>👑 អតិថិជនឆ្នើម</div>
+                    {(advancedAnalytics.topCustomers || []).map((c, i) => (
+                      <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, padding: '6px 0' }}>
+                        <span style={{ fontWeight: 800 }}>{i + 1}. {c.user_name}</span>
+                        <span style={{ color: '#ec4899', fontWeight: 900 }}>${parseFloat(c.total_spent).toFixed(2)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="glass-card-luxury" style={{ marginBottom: 25 }}>
+                <div style={{ fontSize: 14, fontWeight: 900, marginBottom: 15 }}>🛍️ កម្ម៉ង់ថ្មីៗ</div>
+                {orders.slice(0, 3).map(o => (
+                  <div key={o.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid var(--glass-border)' }}>
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 800 }}>{o.user_name}</div>
+                      <div className="ticket-id-luxury" style={{ fontSize: 9, padding: '2px 6px', marginTop: 4 }}>{o.order_code || `#MO-${o.id}`}</div>
                     </div>
-                  ))}
-               </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontSize: 14, fontWeight: 900 }}>${parseFloat(o.total).toFixed(2)}</div>
+                      <div style={{ fontSize: 9, color: '#ec4899', fontWeight: 800 }}>{(statusTags[o.status] || {}).label}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 
           {activeTab === 'orders' && (
             <div className="tab-pane-animate">
-               <div style={{ marginBottom: 20, display: 'flex', gap: 10 }}>
-                  <input className="input-glass-admin" style={{ flex: 1 }} placeholder="ស្វែងរកលេខកម្ម៉ង់ ឬឈ្មោះ..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
-                  <select className="input-glass-admin" style={{ width: 140 }} value={orderFilter} onChange={e => setOrderFilter(e.target.value)}>
-                     <option value="all">ទាំងអស់</option>
-                     <option value="pending">⌛ រង់ចាំបង់</option>
-                     <option value="paid">✅ បង់រួច</option>
-                     <option value="active">🚀 កំពុងដើរ</option>
-                  </select>
-               </div>
-               {orders
-                 .filter(o => {
-                   const matchesSearch = (o.user_name || '').toLowerCase().includes(searchTerm.toLowerCase()) || (o.order_code || '').toLowerCase().includes(searchTerm.toLowerCase());
-                   if (orderFilter === 'pending') return matchesSearch && o.status === 'pending';
-                   if (orderFilter === 'paid') return matchesSearch && o.status === 'paid';
-                   if (orderFilter === 'active') return matchesSearch && ['paid','processing','shipped','delivering'].includes(o.status);
-                   // Default 'all' - still hide pending by default unless searching specific code
-                   if (orderFilter === 'all' && !searchTerm) return o.status !== 'pending';
-                   return matchesSearch;
-                 })
-                 .map(o => (
-                 <div key={o.id} className="glass-card-luxury" style={{ marginBottom: 15, padding: 15 }}>
+              <div style={{ marginBottom: 20, display: 'flex', gap: 10 }}>
+                <input className="input-glass-admin" style={{ flex: 1 }} placeholder="ស្វែងរកលេខកម្ម៉ង់ ឬឈ្មោះ..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+                <select className="input-glass-admin" style={{ width: 150 }} value={orderFilter} onChange={e => setOrderFilter(e.target.value)}>
+                  <option value="all">ទាំងអស់</option>
+                  <option value="pending">⌛ រង់ចាំបង់</option>
+                  <option value="paid">✅ បង់រួច</option>
+                  <option value="processing">📦 កំពុងរៀបចំ</option>
+                  <option value="shipped">🚚 បញ្ជូនរួចរាល់ (Shipped)</option>
+                  <option value="cancelled">❌ បានលុបចោល</option>
+                  <option value="active">🚀 កំពុងដើរ (រួមបញ្ចូល)</option>
+                </select>
+              </div>
+              {orders
+                .filter(o => {
+                  const matchesSearch = (o.user_name || '').toLowerCase().includes(searchTerm.toLowerCase()) || (o.order_code || '').toLowerCase().includes(searchTerm.toLowerCase());
+                  if (orderFilter === 'pending') return matchesSearch && o.status === 'pending';
+                  if (orderFilter === 'paid') return matchesSearch && o.status === 'paid';
+                  if (orderFilter === 'processing') return matchesSearch && o.status === 'processing';
+                  if (orderFilter === 'shipped') return matchesSearch && (o.status === 'shipped' || o.status === 'delivering');
+                  if (orderFilter === 'cancelled') return matchesSearch && o.status === 'cancelled';
+                  if (orderFilter === 'active') return matchesSearch && ['paid', 'processing', 'shipped', 'delivering'].includes(o.status);
+                  // Default 'all' - still hide pending by default unless searching specific code
+                  if (orderFilter === 'all' && !searchTerm) return o.status !== 'pending';
+                  return matchesSearch;
+                })
+                .map(o => (
+                  <div key={o.id} className="glass-card-luxury" style={{ marginBottom: 15, padding: 15 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 }}>
-                       <span className="ticket-id-luxury">{o.order_code || `#MO-${o.id}`}</span>
-                       <span style={{ fontSize: 11, fontWeight: 900, background: 'var(--glass-border)', padding: '4px 10px', borderRadius: 8 }}>{(statusTags[o.status] || {}).icon} {(statusTags[o.status] || {}).label}</span>
+                      <span className="ticket-id-luxury">{o.order_code || `#MO-${o.id}`}</span>
+                      <span style={{ fontSize: 11, fontWeight: 900, background: 'var(--glass-border)', padding: '4px 10px', borderRadius: 8 }}>{(statusTags[o.status] || {}).icon} {(statusTags[o.status] || {}).label}</span>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 15 }}>
-                       <div>
-                          <div style={{ fontWeight: 800 }}>{o.user_name}</div>
-                          <div style={{ fontSize: 11, opacity: 0.6 }}>📞 {o.phone}</div>
-                       </div>
-                       <div style={{ fontSize: 18, fontWeight: 950 }}>${parseFloat(o.total).toFixed(2)}</div>
+                      <div>
+                        <div style={{ fontWeight: 800 }}>{o.user_name}</div>
+                        <div style={{ fontSize: 11, opacity: 0.6 }}>📞 {o.phone}</div>
+                      </div>
+                      <div style={{ fontSize: 18, fontWeight: 950 }}>${parseFloat(o.total).toFixed(2)}</div>
                     </div>
-                    <div className="button-group-pro">
-                       {o.status === 'pending' && o.receipt_url && (
-                         <button className="ticket-btn-primary" style={{ background: '#3b82f6', flex: 0.5 }} onClick={() => window.open(o.receipt_url, '_blank')}>
-                           👁️ វិក្កយបត្រ
-                         </button>
-                       )}
-                       {o.status === 'pending' && <button className="ticket-btn-primary" onClick={() => updateStatus(o.id, 'paid')}>💰 បញ្ជាក់បង់ប្រាក់</button>}
-                       {o.status === 'paid' && <button className="ticket-btn-primary" style={{ background: '#f59e0b' }} onClick={() => updateStatus(o.id, 'processing')}>📦 រៀបចំអីវ៉ាន់</button>}
-                       {o.status === 'processing' && <button className="ticket-btn-primary" style={{ background: '#a855f7' }} onClick={() => updateStatus(o.id, 'shipped')}>✨ អីវ៉ាន់ចេញ</button>}
-                       {['paid','processing','shipped','delivering','delivered'].includes(o.status) && (
-                         <button className="icon-btn-admin" style={{ flexShrink: 0 }} aria-label="Print Order" onClick={() => {
-                            setPrintingOrder(o);
-                            setTimeout(() => { window.print(); setPrintingOrder(null); }, 100);
-                         }}>🖨️</button>
-                       )}
+                    <div className="button-group-pro" style={{ flexWrap: 'wrap' }}>
+                      {o.receipt_url && (
+                        <div style={{ width: '100%', marginBottom: 10, borderRadius: 12, overflow: 'hidden', border: '1px solid var(--glass-border)' }}>
+                           <img src={o.receipt_url} alt="Receipt" style={{ width: '100%', maxHeight: '200px', objectFit: 'contain', background: 'rgba(0,0,0,0.2)', cursor: 'pointer' }} onClick={() => window.Telegram?.WebApp?.openLink ? window.Telegram.WebApp.openLink(o.receipt_url) : window.open(o.receipt_url, '_blank')} />
+                        </div>
+                      )}
+                      {o.status === 'pending' && <button className="ticket-btn-primary" style={{ flex: 1 }} onClick={() => updateStatus(o.id, 'paid')}>💰 បញ្ជាក់បង់ប្រាក់</button>}
+                      {o.status === 'paid' && <button className="ticket-btn-primary" onClick={() => updateStatus(o.id, 'processing')}>📦 រៀបចំអីវ៉ាន់</button>}
+                      {o.status === 'processing' && <button className="ticket-btn-primary" onClick={() => updateStatus(o.id, 'shipped')}>✨ អីវ៉ាន់ចេញ</button>}
+                      {['paid', 'processing', 'shipped', 'delivering', 'delivered'].includes(o.status) && (
+                        <button className="icon-btn-admin" style={{ flexShrink: 0 }} aria-label="Print Order" onClick={() => {
+                          setPrintingOrder(o);
+                          setTimeout(() => { window.print(); setPrintingOrder(null); }, 100);
+                        }}>🖨️</button>
+                      )}
                     </div>
-                 </div>
-               ))}
+                  </div>
+                ))}
             </div>
           )}
 
           {activeTab === 'products' && (
             <div className="tab-pane-animate">
-               <button className="ticket-btn-primary" style={{ marginBottom: 20 }} onClick={() => setIsAddingProduct(true)}>➕ បន្ថែមទំនិញថ្មី</button>
-                <div style={{ display: 'grid', gap: 12, marginBottom: 30 }}>
-                  {products.map(p => (
-                    <div key={p.id} className="glass-card-luxury" style={{ padding: 12, display: 'flex', gap: 12, alignItems: 'center' }}>
-                       <img src={p.image} style={{ width: 50, height: 50, borderRadius: 12, objectFit: 'cover' }} alt={p.name} crossOrigin="anonymous" />
-                        <div style={{ flex: 1 }}>
-                           <div style={{ fontWeight: 800, fontSize: 14 }}>{p.name}</div>
-                           <div style={{ fontSize: 11, color: '#ec4899', fontWeight: 800, marginTop: 4 }}>
-                              {p.category} • ${p.price} • {p.stock} {[...Array(Math.ceil(p.stock/20))].map((_, i) => <span key={i}>📦</span>)}
-                           </div>
-                        </div>
-                        <button className="icon-btn-admin" aria-label="Edit product" onClick={() => { 
-                           setEditingProduct(p); 
-                           setEditFormData({ 
-                              name: p.name, 
-                              price: p.price, 
-                              stock: p.stock,
-                              category: p.category,
-                              description: p.description || '',
-                              image: p.image || '',
-                              additional_images: typeof p.additional_images === 'string' ? JSON.parse(p.additional_images) : (p.additional_images || []),
-                              flash_sale_price: p.flash_sale_price || '',
-                              flash_sale_end: p.flash_sale_end ? new Date(p.flash_sale_end).toISOString().slice(0, 16) : '',
-                              video_url: p.video_url || ''
-                           }); 
-                        }}>✏️</button>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 20 }}>
+                <button className="ticket-btn-primary" style={{ flex: 'none', width: 'auto', padding: '10px 20px', height: 'auto' }} onClick={() => setIsAddingProduct(true)}>➕ បន្ថែមទំនិញថ្មី</button>
+              </div>
+              <div style={{ display: 'grid', gap: 12, marginBottom: 30 }}>
+                {products.map(p => (
+                  <div key={p.id} className="glass-card-luxury" style={{ padding: 12, display: 'flex', gap: 12, alignItems: 'center' }}>
+                    <img src={p.image} style={{ width: 50, height: 50, borderRadius: 12, objectFit: 'cover' }} alt={p.name} crossOrigin="anonymous" />
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 800, fontSize: 14 }}>{p.name}</div>
+                      <div style={{ fontSize: 11, color: '#ec4899', fontWeight: 800, marginTop: 4 }}>
+                        {p.category} • ${p.price} • {p.stock} {[...Array(Math.ceil(p.stock / 20))].map((_, i) => <span key={i}>📦</span>)}
+                      </div>
                     </div>
-                  ))}
-               </div>
+                    <button className="icon-btn-admin" aria-label="Edit product" onClick={() => {
+                      setEditingProduct(p);
+                      setEditFormData({
+                        name: p.name,
+                        price: p.price,
+                        stock: p.stock,
+                        category: p.category,
+                        description: p.description || '',
+                        image: p.image || '',
+                        additional_images: typeof p.additional_images === 'string' ? JSON.parse(p.additional_images) : (p.additional_images || []),
+                        flash_sale_price: p.flash_sale_price || '',
+                        flash_sale_end: p.flash_sale_end ? new Date(p.flash_sale_end).toISOString().slice(0, 16) : '',
+                        video_url: p.video_url || ''
+                      });
+                    }}>✏️</button>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 
           {activeTab === 'broadcast' && (
             <div className="tab-pane-animate">
-               <div className="glass-card-luxury">
-                  <div style={{ textAlign: 'center', marginBottom: 25 }}>
-                     <div style={{ fontSize: 40 }}>📢</div>
-                     <h3 style={{ margin: '10px 0', fontSize: 18, fontWeight: 950 }}>ផ្សាយដំណឹង (Broadcast)</h3>
-                  </div>
-                  <div style={{ marginBottom: 15 }}>
-                     <label style={{ display: 'block', fontSize: 11, fontWeight: 800, marginBottom: 8, opacity: 0.6 }}>រូបភាពបដា</label>
-                     <label className="upload-zone-luxury">
-                        {broadcastImage ? (
-                          <img src={broadcastImage} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="" crossOrigin="anonymous" />
-                        ) : (
-                          <div className="upload-label-content">
-                            <div style={{ fontSize: 24 }}>📸</div>
-                            <div style={{ fontSize: 13, fontWeight: 800 }}>ចុចដាក់រូបភាព</div>
-                            <div style={{ fontSize: 10, opacity: 0.5 }}>PNG, JPG (Max 5MB)</div>
-                          </div>
-                        )}
-                        <input type="file" accept="image/*" onChange={e => {
-                          const file = e.target.files?.[0];
-                          if (file) handleBroadcastUpload(file);
-                        }} />
-                     </label>
-                  </div>
-                  <textarea className="input-glass-admin" rows="4" style={{ marginBottom: 20 }} value={broadcastMsg} onChange={e => setBroadcastMsg(e.target.value)} placeholder="សរសេរសារដំណឹង..."></textarea>
-                  <button className="ticket-btn-primary" onClick={handleBroadcast} disabled={isBroadcasting}>{isBroadcasting ? '⌛ កំពុងផ្ញើ...' : '🚀 ផ្ញើដំណឹងឥឡូវនេះ'}</button>
-               </div>
+              <div className="glass-card-luxury">
+                <div style={{ textAlign: 'center', marginBottom: 25 }}>
+                  <div style={{ fontSize: 40 }}>📢</div>
+                  <h3 style={{ margin: '10px 0', fontSize: 18, fontWeight: 950 }}>ផ្សាយដំណឹង</h3>
+                </div>
+                <div style={{ marginBottom: 15 }}>
+                  <label style={{ display: 'block', fontSize: 11, fontWeight: 800, marginBottom: 8, opacity: 0.6 }}>រូបភាពបដា</label>
+                  <label className="upload-zone-luxury">
+                    {broadcastImage ? (
+                      <img src={broadcastImage} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="" crossOrigin="anonymous" />
+                    ) : (
+                      <div className="upload-label-content">
+                        <div style={{ fontSize: 24 }}>📸</div>
+                        <div style={{ fontSize: 13, fontWeight: 800 }}>ចុចដាក់រូបភាព</div>
+                        <div style={{ fontSize: 10, opacity: 0.5 }}>PNG, JPG (Max 5MB)</div>
+                      </div>
+                    )}
+                    <input type="file" accept="image/*" onChange={e => {
+                      const file = e.target.files?.[0];
+                      if (file) handleBroadcastUpload(file);
+                    }} />
+                  </label>
+                </div>
+                <textarea className="input-glass-admin" rows="4" style={{ marginBottom: 20 }} value={broadcastMsg} onChange={e => setBroadcastMsg(e.target.value)} placeholder="សរសេរសារដំណឹង..."></textarea>
+                <button className="ticket-btn-primary" onClick={handleBroadcast} disabled={isBroadcasting}>{isBroadcasting ? '⌛ កំពុងផ្ញើ...' : '🚀 ផ្ញើដំណឹងឥឡូវនេះ'}</button>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'faqs' && (
+            <div className="tab-pane-animate">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+                  <h3 style={{ fontSize: 18, fontWeight: 900 }}>គ្រប់គ្រងសំណួរ-ចម្លើយ</h3>
+                  <button className="ticket-btn-primary" style={{ flex: 'none', width: 'auto', padding: '10px 20px', height: 'auto' }} onClick={() => {
+                    setEditingFaq({ id: null, q_kh: '', q_en: '', a_kh: '', a_en: '', sort_order: 0, is_active: true });
+                    setIsFaqModalOpen(true);
+                  }}>➕ បន្ថែមថ្មី</button>
+                </div>
+
+                {faqsLoading ? (
+                  <div style={{ padding: 40, textAlign: 'center', opacity: 0.5 }}>កំពុងទាញទិន្នន័យ...</div>
+                ) : faqsList.length === 0 ? (
+                  <div className="glass-card-luxury" style={{ padding: 40, textAlign: 'center', opacity: 0.5 }}>មិនមានទិន្នន័យទេ</div>
+                ) : (
+                  faqsList.map(faq => (
+                    <div key={faq.id} className="glass-card-luxury" style={{ padding: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div>
+                        <div style={{ fontWeight: 800, fontSize: 15, marginBottom: 4 }}>{faq.q_kh}</div>
+                        <div style={{ opacity: 0.7, fontSize: 13, marginBottom: 10 }}>{faq.a_kh}</div>
+                        <div style={{ fontWeight: 800, fontSize: 14, color: '#3b82f6', marginBottom: 4 }}>{faq.q_en}</div>
+                        <div style={{ opacity: 0.7, fontSize: 12 }}>{faq.a_en}</div>
+                      </div>
+                      <div style={{ display: 'flex', gap: 10 }}>
+                        <button className="nav-pill-btn" style={{ padding: '8px 16px', background: '#fef3c7', color: '#d97706' }} onClick={() => {
+                          setEditingFaq(faq);
+                          setIsFaqModalOpen(true);
+                        }}>កែប្រែ</button>
+                        <button className="nav-pill-btn" style={{ padding: '8px 16px', background: '#fee2e2', color: '#ef4444' }} onClick={() => handleDeleteFaq(faq.id)}>លុប</button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
           )}
 
           {activeTab === 'settings' && (
             <div className="tab-pane-animate">
-               <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-                  <div className="glass-card-luxury" style={{ display: 'flex', gap: 20, alignItems: 'center', padding: '20px 28px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                <div className="glass-card-luxury" style={{ display: 'flex', gap: 20, alignItems: 'center', padding: '20px 28px' }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 950, fontSize: 16 }}>🏪 ស្ថានភាពហាង</div>
+                    <div style={{ fontSize: 13, opacity: 0.6, marginTop: 4 }}>កំណត់ថាហាងបើក ឬបិទបណ្តោះអាសន្ន</div>
+                  </div>
+                  <div style={{ width: 150 }}>
+                    <select
+                      className="input-glass-admin"
+                      style={{ padding: '10px 14px', borderRadius: 14, fontSize: 13 }}
+                      value={shopStatus}
+                      onChange={e => {
+                        const newVal = e.target.value;
+                        showConfirm(
+                          `តើអ្នកពិតជាចង់ ${newVal === 'open' ? 'បើក' : 'បិទ'} ហាងមែនទេ?`,
+                          () => {
+                            setShopStatus(newVal);
+                            updateSettingValue('shop_status', newVal);
+                          },
+                          '🏪'
+                        );
+                      }}
+                    >
+                      <option value="open">🟢 បើកលក់</option>
+                      <option value="closed">🔴 បិទផ្អាក</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="glass-card-luxury">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
+                    <div style={{ fontSize: 24 }}>🚚</div>
                     <div style={{ flex: 1 }}>
-                       <div style={{ fontWeight: 950, fontSize: 16 }}>🏪 ស្ថានភាពហាង</div>
-                       <div style={{ fontSize: 13, opacity: 0.6, marginTop: 4 }}>កំណត់ថាហាងបើក ឬបិទបណ្តោះអាសន្ន</div>
-                    </div>
-                    <div style={{ width: 150 }}>
-                       <select 
-                         className="input-glass-admin" 
-                         style={{ padding: '10px 14px', borderRadius: 14, fontSize: 13 }}
-                         value={shopStatus} 
-                         onChange={e => { 
-                           const newVal = e.target.value;
-                           showConfirm(
-                             `តើអ្នកពិតជាចង់ ${newVal === 'open' ? 'បើក' : 'បិទ'} ហាងមែនទេ?`, 
-                             () => {
-                               setShopStatus(newVal); 
-                               updateSettingValue('shop_status', newVal); 
-                             },
-                             '🏪'
-                           );
-                         }}
-                       >
-                          <option value="open">🟢 បើកលក់</option>
-                          <option value="closed">🔴 បិទផ្អាក</option>
-                       </select>
+                      <div style={{ fontWeight: 950, fontSize: 16 }}>សេវាដឹកជញ្ជូន</div>
+                      <div style={{ fontSize: 12, opacity: 0.6 }}>កំណត់តម្លៃដឹក និងលក្ខខណ្ឌដឹកហ្វ្រី</div>
                     </div>
                   </div>
-
-                  <div className="glass-card-luxury">
-                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
-                        <div style={{ fontSize: 24 }}>🚚</div>
-                        <div style={{ flex: 1 }}>
-                           <div style={{ fontWeight: 950, fontSize: 16 }}>សេវាដឹកជញ្ជូន</div>
-                           <div style={{ fontSize: 12, opacity: 0.6 }}>កំណត់តម្លៃដឹក និងលក្ខខណ្ឌដឹកហ្វ្រី</div>
-                        </div>
-                     </div>
-                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
-                        <div>
-                           <label style={{ display: 'block', fontSize: 11, fontWeight: 900, marginBottom: 8, opacity: 0.7 }}>តម្លៃដឹកធម្មតា ($)</label>
-                           <input className="input-glass-admin" placeholder="0.00" value={deliveryFee} onChange={e => setDeliveryFee(e.target.value)} />
-                        </div>
-                        <div>
-                           <label style={{ display: 'block', fontSize: 11, fontWeight: 900, marginBottom: 8, opacity: 0.7 }}>ដឹកហ្វ្រីលើសពី ($)</label>
-                           <input className="input-glass-admin" placeholder="50.00" value={deliveryThreshold} onChange={e => setDeliveryThreshold(e.target.value)} />
-                        </div>
-                     </div>
-                     <button className="ticket-btn-primary" onClick={() => { updateSettingValue('delivery_fee', deliveryFee); updateSettingValue('delivery_threshold', deliveryThreshold); }}>
-                       💾 រក្សាទុកការកំណត់
-                     </button>
-                  </div>
-
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 15 }}>
-                    <div className="glass-card-luxury" style={{ padding: 20 }}>
-                       <div style={{ fontWeight: 950, marginBottom: 15, fontSize: 14 }}>🖼️ បដាហាង</div>
-                       <label className="upload-zone-luxury" style={{ height: 110 }}>
-                          {promoBannerUrl ? (
-                            <img src={promoBannerUrl} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="" crossOrigin="anonymous" />
-                          ) : (
-                            <div className="upload-label-content">
-                               <div style={{ fontSize: 22 }}>🌄</div>
-                               <div style={{ fontSize: 11, fontWeight: 900 }}>ប្តូរបដា</div>
-                            </div>
-                          )}
-                          <input type="file" accept="image/*" onChange={e => {
-                            const file = e.target.files?.[0];
-                            if (file) handleBannerUpload(file);
-                          }} />
-                       </label>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: 11, fontWeight: 900, marginBottom: 8, opacity: 0.7 }}>តម្លៃដឹកធម្មតា ($)</label>
+                      <input className="input-glass-admin" placeholder="0.00" value={deliveryFee} onChange={e => setDeliveryFee(e.target.value)} />
                     </div>
-                    <div className="glass-card-luxury" style={{ padding: 20 }}>
-                       <div style={{ fontWeight: 950, marginBottom: 15, fontSize: 14 }}>🏷️ ឡូហ្គោហាង</div>
-                       <label className="upload-zone-luxury" style={{ height: 110 }}>
-                          {shopLogoUrl ? (
-                            <img src={shopLogoUrl} style={{ height: '100%', objectFit: 'contain' }} alt="" crossOrigin="anonymous" />
-                          ) : (
-                            <div className="upload-label-content">
-                               <div style={{ fontSize: 22 }}>🏷️</div>
-                               <div style={{ fontSize: 11, fontWeight: 900 }}>ប្តូរឡូហ្គោ</div>
-                            </div>
-                          )}
-                          <input type="file" accept="image/*" onChange={e => {
-                            const file = e.target.files?.[0];
-                            if (file) handleLogoUpload(file);
-                          }} />
-                       </label>
+                    <div>
+                      <label style={{ display: 'block', fontSize: 11, fontWeight: 900, marginBottom: 8, opacity: 0.7 }}>ដឹកហ្វ្រីលើសពី ($)</label>
+                      <input className="input-glass-admin" placeholder="50.00" value={deliveryThreshold} onChange={e => setDeliveryThreshold(e.target.value)} />
                     </div>
-                     </div>
                   </div>
+                  <button className="ticket-btn-primary" onClick={() => { updateSettingValue('delivery_fee', deliveryFee); updateSettingValue('delivery_threshold', deliveryThreshold); }}>
+                    💾 រក្សាទុកការកំណត់
+                  </button>
+                </div>
 
-                  <div className="glass-card-luxury">
-                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
-                        <div style={{ fontSize: 24 }}>💳</div>
-                        <div style={{ flex: 1 }}>
-                           <div style={{ fontWeight: 950, fontSize: 16 }}>ព័ត៌មានបង់ប្រាក់ (Payment Info)</div>
-                           <div style={{ fontSize: 12, opacity: 0.6 }}>កំណត់រូប QR និងលេខគណនីធនាគារ</div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 15 }}>
+                  <div className="glass-card-luxury" style={{ padding: 20, minWidth: 0 }}>
+                    <div style={{ fontWeight: 950, marginBottom: 15, fontSize: 14 }}>🖼️ បដាហាង</div>
+                    <div style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 10 }}>
+                      {(promoBannerUrl ? promoBannerUrl.split(',').map(u => u.trim()).filter(Boolean) : []).map((img, idx) => (
+                        <div key={idx} style={{ position: 'relative', flexShrink: 0, width: 140, height: 80, borderRadius: 12, overflow: 'hidden', border: '1px solid var(--border-subtle)' }}>
+                          <img src={img} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="" crossOrigin="anonymous" />
+                          <button className="remove-thumb-btn" onClick={() => removeBanner(idx)}>✕</button>
                         </div>
-                     </div>
-                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 15 }}>
-                        <div>
-                           <label style={{ display: 'block', fontSize: 11, fontWeight: 900, marginBottom: 8, opacity: 0.7 }}>រូបភាព QR (KHQR)</label>
-                           <label className="upload-zone-luxury" style={{ height: 120 }}>
-                              {paymentQrUrl ? (
-                                <img src={paymentQrUrl} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="" crossOrigin="anonymous" />
-                              ) : (
-                                <div className="upload-label-content">
-                                   <div style={{ fontSize: 22 }}>📸</div>
-                                   <div style={{ fontSize: 10, fontWeight: 900 }}>ដាក់រូប QR</div>
-                                </div>
-                              )}
-                              <input type="file" accept="image/*" onChange={e => {
-                                const file = e.target.files?.[0];
-                                if (file) handleQrUpload(file);
-                              }} />
-                           </label>
+                      ))}
+                      <label className="upload-zone-luxury" style={{ flexShrink: 0, width: 140, height: 80 }}>
+                        <div className="upload-label-content">
+                          <div style={{ fontSize: 22 }}>🌄</div>
+                          <div style={{ fontSize: 11, fontWeight: 900 }}>ថែមបដា</div>
                         </div>
-                        <div>
-                           <label style={{ display: 'block', fontSize: 11, fontWeight: 900, marginBottom: 8, opacity: 0.7 }}>ព័ត៌មានគណនី</label>
-                           <textarea 
-                             className="input-glass-admin" 
-                             style={{ height: 120, fontSize: 12 }} 
-                             placeholder="ឧទាហរណ៍៖ ABA: 000 111 222 (NAME)" 
-                             value={paymentInfo} 
-                             onChange={e => setPaymentInfo(e.target.value)} 
-                           />
-                        </div>
-                     </div>
-                     <button className="ticket-btn-primary" onClick={() => updateSettingValue('payment_info', paymentInfo)}>
-                       💾 រក្សាទុកព័ត៌មានបង់ប្រាក់
-                     </button>
+                        <input type="file" accept="image/*" onChange={e => {
+                          const file = e.target.files?.[0];
+                          if (file) handleBannerUpload(file);
+                        }} />
+                      </label>
+                    </div>
                   </div>
+                  <div className="glass-card-luxury" style={{ padding: 20, minWidth: 0 }}>
+                    <div style={{ fontWeight: 950, marginBottom: 15, fontSize: 14 }}>🏷️ ឡូហ្គោហាង</div>
+                    <label className="upload-zone-luxury" style={{ height: 110 }}>
+                      {shopLogoUrl ? (
+                        <img src={shopLogoUrl} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="" crossOrigin="anonymous" />
+                      ) : (
+                        <div className="upload-label-content">
+                          <div style={{ fontSize: 22 }}>🏷️</div>
+                          <div style={{ fontSize: 11, fontWeight: 900 }}>ប្តូរឡូហ្គោ</div>
+                        </div>
+                      )}
+                      <input type="file" accept="image/*" onChange={e => {
+                        const file = e.target.files?.[0];
+                        if (file) handleLogoUpload(file);
+                      }} />
+                    </label>
+                  </div>
+                </div>
+              </div>
 
-                  <div className="glass-card-luxury">
-                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
-                        <div style={{ fontSize: 24 }}>🖨️</div>
-                        <div style={{ flex: 1 }}>
-                           <div style={{ fontWeight: 950, fontSize: 16 }}>ព័ត៌មានវិក្កយបត្រ (Receipt Info)</div>
-                           <div style={{ fontSize: 12, opacity: 0.6 }}>កំណត់ឈ្មោះ និងអក្សររត់ពីក្រោមលើវិក្កយបត្រ</div>
-                        </div>
-                     </div>
-                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 15 }}>
-                        <div>
-                           <label style={{ display: 'block', fontSize: 11, fontWeight: 900, marginBottom: 8, opacity: 0.7 }}>ឈ្មោះហាង (Shop Name)</label>
-                           <input className="input-glass-admin" value={receiptShopName} onChange={e => setReceiptShopName(e.target.value)} />
-                        </div>
-                        <div>
-                           <label style={{ display: 'block', fontSize: 11, fontWeight: 900, marginBottom: 8, opacity: 0.7 }}>អក្សររត់ពីក្រោម (Subtitle)</label>
-                           <input className="input-glass-admin" value={receiptSubtitle} onChange={e => setReceiptSubtitle(e.target.value)} />
-                        </div>
-                     </div>
-                     <div style={{ marginBottom: 15 }}>
-                        <label style={{ display: 'block', fontSize: 11, fontWeight: 900, marginBottom: 8, opacity: 0.7 }}>កំណត់ចំណាំហាង (Shop Note at bottom)</label>
-                        <textarea className="input-glass-admin" rows="2" value={receiptNote} onChange={e => setReceiptNote(e.target.value)} placeholder="សូមអរគុណសម្រាប់ការគាំទ្រ!"></textarea>
-                     </div>
-                     <button className="ticket-btn-primary" onClick={() => { updateSettingValue('receipt_shop_name', receiptShopName); updateSettingValue('receipt_subtitle', receiptSubtitle); updateSettingValue('receipt_note', receiptNote); }}>
-                       💾 រក្សាទុកវិក្កយបត្រ
-                     </button>
+              <div className="glass-card-luxury">
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
+                  <div style={{ fontSize: 24 }}>💳</div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 950, fontSize: 16 }}>ព័ត៌មានបង់ប្រាក់</div>
+                    <div style={{ fontSize: 12, opacity: 0.6 }}>កំណត់រូប QR និងលេខគណនីធនាគារ</div>
                   </div>
-               </div>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 15 }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: 11, fontWeight: 900, marginBottom: 8, opacity: 0.7 }}>រូបភាព QR (KHQR)</label>
+                    <label className="upload-zone-luxury" style={{ height: 120 }}>
+                      {paymentQrUrl ? (
+                        <img src={paymentQrUrl} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="" crossOrigin="anonymous" />
+                      ) : (
+                        <div className="upload-label-content">
+                          <div style={{ fontSize: 22 }}>📸</div>
+                          <div style={{ fontSize: 10, fontWeight: 900 }}>ដាក់រូប QR</div>
+                        </div>
+                      )}
+                      <input type="file" accept="image/*" onChange={e => {
+                        const file = e.target.files?.[0];
+                        if (file) handleQrUpload(file);
+                      }} />
+                    </label>
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: 11, fontWeight: 900, marginBottom: 8, opacity: 0.7 }}>ព័ត៌មានគណនី</label>
+                    <textarea
+                      className="input-glass-admin"
+                      style={{ height: 120, fontSize: 12 }}
+                      placeholder="ឧទាហរណ៍៖ ABA: 000 111 222 (NAME)"
+                      value={paymentInfo}
+                      onChange={e => setPaymentInfo(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <button className="ticket-btn-primary" onClick={() => updateSettingValue('payment_info', paymentInfo)}>
+                  💾 រក្សាទុកព័ត៌មានបង់ប្រាក់
+                </button>
+              </div>
+
+              <div className="glass-card-luxury">
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
+                  <div style={{ fontSize: 24 }}>🖨️</div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 950, fontSize: 16 }}>ព័ត៌មានវិក្កយបត្រ</div>
+                    <div style={{ fontSize: 12, opacity: 0.6 }}>កំណត់ឈ្មោះ និងអក្សររត់ពីក្រោមលើវិក្កយបត្រ</div>
+                  </div>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 15 }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: 11, fontWeight: 900, marginBottom: 8, opacity: 0.7 }}>ឈ្មោះហាង</label>
+                    <input className="input-glass-admin" value={receiptShopName} onChange={e => setReceiptShopName(e.target.value)} />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: 11, fontWeight: 900, marginBottom: 8, opacity: 0.7 }}>អក្សររត់ពីក្រោម</label>
+                    <input className="input-glass-admin" value={receiptSubtitle} onChange={e => setReceiptSubtitle(e.target.value)} />
+                  </div>
+                </div>
+                <div style={{ marginBottom: 15 }}>
+                  <label style={{ display: 'block', fontSize: 11, fontWeight: 900, marginBottom: 8, opacity: 0.7 }}>កំណត់ចំណាំហាង</label>
+                  <textarea className="input-glass-admin" rows="2" value={receiptNote} onChange={e => setReceiptNote(e.target.value)} placeholder="សូមអរគុណសម្រាប់ការគាំទ្រ!"></textarea>
+                </div>
+                <button className="ticket-btn-primary" onClick={() => { updateSettingValue('receipt_shop_name', receiptShopName); updateSettingValue('receipt_subtitle', receiptSubtitle); updateSettingValue('receipt_note', receiptNote); }}>
+                  💾 រក្សាទុកវិក្កយបត្រ
+                </button>
+              </div>
+            </div>
           )}
 
         </div>
 
         {showSuccessToast && (
           <div className="admin-toast-float">
-             <span>✨</span>
-             <span>{toastMessage}</span>
+            <span>✨</span>
+            <span>{toastMessage}</span>
           </div>
         )}
       </div>
@@ -936,7 +1150,7 @@ const AdminDashboard = ({
         <div style={{ position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, background: 'rgba(0,0,0,0.65)' }}>
           <div className="glass-card-luxury" style={{ width: '92%', maxWidth: 440, maxHeight: '85vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
             <h3 style={{ marginBottom: 20, flexShrink: 0 }}>✏️ កែប្រែទំនិញ</h3>
-            
+
             <div style={{ overflowY: 'auto', flex: 1, paddingRight: 5, paddingBottom: 5 }}>
               <div style={{ marginBottom: 14 }}>
                 <label style={{ display: 'block', fontSize: 11, fontWeight: 800, marginBottom: 8, opacity: 0.6 }}>រូបភាពទំនិញ</label>
@@ -954,90 +1168,65 @@ const AdminDashboard = ({
                   )}
                   <input type="file" accept="image/*" disabled={isUploading} onChange={e => {
                     const file = e.target.files?.[0];
-                    if (file) { 
-                      const fd = new FormData(); 
-                      fd.append('image', file); 
+                    if (file) {
+                      const fd = new FormData();
+                      fd.append('image', file);
                       setIsUploading(true);
-                      fetchWithRetry(`${BACKEND_URL}/api/admin/upload`, { method: 'POST', headers, body: fd }).then(res => { 
-                        if (res.success && res.data?.url) setEditFormData(prev => ({ ...prev, image: res.data.url })); 
-                      }).finally(() => setIsUploading(false)); 
+                      fetchWithRetry(`${BACKEND_URL}/api/admin/upload`, { method: 'POST', headers, body: fd }).then(res => {
+                        if (res.success && res.data?.url) setEditFormData(prev => ({ ...prev, image: res.data.url }));
+                      }).finally(() => setIsUploading(false));
                     }
                   }} />
                 </label>
               </div>
               <div style={{ marginBottom: 12 }}>
                 <label style={{ display: 'block', fontSize: 11, fontWeight: 800, marginBottom: 8, opacity: 0.6 }}>ឈ្មោះទំនិញ</label>
-                <input className="input-glass-admin" placeholder="ឈ្មោះ" value={editFormData.name} onChange={e => setEditFormData({...editFormData, name: e.target.value})} />
+                <input className="input-glass-admin" placeholder="ឈ្មោះ" value={editFormData.name} onChange={e => setEditFormData({ ...editFormData, name: e.target.value })} />
               </div>
-              
+
               <div style={{ marginBottom: 12 }}>
                 <label style={{ display: 'block', fontSize: 11, fontWeight: 800, marginBottom: 8, opacity: 0.6 }}>ប្រភេទ</label>
-                <select className="input-glass-admin" value={categories.some(c => c.name === editFormData.category) ? editFormData.category : 'OTHER'} onChange={e => setEditFormData({...editFormData, category: e.target.value})}>
+                <select className="input-glass-admin" value={categories.some(c => c.name === editFormData.category) ? editFormData.category : 'OTHER'} onChange={e => setEditFormData({ ...editFormData, category: e.target.value })}>
                   <option value="" disabled>រើសប្រភេទ...</option>
                   {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
                   <option value="OTHER">➕ បន្ថែមប្រភេទថ្មី (Add New)</option>
                 </select>
-                <input 
-                  className="input-glass-admin" 
-                  style={{ marginTop: 8, display: categories.some(c => c.name === editFormData.category) ? 'none' : 'block' }} 
-                  placeholder="វាយបញ្ចូលឈ្មោះប្រភេទថ្មី..." 
-                  value={editFormData.category === 'OTHER' ? '' : editFormData.category} 
-                  onChange={e => setEditFormData({...editFormData, category: e.target.value})} 
+                <input
+                  className="input-glass-admin"
+                  style={{ marginTop: 8, display: categories.some(c => c.name === editFormData.category) ? 'none' : 'block' }}
+                  placeholder="វាយបញ្ចូលឈ្មោះប្រភេទថ្មី..."
+                  value={editFormData.category === 'OTHER' ? '' : editFormData.category}
+                  onChange={e => setEditFormData({ ...editFormData, category: e.target.value })}
                 />
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
                 <div>
                   <label style={{ display: 'block', fontSize: 11, fontWeight: 800, marginBottom: 8, opacity: 0.6 }}>តម្លៃ ($)</label>
-                  <input className="input-glass-admin" type="number" placeholder="តម្លៃ ($)" value={editFormData.price} onChange={e => setEditFormData({...editFormData, price: e.target.value})} />
+                  <input className="input-glass-admin" type="number" placeholder="តម្លៃ ($)" value={editFormData.price} onChange={e => setEditFormData({ ...editFormData, price: e.target.value })} />
                 </div>
                 <div>
                   <label style={{ display: 'block', fontSize: 11, fontWeight: 800, marginBottom: 8, opacity: 0.6 }}>ស្តុក</label>
-                  <input className="input-glass-admin" type="number" placeholder="ស្តុក" value={editFormData.stock} onChange={e => setEditFormData({...editFormData, stock: e.target.value})} />
+                  <input className="input-glass-admin" type="number" placeholder="ស្តុក" value={editFormData.stock} onChange={e => setEditFormData({ ...editFormData, stock: e.target.value })} />
                 </div>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: 11, fontWeight: 800, marginBottom: 8, opacity: 0.6, color: '#fbbf24' }}>⚡ តម្លៃ Flash Sale ($)</label>
-                  <input className="input-glass-admin" type="number" placeholder="តម្លៃ Flash Sale ($)" value={editFormData.flash_sale_price} onChange={e => setEditFormData({...editFormData, flash_sale_price: e.target.value})} />
+                  <label style={{ display: 'block', fontSize: 11, fontWeight: 800, marginBottom: 8, opacity: 0.8 }}>⚡ តម្លៃ Flash Sale ($)</label>
+                  <input className="input-glass-admin" type="number" placeholder="តម្លៃ Flash Sale ($)" value={editFormData.flash_sale_price} onChange={e => setEditFormData({ ...editFormData, flash_sale_price: e.target.value })} />
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: 11, fontWeight: 800, marginBottom: 8, opacity: 0.6, color: '#fbbf24' }}>⚡ ថ្ងៃបញ្ចប់ Flash Sale</label>
-                  <input className="input-glass-admin" type="datetime-local" value={editFormData.flash_sale_end} onChange={e => setEditFormData({...editFormData, flash_sale_end: e.target.value})} />
+                  <label style={{ display: 'block', fontSize: 11, fontWeight: 800, marginBottom: 8, opacity: 0.8 }}>⚡ ថ្ងៃបញ្ចប់ Flash Sale</label>
+                  <input className="input-glass-admin" type="datetime-local" value={editFormData.flash_sale_end} onChange={e => setEditFormData({ ...editFormData, flash_sale_end: e.target.value })} />
                 </div>
               </div>
-              
+
               <div style={{ marginBottom: 14 }}>
                 <label style={{ display: 'block', fontSize: 11, fontWeight: 800, marginBottom: 8, opacity: 0.6 }}>ការពណ៌នា</label>
                 <textarea className="input-glass-admin" rows="3" value={editFormData.description} onChange={e => setEditFormData({ ...editFormData, description: e.target.value })} placeholder="ការពណ៌នាចំណុចពិសេស..."></textarea>
               </div>
 
-              <div style={{ marginBottom: 14 }}>
-                <label style={{ display: 'block', fontSize: 11, fontWeight: 800, marginBottom: 8, opacity: 0.6 }}>វីដេអូទំនិញ (Video - សម្រាប់ TikTok Feed)</label>
-                <label className="upload-zone-luxury" style={{ height: 100, position: 'relative' }}>
-                  {isUploading && (
-                    <div style={{ position: 'absolute', inset: 0, background: 'rgba(255,255,255,0.7)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', zIndex: 10, borderRadius: 20 }}>
-                      <div className="pd-pulse-loader" style={{ fontSize: 24, marginBottom: 4 }}>⌛</div>
-                    </div>
-                  )}
-                  {editFormData.video_url ? (
-                    <video src={editFormData.video_url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} muted />
-                  ) : (
-                    <div className="upload-label-content"><div style={{ fontSize: 24 }}>📱</div><div style={{ fontSize: 13, fontWeight: 800 }}>ដាក់វីដេអូ</div></div>
-                  )}
-                  <input type="file" accept="video/mp4,video/webm" disabled={isUploading} onChange={e => {
-                    const file = e.target.files?.[0];
-                    if (file) { 
-                      const fd = new FormData(); 
-                      fd.append('image', file); // Use same 'image' field for multer
-                      setIsUploading(true);
-                      fetchWithRetry(`${BACKEND_URL}/api/admin/upload`, { method: 'POST', headers: { 'Authorization': `tma ${window.Telegram.WebApp.initData}` }, body: fd }).then(res => { 
-                        if (res.success && res.data?.url) setEditFormData(prev => ({ ...prev, video_url: res.data.url })); 
-                      }).finally(() => setIsUploading(false)); 
-                    }
-                  }} />
-                </label>
-              </div>
+
               <div className="admin-gallery-editor" style={{ marginBottom: 16 }}>
                 <label style={{ fontSize: 11, fontWeight: 800, opacity: 0.6 }}>ជំនួយរូបភាព (Gallery)</label>
                 <div className="gallery-grid-lux">
@@ -1056,13 +1245,13 @@ const AdminDashboard = ({
                     <span>+</span><label>ថែមរូប</label>
                     <input type="file" accept="image/*" style={{ display: 'none' }} disabled={isUploading} onChange={e => {
                       const file = e.target.files?.[0];
-                      if (file) { 
-                        const fd = new FormData(); 
-                        fd.append('image', file); 
+                      if (file) {
+                        const fd = new FormData();
+                        fd.append('image', file);
                         setIsUploading(true);
-                        fetchWithRetry(`${BACKEND_URL}/api/admin/upload`, { method: 'POST', headers, body: fd }).then(d => { 
-                          if (d.success && d.data?.url) setEditFormData(prev => ({ ...prev, additional_images: [...(prev.additional_images || []), d.data.url] })); 
-                        }).finally(() => setIsUploading(false)); 
+                        fetchWithRetry(`${BACKEND_URL}/api/admin/upload`, { method: 'POST', headers, body: fd }).then(d => {
+                          if (d.success && d.data?.url) setEditFormData(prev => ({ ...prev, additional_images: [...(prev.additional_images || []), d.data.url] }));
+                        }).finally(() => setIsUploading(false));
                       }
                     }} />
                   </label>
@@ -1071,11 +1260,11 @@ const AdminDashboard = ({
             </div>
 
             <div style={{ display: 'flex', gap: 12, marginTop: 15, flexShrink: 0 }}>
-                <button className="nav-pill-btn btn-destructive" style={{ flex: 1 }} disabled={isSaving} onClick={() => setEditingProduct(null)}>បោះបង់</button>
-                <button className="nav-pill-btn" style={{ flex: 1, background: '#f8fafc', color: '#1e293b', border: '1px solid #e2e8f0' }} onClick={() => handlePreview(editFormData)}>👁️ មើលសិន</button>
-                <button className="ticket-btn-primary" style={{ flex: 1.5 }} disabled={isSaving} onClick={submitEditProduct}>
-                  {isSaving ? '⌛...' : 'រក្សាទុក'}
-                </button>
+              <button className="nav-pill-btn btn-destructive" style={{ flex: 1 }} disabled={isSaving} onClick={() => setEditingProduct(null)}>បោះបង់</button>
+              <button className="nav-pill-btn" style={{ flex: 1, background: '#f8fafc', color: '#1e293b', border: '1px solid #e2e8f0' }} onClick={() => handlePreview(editFormData)}>👁️ មើលសិន</button>
+              <button className="ticket-btn-primary" style={{ flex: 1.5 }} disabled={isSaving} onClick={submitEditProduct}>
+                {isSaving ? '⌛...' : 'រក្សាទុក'}
+              </button>
             </div>
           </div>
         </div>
@@ -1103,56 +1292,56 @@ const AdminDashboard = ({
                   )}
                   <input type="file" accept="image/*" disabled={isUploading} onChange={e => {
                     const file = e.target.files?.[0];
-                    if (file) { 
-                      const fd = new FormData(); 
-                      fd.append('image', file); 
+                    if (file) {
+                      const fd = new FormData();
+                      fd.append('image', file);
                       setIsUploading(true);
-                      fetchWithRetry(`${BACKEND_URL}/api/admin/upload`, { method: 'POST', headers, body: fd }).then(res => { 
-                        if (res.success && res.data?.url) setNewProductData(prev => ({ ...prev, image: res.data.url })); 
-                      }).finally(() => setIsUploading(false)); 
+                      fetchWithRetry(`${BACKEND_URL}/api/admin/upload`, { method: 'POST', headers, body: fd }).then(res => {
+                        if (res.success && res.data?.url) setNewProductData(prev => ({ ...prev, image: res.data.url }));
+                      }).finally(() => setIsUploading(false));
                     }
                   }} />
                 </label>
               </div>
               <div style={{ marginBottom: 12 }}>
                 <label style={{ display: 'block', fontSize: 11, fontWeight: 800, marginBottom: 8, opacity: 0.6 }}>ឈ្មោះទំនិញ</label>
-                <input className="input-glass-admin" placeholder="ឈ្មោះទំនិញ" value={newProductData.name} onChange={e => setNewProductData({...newProductData, name: e.target.value})} />
+                <input className="input-glass-admin" placeholder="ឈ្មោះទំនិញ" value={newProductData.name} onChange={e => setNewProductData({ ...newProductData, name: e.target.value })} />
               </div>
 
               <div style={{ marginBottom: 12 }}>
                 <label style={{ display: 'block', fontSize: 11, fontWeight: 800, marginBottom: 8, opacity: 0.6 }}>ប្រភេទ</label>
-                <select className="input-glass-admin" value={categories.some(c => c.name === newProductData.category) ? newProductData.category : 'OTHER'} onChange={e => setNewProductData({...newProductData, category: e.target.value})}>
+                <select className="input-glass-admin" value={categories.some(c => c.name === newProductData.category) ? newProductData.category : 'OTHER'} onChange={e => setNewProductData({ ...newProductData, category: e.target.value })}>
                   <option value="" disabled>រើសប្រភេទ...</option>
                   {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
                   <option value="OTHER">➕ បន្ថែមប្រភេទថ្មី (Add New)</option>
                 </select>
-                <input 
-                  className="input-glass-admin" 
-                  style={{ marginTop: 8, display: categories.some(c => c.name === newProductData.category) ? 'none' : 'block' }} 
-                  placeholder="វាយបញ្ចូលឈ្មោះប្រភេទថ្មី..." 
-                  value={newProductData.category === 'OTHER' ? '' : newProductData.category} 
-                  onChange={e => setNewProductData({...newProductData, category: e.target.value})} 
+                <input
+                  className="input-glass-admin"
+                  style={{ marginTop: 8, display: categories.some(c => c.name === newProductData.category) ? 'none' : 'block' }}
+                  placeholder="វាយបញ្ចូលឈ្មោះប្រភេទថ្មី..."
+                  value={newProductData.category === 'OTHER' ? '' : newProductData.category}
+                  onChange={e => setNewProductData({ ...newProductData, category: e.target.value })}
                 />
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
                 <div>
                   <label style={{ display: 'block', fontSize: 11, fontWeight: 800, marginBottom: 8, opacity: 0.6 }}>តម្លៃ ($)</label>
-                  <input className="input-glass-admin" type="number" placeholder="តម្លៃ ($)" value={newProductData.price} onChange={e => setNewProductData({...newProductData, price: e.target.value})} />
+                  <input className="input-glass-admin" type="number" placeholder="តម្លៃ ($)" value={newProductData.price} onChange={e => setNewProductData({ ...newProductData, price: e.target.value })} />
                 </div>
                 <div>
                   <label style={{ display: 'block', fontSize: 11, fontWeight: 800, marginBottom: 8, opacity: 0.6 }}>ស្តុក</label>
-                  <input className="input-glass-admin" type="number" placeholder="ស្តុក" value={newProductData.stock} onChange={e => setNewProductData({...newProductData, stock: e.target.value})} />
+                  <input className="input-glass-admin" type="number" placeholder="ស្តុក" value={newProductData.stock} onChange={e => setNewProductData({ ...newProductData, stock: e.target.value })} />
                 </div>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: 11, fontWeight: 800, marginBottom: 8, opacity: 0.6, color: '#fbbf24' }}>⚡ តម្លៃ Flash Sale ($)</label>
-                  <input className="input-glass-admin" type="number" placeholder="តម្លៃ Flash Sale ($)" value={newProductData.flash_sale_price} onChange={e => setNewProductData({...newProductData, flash_sale_price: e.target.value})} />
+                  <label style={{ display: 'block', fontSize: 11, fontWeight: 800, marginBottom: 8, opacity: 0.8 }}>⚡ តម្លៃ Flash Sale ($)</label>
+                  <input className="input-glass-admin" type="number" placeholder="តម្លៃ Flash Sale ($)" value={newProductData.flash_sale_price} onChange={e => setNewProductData({ ...newProductData, flash_sale_price: e.target.value })} />
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: 11, fontWeight: 800, marginBottom: 8, opacity: 0.6, color: '#fbbf24' }}>⚡ ថ្ងៃបញ្ចប់ Flash Sale</label>
-                  <input className="input-glass-admin" type="datetime-local" value={newProductData.flash_sale_end} onChange={e => setNewProductData({...newProductData, flash_sale_end: e.target.value})} />
+                  <label style={{ display: 'block', fontSize: 11, fontWeight: 800, marginBottom: 8, opacity: 0.8 }}>⚡ ថ្ងៃបញ្ចប់ Flash Sale</label>
+                  <input className="input-glass-admin" type="datetime-local" value={newProductData.flash_sale_end} onChange={e => setNewProductData({ ...newProductData, flash_sale_end: e.target.value })} />
                 </div>
               </div>
 
@@ -1161,32 +1350,7 @@ const AdminDashboard = ({
                 <textarea className="input-glass-admin" rows="3" value={newProductData.description} onChange={e => setNewProductData({ ...newProductData, description: e.target.value })} placeholder="ចំណុចពិសេស (Description)..."></textarea>
               </div>
 
-              <div style={{ marginBottom: 14 }}>
-                <label style={{ display: 'block', fontSize: 11, fontWeight: 800, marginBottom: 8, opacity: 0.6 }}>វីដេអូទំនិញ (Video - សម្រាប់ TikTok Feed)</label>
-                <label className="upload-zone-luxury" style={{ height: 100, position: 'relative' }}>
-                  {isUploading && (
-                    <div style={{ position: 'absolute', inset: 0, background: 'rgba(255,255,255,0.7)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', zIndex: 10, borderRadius: 20 }}>
-                      <div className="pd-pulse-loader" style={{ fontSize: 24, marginBottom: 4 }}>⌛</div>
-                    </div>
-                  )}
-                  {newProductData.video_url ? (
-                    <video src={newProductData.video_url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} muted />
-                  ) : (
-                    <div className="upload-label-content"><div style={{ fontSize: 24 }}>📱</div><div style={{ fontSize: 13, fontWeight: 800 }}>ដាក់វីដេអូ</div></div>
-                  )}
-                  <input type="file" accept="video/mp4,video/webm" disabled={isUploading} onChange={e => {
-                    const file = e.target.files?.[0];
-                    if (file) { 
-                      const fd = new FormData(); 
-                      fd.append('image', file); // Use same 'image' field for multer
-                      setIsUploading(true);
-                      fetchWithRetry(`${BACKEND_URL}/api/admin/upload`, { method: 'POST', headers: { 'Authorization': `tma ${window.Telegram.WebApp.initData}` }, body: fd }).then(res => { 
-                        if (res.success && res.data?.url) setNewProductData(prev => ({ ...prev, video_url: res.data.url })); 
-                      }).finally(() => setIsUploading(false)); 
-                    }
-                  }} />
-                </label>
-              </div>
+
               <div className="admin-gallery-editor" style={{ marginBottom: 16 }}>
                 <label style={{ fontSize: 11, fontWeight: 800, opacity: 0.6 }}>ជំនួយរូបភាព (Gallery)</label>
                 <div className="gallery-grid-lux">
@@ -1205,13 +1369,13 @@ const AdminDashboard = ({
                     <span>+</span><label>ថែមរូប</label>
                     <input type="file" accept="image/*" style={{ display: 'none' }} disabled={isUploading} onChange={e => {
                       const file = e.target.files?.[0];
-                      if (file) { 
-                        const fd = new FormData(); 
-                        fd.append('image', file); 
+                      if (file) {
+                        const fd = new FormData();
+                        fd.append('image', file);
                         setIsUploading(true);
-                        fetchWithRetry(`${BACKEND_URL}/api/admin/upload`, { method: 'POST', headers, body: fd }).then(d => { 
-                          if (d.success && d.data?.url) setNewProductData(prev => ({ ...prev, additional_images: [...(prev.additional_images || []), d.data.url] })); 
-                        }).finally(() => setIsUploading(false)); 
+                        fetchWithRetry(`${BACKEND_URL}/api/admin/upload`, { method: 'POST', headers, body: fd }).then(d => {
+                          if (d.success && d.data?.url) setNewProductData(prev => ({ ...prev, additional_images: [...(prev.additional_images || []), d.data.url] }));
+                        }).finally(() => setIsUploading(false));
                       }
                     }} />
                   </label>
@@ -1231,9 +1395,9 @@ const AdminDashboard = ({
       )}
 
       {isPreviewing && previewData && (
-        <ProductDetail 
-          product={previewData} 
-          onClose={() => setIsPreviewing(false)} 
+        <ProductDetail
+          product={previewData}
+          onClose={() => setIsPreviewing(false)}
           onAdd={() => showAlert('នេះគ្រាន់តែជារូបភាព Preview!')}
           lang={tg?.language_code === 'kh' ? 'kh' : 'en'}
           isFavorited={previewFavorited}
@@ -1241,8 +1405,44 @@ const AdminDashboard = ({
         />
       )}
 
+      {isFaqModalOpen && (
+        <div style={{ position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, background: 'rgba(0,0,0,0.65)' }}>
+          <div className="glass-card-luxury" style={{ width: '92%', maxWidth: 440, maxHeight: '85vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            <h3 style={{ marginBottom: 20, flexShrink: 0 }}>{editingFaq?.id ? '✏️ កែប្រែ FAQ' : '➕ បន្ថែម FAQ'}</h3>
+
+            <div style={{ overflowY: 'auto', flex: 1, paddingRight: 5, paddingBottom: 5, display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 800, marginBottom: 8, opacity: 0.6 }}>សំណួរ (ភាសាខ្មែរ)</label>
+                <input className="input-glass-admin" value={editingFaq?.q_kh || ''} onChange={e => setEditingFaq({ ...editingFaq, q_kh: e.target.value })} />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 800, marginBottom: 8, opacity: 0.6 }}>សំណួរ (English)</label>
+                <input className="input-glass-admin" value={editingFaq?.q_en || ''} onChange={e => setEditingFaq({ ...editingFaq, q_en: e.target.value })} />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 800, marginBottom: 8, opacity: 0.6 }}>ចម្លើយ (ភាសាខ្មែរ)</label>
+                <textarea className="input-glass-admin" rows="3" value={editingFaq?.a_kh || ''} onChange={e => setEditingFaq({ ...editingFaq, a_kh: e.target.value })}></textarea>
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 800, marginBottom: 8, opacity: 0.6 }}>ចម្លើយ (English)</label>
+                <textarea className="input-glass-admin" rows="3" value={editingFaq?.a_en || ''} onChange={e => setEditingFaq({ ...editingFaq, a_en: e.target.value })}></textarea>
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 800, marginBottom: 8, opacity: 0.6 }}>លំដាប់លំដោយ (Sort Order)</label>
+                <input type="number" className="input-glass-admin" value={editingFaq?.sort_order || 0} onChange={e => setEditingFaq({ ...editingFaq, sort_order: parseInt(e.target.value) || 0 })} />
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 12, marginTop: 20, flexShrink: 0 }}>
+              <button className="nav-pill-btn btn-destructive" style={{ flex: 1 }} onClick={() => setIsFaqModalOpen(false)}>បោះបង់</button>
+              <button className="ticket-btn-primary" style={{ flex: 1.5 }} onClick={handleSaveFaq}>រក្សាទុក</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {confirmDialog && (
-        <BeautyModal 
+        <BeautyModal
           text={confirmDialog.text}
           icon={confirmDialog.icon}
           isAlert={confirmDialog.isAlert}

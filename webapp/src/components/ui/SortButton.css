@@ -1,0 +1,38 @@
+.sort-button {
+  display: inline-flex;
+  align-items: center;
+  height: 32px;
+  border-radius: 16px;
+  padding: 0 12px; /* 12px left and right as per spec */
+  background-color: #f3f4f6; /* Light gray background */
+  border: 1px solid #e5e7eb; /* Optional: subtle border if needed */
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  box-sizing: border-box;
+}
+
+.sort-button:hover {
+  background-color: #e5e7eb;
+}
+
+.sort-button-text {
+  font-size: 14px;
+  color: #1f2937; /* Dark text */
+  font-weight: 500;
+  margin-right: 4px; /* 4px gap between text and icon as per spec */
+  line-height: 1; /* Keep it tight for exact vertical centering */
+}
+
+.sort-button-icon {
+  width: 20px; /* 20px width as per spec */
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #1f2937;
+}
+
+.sort-button-icon svg {
+  width: 16px;
+  height: 16px;
+}

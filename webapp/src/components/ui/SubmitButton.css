@@ -1,0 +1,24 @@
+.submit-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  /* Applying the best practice: Generous horizontal padding (32px) */
+  padding: 12px 32px; 
+  background-color: #5b45f4; /* A nice purple-blue */
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.1s ease;
+  box-shadow: 0px 4px 10px rgba(91, 69, 244, 0.2);
+}
+
+.submit-button:hover {
+  background-color: #4f3ce3;
+}
+
+.submit-button:active {
+  transform: translateY(1px);
+}

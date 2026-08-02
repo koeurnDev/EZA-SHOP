@@ -1,0 +1,89 @@
+.g-layout-container {
+  background-color: white;
+  border-radius: 12px;
+  box-shadow: 0px 10px 15px rgba(0, 0, 0, 0.05);
+  padding: 24px;
+  max-width: 640px;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.g-layout-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.g-layout-logo {
+  font-weight: 800;
+  font-size: 20px;
+  color: #111827;
+}
+
+.g-layout-nav-btn {
+  background: #f3f4f6;
+  color: #374151;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.g-layout-main {
+  display: flex;
+  gap: 24px;
+  align-items: center;
+}
+
+.g-layout-image-placeholder {
+  flex: 1;
+  background-color: #cbd5e1; /* slate-300 */
+  border-radius: 8px;
+  height: 160px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #f8fafc;
+}
+
+.g-layout-image-placeholder svg {
+  width: 48px;
+  height: 48px;
+}
+
+.g-layout-content {
+  flex: 1.2;
+  display: flex;
+  flex-direction: column;
+}
+
+.g-layout-content h2 {
+  margin: 0 0 8px 0;
+  font-size: 22px;
+  color: #111827;
+}
+
+.g-layout-content p {
+  margin: 0 0 20px 0;
+  color: #4b5563;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.g-layout-cta-wrapper {
+  display: flex;
+  justify-content: flex-end; /* This places the CTA at the bottom right (Position 4) */
+}
+
+.g-layout-cta-btn {
+  background-color: #4f46e5; /* indigo-600 */
+  color: white;
+  border: none;
+  padding: 12px 32px; /* Applying the wide padding rule from earlier */
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0px 4px 10px rgba(79, 70, 229, 0.2);
+}

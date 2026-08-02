@@ -50,7 +50,54 @@ bot.command('orders', async (ctx) => {
 
 bot.action('view_orders', (ctx) => ctx.reply('សូមវាយពាក្យ /orders ដើម្បីមើលប្រវត្តិរូបបងបាទ។'));
 
-// 3. Error Handling
+// 4. Receipt Verification Handlers (Admin)
+bot.action(/^approve_order_(.+)$/, async (ctx) => {
+  try {
+    const orderCode = ctx.match[1];
+    const orderService = require('../services/orderService');
+    
+    // Call confirmOrderPayment which updates status to 'paid' and triggers User notification
+    await orderService.confirmOrderPayment(orderCode, { id: 'SYSTEM' }, false);
+    
+    // Update Admin Message
+    await ctx.editMessageCaption(
+      `${ctx.update.callback_query.message.caption}\n\n✅ អនុម័តដោយ: ${ctx.from.first_name}`
+    );
+    await ctx.answerCbQuery('Approved Successfully!');
+  } catch (err) {
+    console.error('Approve Error:', err);
+    await ctx.answerCbQuery(`Error: ${err.message}`, { show_alert: true });
+  }
+});
+
+bot.action(/^reject_order_(.+)$/, async (ctx) => {
+  try {
+    const orderCode = ctx.match[1];
+    
+    // Update Order Status to cancelled in DB
+    const res = await pool.query('UPDATE orders SET status = $1 WHERE order_code = $2 RETURNING user_id', ['cancelled', orderCode]);
+    
+    if (res.rowCount > 0) {
+      const userId = res.rows[0].user_id;
+      // Notify User
+      const userMsg = `❌ *វិក្កយបត្ររបស់អ្នកត្រូវបានបដិសេធ*\n` +
+                      `🆔 លេខសម្គាល់: \`${orderCode}\`\n` +
+                      `សូមពិនិត្យមើលរូបភាពវិក្កយបត្ររបស់អ្នកឡើងវិញ រួចព្យាយាមម្តងទៀត។ ប្រសិនបើមានបញ្ហា សូមទាក់ទងមកខាងយើងខ្ញុំ។`;
+      await ctx.telegram.sendMessage(userId, userMsg, { parse_mode: 'Markdown' }).catch(console.error);
+    }
+    
+    // Update Admin Message
+    await ctx.editMessageCaption(
+      `${ctx.update.callback_query.message.caption}\n\n❌ បដិសេធដោយ: ${ctx.from.first_name}`
+    );
+    await ctx.answerCbQuery('Rejected Successfully!');
+  } catch (err) {
+    console.error('Reject Error:', err);
+    await ctx.answerCbQuery(`Error: ${err.message}`, { show_alert: true });
+  }
+});
+
+// 5. Error Handling
 bot.catch((err, ctx) => {
   console.error(`🔴 Bot Error for ${ctx.updateType}:`, err);
 });

@@ -369,7 +369,7 @@ const InvoiceModal = ({ order, onClose, paymentQrUrl, paymentInfo, BACKEND_URL, 
              <div className="khqr-terminal-header"></div>
              <div className="khqr-brand-tag">KHQR</div>
              
-             <div style={{ textAlign: 'center' }}>
+             <div style={{ textAlign: 'center', marginTop: 40 }}>
                 <div className="order-id-lux" style={{ letterSpacing: 2 }}>MO MO BOUTIQUE</div>
                 <div className="khqr-amount-lux">${parseFloat(localOrder.total).toFixed(2)}</div>
 
@@ -378,80 +378,126 @@ const InvoiceModal = ({ order, onClose, paymentQrUrl, paymentInfo, BACKEND_URL, 
                    {localOrder.user_name} • {localOrder.phone}
                 </div>
 
-                <div className="qr-code-wrapper-lux">
-                   {dynamicQr || paymentQrUrl ? (
-                     <img src={dynamicQr || paymentQrUrl} alt="KHQR" onContextMenu={(e) => e.preventDefault()} />
-                   ) : (
-                     <div style={{ width: '220px', height: '220px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16 }}>
-                        {timeLeft < 290 ? ( // 🛡️ Fallback: Show manual info if QR takes > 10s
-                          <div className="animate-in" style={{ textAlign: 'center', padding: '15px' }}>
-                            <div style={{ fontSize: '32px', marginBottom: '10px' }}>🏦</div>
-                            <div style={{ fontSize: '12px', fontWeight: '950', color: 'var(--text-bold)', textTransform: 'uppercase', marginBottom: '8px' }}>Manual Payment</div>
-                            <div style={{ fontSize: '13px', color: 'var(--text-muted)', background: 'var(--bg-soft)', padding: '10px', borderRadius: '12px', wordBreak: 'break-all' }}>
-                              {paymentInfo || 'ABA: 000 000 000 (MOMO)'}
+                {isDraft ? (
+                   <div style={{ padding: '40px 20px', textAlign: 'center' }}>
+                      <div style={{ fontSize: '40px', marginBottom: '16px', animation: 'spin 2s linear infinite' }}>⏳</div>
+                      <div style={{ fontSize: '15px', fontWeight: 900, color: 'var(--text-bold)', marginBottom: '8px' }}>{lang === 'kh' ? 'កំពុងរៀបចំការកម្ម៉ង់...' : 'Preparing Order...'}</div>
+                      <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>{lang === 'kh' ? 'សូមរង់ចាំបន្តិច ពេលកំពុងភ្ជាប់ទៅកាន់ប្រព័ន្ធ...' : 'Please wait while we connect to the system...'}</div>
+                   </div>
+                ) : (
+                   <>
+                      {!receiptUploaded ? (
+                         <>
+                            <div className="qr-code-wrapper-lux">
+                               {dynamicQr ? (
+                                 <img src={dynamicQr} alt="KHQR" onContextMenu={(e) => e.preventDefault()} />
+                               ) : paymentQrUrl ? (
+                                 <img src={paymentQrUrl} alt="KHQR" onContextMenu={(e) => e.preventDefault()} />
+                               ) : (
+                                 <div style={{ width: '220px', height: '220px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16 }}>
+                                   <div className="animate-in" style={{ textAlign: 'center', padding: '15px' }}>
+                                     <div style={{ fontSize: '32px', marginBottom: '10px' }}>🏦</div>
+                                     <div style={{ fontSize: '12px', fontWeight: '950', color: 'var(--text-bold)', textTransform: 'uppercase', marginBottom: '8px' }}>{lang === 'kh' ? 'ព័ត៌មានបង់ប្រាក់' : 'Payment Details'}</div>
+                                     <div style={{ fontSize: '13px', color: 'var(--text-muted)', background: 'var(--bg-soft)', padding: '10px', borderRadius: '12px', wordBreak: 'break-all' }}>
+                                       {paymentInfo || 'ABA / ABA KHQR'}
+                                     </div>
+                                   </div>
+                                 </div>
+                               )}
                             </div>
-                            {/* DEBUG INFO */}
-                            <div style={{ fontSize: '10px', color: 'red', wordBreak: 'break-all', marginTop: 10 }}>
-                               Debug: QR String length = {localOrder?.qr_string?.length || 0}.
-                               {qrError && ` Error: ${qrError}`}
+
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, color: timeLeft < 60 ? '#ef4444' : 'var(--text-muted)', fontWeight: 950, fontSize: 18, marginBottom: 8 }}>
+                               <span style={{ opacity: 0.6 }}>⏳</span>
+                               {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}
                             </div>
-                            <div style={{ fontSize: '10px', marginTop: '10px', color: '#ef4444', fontWeight: 700 }}>{lang === 'kh' ? 'សាកល្បងបើកឡើងវិញដើម្បីទទួល QR' : 'Try reopening to refresh QR'}</div>
-                          </div>
-                        ) : (
-                          <>
-                            <div className="loader"></div>
-                            <span style={{ fontSize: '11px', fontWeight: '800', color: 'var(--text-muted)', letterSpacing: 1 }}>{lang === 'kh' ? 'កំពុងបង្កើត KHQR...' : 'Generating Secure KHQR...'}</span>
-                          </>
-                        )}
-                     </div>
-                   )}
-                </div>
+                         </>
+                      ) : (
+                         <div className="animate-in" style={{ marginBottom: 20, textAlign: 'left', background: 'var(--bg-soft)', borderRadius: 16, padding: 16 }}>
+                           <div style={{ fontSize: 14, fontWeight: 900, marginBottom: 12, borderBottom: '1px solid rgba(0,0,0,0.05)', paddingBottom: 10, color: 'var(--text-bold)' }}>
+                             {lang === 'kh' ? '🛍️ សេចក្តីសង្ខេបការកម្ម៉ង់' : '🛍️ Order Summary'}
+                           </div>
+                           <div style={{ maxHeight: '180px', overflowY: 'auto' }}>
+                             {items?.map((item, idx) => (
+                               <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10, fontSize: 13, color: 'var(--text-bold)' }}>
+                                 <span style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                   <span>{item.name}</span>
+                                   <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                                     {item.selectedSize && `Size: ${item.selectedSize} | `} 
+                                     {item.selectedColor && `Color: ${item.selectedColor} | `} 
+                                     Qty: {item.quantity}
+                                   </span>
+                                 </span>
+                                 <span style={{ fontWeight: 800 }}>${(item.price * item.quantity).toFixed(2)}</span>
+                               </div>
+                             ))}
+                           </div>
+                           <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 12, paddingTop: 12, borderTop: '1px dashed rgba(0,0,0,0.1)', fontSize: 16, fontWeight: 900, color: 'var(--text-bold)' }}>
+                             <span>{lang === 'kh' ? 'សរុប' : 'Total'}</span>
+                             <span style={{ color: 'var(--primary-accent)' }}>${localOrder.total?.toFixed(2) || '0.00'}</span>
+                           </div>
+                         </div>
+                      )}
 
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, color: timeLeft < 60 ? '#ef4444' : 'var(--text-muted)', fontWeight: 950, fontSize: 18, marginBottom: 8 }}>
-                   <span style={{ opacity: 0.6 }}>⏳</span>
-                   {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}
-                </div>
+                      {/* 🔍 Manual Check Instructions */}
+                      {!receiptUploaded ? (
+                        <div style={{ fontSize: '13px', color: 'var(--text-bold)', fontWeight: 900, marginBottom: 16, textAlign: 'center', lineHeight: 1.5, background: 'var(--bg-soft)', padding: 12, borderRadius: 12 }}>
+                          {lang === 'kh' ? 'សូមស្កេនបង់ប្រាក់ រួចថតអេក្រង់ (Screenshot) ផ្ញើទៅកាន់ Admin ដើម្បីបញ្ជាក់ការកម្ម៉ង់។' : 'Please scan to pay and send the screenshot to Admin to confirm.'}
+                        </div>
+                      ) : (
+                        <div style={{ fontSize: '13px', color: '#10b981', fontWeight: 900, marginBottom: 16, textAlign: 'center', lineHeight: 1.5, background: 'rgba(16, 185, 129, 0.1)', padding: 12, borderRadius: 12 }}>
+                          {lang === 'kh' ? '✅ ទទួលបានជោគជ័យ! អរគុណសម្រាប់ការបង់ប្រាក់។ ក្រុមការងារយើងខ្ញុំកំពុងពិនិត្យ និងរៀបចំការកម្ម៉ង់ជូនលោកអ្នក។' : '✅ Received Successfully! Thank you for your payment. Our team is verifying and preparing your order.'}
+                        </div>
+                      )}
 
-                {/* 🔍 Manual Check Instructions */}
-                <div style={{ fontSize: '13px', color: 'var(--text-bold)', fontWeight: 900, marginBottom: 16, textAlign: 'center', lineHeight: 1.5, background: 'var(--bg-soft)', padding: 12, borderRadius: 12 }}>
-                  {lang === 'kh' ? 'សូមស្កេនបង់ប្រាក់ រួចថតអេក្រង់ (Screenshot) ផ្ញើទៅកាន់ Admin ដើម្បីបញ្ជាក់ការកម្ម៉ង់។' : 'Please scan to pay and send the screenshot to Admin to confirm.'}
-                </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                         {!receiptUploaded && (
+                           <label className={`detail-btn-buy-luxury`} style={{ width: '100%', height: 48, borderRadius: 16, fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none', cursor: 'pointer', background: 'var(--primary-gradient)' }}>
+                             {isUploadingReceipt ? (lang === 'kh' ? '⌛ កំពុងផ្ទុក...' : '⌛ Uploading...') : (lang === 'kh' ? '📤 ដាក់វិក្កយបត្របញ្ជាក់ទីនេះ' : 'Upload Receipt Here')}
+                           <input type="file" accept="image/*" style={{ display: 'none' }} disabled={isUploadingReceipt || receiptUploaded} onChange={async (e) => {
+                             const file = e.target.files?.[0];
+                             if (file) {
+                               // 🚀 Optimistic UI: Immediately show success
+                               setIsUploadingReceipt(true);
+                               setReceiptUploaded(true);
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                   <label className="detail-btn-buy-luxury" style={{ width: '100%', height: 48, borderRadius: 16, fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none', cursor: 'pointer', background: receiptUploaded ? '#10b981' : 'var(--rose-gradient)' }}>
-                     {isUploadingReceipt ? (lang === 'kh' ? '⌛ កំពុងផ្ទុក...' : '⌛ Uploading...') : receiptUploaded ? (lang === 'kh' ? '✅ បានបញ្ជូនជោគជ័យ' : '✅ Uploaded Successfully') : (lang === 'kh' ? '📤 ដាក់វិក្កយបត្របញ្ជាក់ទីនេះ' : 'Upload Receipt Here')}
-                     <input type="file" accept="image/*" style={{ display: 'none' }} disabled={isUploadingReceipt || receiptUploaded} onChange={async (e) => {
-                       const file = e.target.files?.[0];
-                       if (file) {
-                         setIsUploadingReceipt(true);
-                         const fd = new FormData();
-                         fd.append('image', file); // using 'image' as expected by multer
-                         try {
-                           const tgData = window.Telegram?.WebApp?.initData || '';
-                           const res = await fetch(`${BACKEND_URL}/api/upload`, { method: 'POST', headers: { 'X-TG-Data': tgData }, body: fd });
-                           const data = await res.json();
-                           if (data.success) {
-                              // Link to order
-                              await fetch(`${BACKEND_URL}/api/orders/receipt`, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json', 'X-TG-Data': tgData },
-                                body: JSON.stringify({ orderCode: localOrder.order_code, receiptUrl: data.url })
-                              });
-                              setReceiptUploaded(true);
-                           } else {
-                              alert(lang === 'kh' ? 'មានបញ្ហាក្នុងការផ្ទុករូបភាព' : 'Upload failed');
-                           }
-                         } catch (err) {
-                           console.error(err);
-                           alert(lang === 'kh' ? 'មានបញ្ហាបណ្តាញទាក់ទង' : 'Network Error');
-                         } finally {
-                           setIsUploadingReceipt(false);
-                         }
-                       }
-                     }} />
-                   </label>
-                   <button onClick={onClose} className="back-btn-pill" style={{ width: '100%', height: 40, borderRadius: 16, opacity: 0.6, fontSize: 12 }}>{t('close')}</button>
-                </div>
+                               const fd = new FormData();
+                               fd.append('image', file); // using 'image' as expected by multer
+                               
+                               // Perform upload asynchronously without blocking the UI
+                               (async () => {
+                                 try {
+                                   const tgData = window.Telegram?.WebApp?.initData || '';
+                                   const res = await fetch(`${BACKEND_URL}/api/upload`, { method: 'POST', headers: { 'X-TG-Data': tgData }, body: fd });
+                                   const data = await res.json();
+                                   if (data.success) {
+                                      // Link to order
+                                      await fetch(`${BACKEND_URL}/api/orders/receipt`, {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json', 'X-TG-Data': tgData },
+                                        body: JSON.stringify({ orderCode: localOrder.order_code, receiptUrl: data.url })
+                                      });
+                                   } else {
+                                      // 🔄 Rollback if failed
+                                      setReceiptUploaded(false);
+                                      alert(lang === 'kh' ? 'មានបញ្ហាក្នុងការផ្ទុករូបភាព' : 'Upload failed');
+                                   }
+                                 } catch (err) {
+                                   console.error(err);
+                                   // 🔄 Rollback if failed
+                                   setReceiptUploaded(false);
+                                   alert(lang === 'kh' ? 'មានបញ្ហាបណ្តាញទាក់ទង' : 'Network Error');
+                                 } finally {
+                                   setIsUploadingReceipt(false);
+                                 }
+                               })();
+                             }
+                           }} />
+                         </label>
+                         )}
+                         <button onClick={onClose} className="back-btn-pill" style={{ width: '100%', height: 48, borderRadius: 16, fontWeight: 'bold', background: 'var(--bg-soft)', color: 'var(--text-bold)', fontSize: 14, border: 'none', cursor: 'pointer' }}>{lang === 'kh' ? 'បិទ' : 'Close'}</button>
+                      </div>
+                   </>
+                )}
              </div>
           </div>
         )}

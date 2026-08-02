@@ -12,6 +12,8 @@ const publicController = require('./controllers/publicController');
 const orderController = require('./controllers/orderController');
 const adminController = require('./controllers/adminController');
 const wishlistController = require('./controllers/wishlistController');
+const faqController = require('./controllers/faqController');
+const analyticsController = require('./controllers/analyticsController');
 
 // Middleware Config
 const { orderCreationLimiter } = require('./middleware/rateLimiter');
@@ -108,6 +110,7 @@ app.get('/api/init', publicController.getInitData);
 app.get('/api/settings', publicController.getSettings);
 app.get('/api/products', publicController.getProducts);
 app.get('/api/flags', publicController.getFlags); // 🚀 Combined Feature Flags
+app.get('/api/faqs', faqController.getFaqs);
 
 // Reviews Routes
 const reviewController = require('./controllers/reviewController');
@@ -123,6 +126,12 @@ app.post('/api/orders/receipt', verifyUser, orderController.uploadReceipt);
 // User Upload Route
 app.post('/api/upload', verifyUser, upload.single('image'), adminController.upload);
 
+const userController = require('./controllers/userController');
+
+// User Profile Routes
+app.get('/api/user/profile', verifyUser, userController.getProfile);
+app.put('/api/user/profile', verifyUser, userController.updateProfile);
+
 // Wishlist Routes
 app.get('/api/wishlist/:userId', verifyUser, wishlistController.get);
 app.post('/api/wishlist/toggle', verifyUser, wishlistController.toggle);
@@ -130,6 +139,7 @@ app.post('/api/wishlist/toggle', verifyUser, wishlistController.toggle);
 // Admin Routes
 app.get('/api/admin/summary', isAdmin, adminController.getSummary);
 app.get('/api/admin/analytics', isAdmin, adminController.getAnalytics);
+app.get('/api/admin/advanced-analytics', isAdmin, analyticsController.getAdvancedAnalytics);
 app.get('/api/admin/dashboard', isAdmin, (req, res) => adminController.getDashboardData(req, res)); // 🚀 Batch Endpoint (Ensuring visibility)
 app.get('/api/admin/products', isAdmin, adminController.getProducts);
 app.post('/api/admin/products', isAdmin, validator.product, adminController.createProduct);
@@ -138,6 +148,12 @@ app.delete('/api/admin/products/:id', isAdmin, adminController.deleteProduct);
 app.get('/api/admin/settings', isAdmin, adminController.getSettings);
 app.post('/api/admin/settings', isAdmin, validator.setting, adminController.updateSetting);
 app.post('/api/admin/upload', isAdmin, upload.single('image'), adminController.upload);
+
+// Admin FAQs
+app.get('/api/admin/faqs', isAdmin, faqController.getAdminFaqs);
+app.post('/api/admin/faqs', isAdmin, faqController.createFaq);
+app.put('/api/admin/faqs/:id', isAdmin, faqController.updateFaq);
+app.delete('/api/admin/faqs/:id', isAdmin, faqController.deleteFaq);
 
 // Additional Admin Routes
 app.get('/api/admin/categories', isAdmin, adminController.getCategories);

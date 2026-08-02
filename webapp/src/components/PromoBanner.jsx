@@ -31,13 +31,12 @@ const PromoBanner = ({ threshold, promoText, promoBannerUrl, t, lang }) => {
       <div className="ads-hero-container !px-0" style={{ position: 'relative', overflow: 'hidden' }}>
         <div className={`ads-hero-wrapper !rounded-none`} style={{ display: 'flex', transition: 'transform 0.5s ease-in-out', transform: `translateX(-${currentIndex * 100}%)` }}>
            {banners.map((url, idx) => (
-              <div key={idx} style={{ minWidth: '100%', position: 'relative' }}>
+              <div key={idx} style={{ flex: '0 0 100%', minWidth: '100%', position: 'relative' }}>
                 <img 
                   src={url.includes('upload/') ? url.replace('upload/', 'upload/f_auto,q_auto:best,w_800/') : url} 
                   alt={`Banner ${idx + 1}`} 
-                  className={`ads-hero-img ${isLoaded ? 'visible' : 'hidden'}`}
+                  className="ads-hero-img"
                   style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                  onLoad={() => setIsLoaded(true)}
                   crossOrigin="anonymous"
                   fetchpriority={idx === 0 ? "high" : "low"}
                   loading={idx === 0 ? "eager" : "lazy"}

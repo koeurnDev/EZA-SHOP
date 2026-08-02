@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from 'react';
+import ProfileCard from './ui/ProfileCard';
+import CambodiaAddress from './ui/CambodiaAddress';
 
 /**
  * 💎 High-Fidelity User Profile & Order History
@@ -11,10 +13,74 @@ const UserProfile = ({ user, setView, BACKEND_URL, onViewInvoice, t, lang, toggl
   const [ratingData, setRatingData] = useState({}); // { productId: { rating, comment } }
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activeFaq, setActiveFaq] = useState(null);
+  const [faqs, setFaqs] = useState([]);
+  
+  // Profile Data State
+  const [dbProfile, setDbProfile] = useState(null);
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [editPhone, setEditPhone] = useState('');
+  const [editAddress, setEditAddress] = useState('');
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
 
   useEffect(() => {
     fetchOrders();
+    fetchFaqs();
+    fetchProfile();
   }, [user?.id]);
+
+  const fetchProfile = () => {
+    if (!user?.id) return;
+    fetch(`${BACKEND_URL}/api/user/profile`, {
+       headers: { 'Authorization': `tma ${window.Telegram.WebApp.initData}` }
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success && data.profile) {
+        setDbProfile(data.profile);
+        setEditPhone(data.profile.phone || '');
+        setEditAddress(data.profile.address || '');
+      }
+    })
+    .catch(err => console.error('Failed to fetch profile:', err));
+  };
+
+  const saveProfile = async () => {
+    if (!user?.id) return;
+    setIsSavingProfile(true);
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/user/profile`, {
+        method: 'PUT',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `tma ${window.Telegram.WebApp.initData}` 
+        },
+        body: JSON.stringify({ phone: editPhone, address: editAddress })
+      });
+      const data = await res.json();
+      if (data.success && data.profile) {
+        setDbProfile(data.profile);
+        setIsEditingProfile(false);
+        if (window.Telegram?.WebApp?.HapticFeedback) {
+          window.Telegram.WebApp.HapticFeedback.notificationOccurred('success');
+        }
+      }
+    } catch (err) {
+      console.error('Failed to save profile:', err);
+    } finally {
+      setIsSavingProfile(false);
+    }
+  };
+
+  const fetchFaqs = () => {
+    fetch(`${BACKEND_URL}/api/faqs`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          setFaqs(data.faqs);
+        }
+      })
+      .catch(err => console.error('Failed to fetch FAQs:', err));
+  };
 
   const fetchOrders = () => {
     if (!user?.id) return;
@@ -95,26 +161,86 @@ const UserProfile = ({ user, setView, BACKEND_URL, onViewInvoice, t, lang, toggl
         </div>
       </div>
 
-      <div className="order-card-luxury" style={{ cursor: 'default', background: 'var(--profile-banner-bg)', border: '1px solid var(--border-subtle)', marginBottom: 40 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
-          <div className="user-avatar-premium">
-             <div className="avatar-inner-lux" style={{ 
-                background: user.photo_url ? `url(${user.photo_url}) center/cover` : 'var(--bg-surface)',
-                color: 'var(--text-bold)'
-             }}>
-                {!user.photo_url && (user.first_name?.charAt(0) || '👤')}
-             </div>
-             <div className="avatar-glow-ring"></div>
+      <ProfileCard 
+        name={`${user?.first_name || 'MO MO LOVER'} ${user?.last_name || ''}`}
+        role={`Premium Member #${String(user?.id).slice(-4)}`}
+        imageUrl={user?.photo_url || `https://ui-avatars.com/api/?name=${user?.first_name || 'User'}&background=random`}
+      />
+
+      {dbProfile && (
+        <div className="glass-card-luxury" style={{ marginBottom: 30, padding: 20 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 }}>
+            <div style={{ fontSize: 16, fontWeight: 900 }}>{lang === 'kh' ? 'ព័ត៌មានរបស់ខ្ញុំ' : 'My Information'}</div>
+            {!isEditingProfile ? (
+              <button onClick={() => setIsEditingProfile(true)} style={{ background: 'none', border: 'none', color: '#ec4899', fontSize: 12, fontWeight: 900 }}>
+                {lang === 'kh' ? 'កែប្រែ' : 'Edit'}
+              </button>
+            ) : (
+              <button onClick={() => setIsEditingProfile(false)} style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: 12, fontWeight: 900 }}>
+                {lang === 'kh' ? 'បោះបង់' : 'Cancel'}
+              </button>
+            )}
           </div>
-          <div className="user-info-text-lux">
-             <h2 className="user-name-lux">{user?.first_name || 'MO MO LOVER'} {user?.last_name || ''}</h2>
-             <div className="profile-badge-luxury">
-                <span className="badge-shimmer-lux"></span>
-                <span style={{ position: 'relative', zIndex: 1 }}>Premium Member #{String(user?.id).slice(-4)}</span>
-             </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 15, marginBottom: 15, paddingBottom: 15, borderBottom: '1px solid var(--border-subtle)' }}>
+            <div style={{ width: 40, height: 40, borderRadius: 12, background: 'linear-gradient(135deg, #f59e0b, #ec4899)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>
+              🎁
+            </div>
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 800, opacity: 0.6 }}>{lang === 'kh' ? 'ពិន្ទុសន្សំ (Loyalty Points)' : 'Loyalty Points'}</div>
+              <div style={{ fontSize: 18, fontWeight: 950, color: '#f59e0b' }}>{dbProfile.loyalty_points || 0} pts</div>
+            </div>
           </div>
+
+          {!isEditingProfile ? (
+            <div style={{ display: 'grid', gap: 10 }}>
+              <div style={{ fontSize: 13 }}>
+                <span style={{ opacity: 0.6, marginRight: 8 }}>📞</span> 
+                <span style={{ fontWeight: 800 }}>{dbProfile.phone || (lang === 'kh' ? 'មិនទាន់មាន' : 'Not set')}</span>
+              </div>
+              <div style={{ fontSize: 13 }}>
+                <span style={{ opacity: 0.6, marginRight: 8 }}>📍</span> 
+                <span style={{ fontWeight: 800 }}>{dbProfile.address || (lang === 'kh' ? 'មិនទាន់មាន' : 'Not set')}</span>
+              </div>
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gap: 15 }}>
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 900, opacity: 0.7, marginBottom: 5, display: 'block' }}>
+                  {lang === 'kh' ? 'លេខទូរស័ព្ទ' : 'Phone Number'}
+                </label>
+                <input 
+                  type="tel"
+                  className="input-glass-admin" 
+                  style={{ width: '100%', fontSize: 14 }}
+                  value={editPhone}
+                  onChange={e => setEditPhone(e.target.value)}
+                  placeholder="012 345 678"
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 900, opacity: 0.7, marginBottom: 5, display: 'block' }}>
+                  {lang === 'kh' ? 'អាសយដ្ឋានដឹកជញ្ជូន' : 'Delivery Address'}
+                </label>
+                <div style={{ background: 'var(--bg-soft)', padding: 15, borderRadius: 16 }}>
+                  <CambodiaAddress 
+                    value={editAddress}
+                    onChange={(val) => setEditAddress(val)}
+                    lang={lang}
+                  />
+                </div>
+              </div>
+              <button 
+                className="detail-btn-buy-luxury" 
+                onClick={saveProfile}
+                disabled={isSavingProfile}
+                style={{ height: 44, fontSize: 14, marginTop: 5 }}>
+                {isSavingProfile ? '⌛...' : (lang === 'kh' ? 'រក្សាទុក' : 'Save Profile')}
+              </button>
+            </div>
+          )}
         </div>
-      </div>
+      )}
 
 
        <div className="section-header" style={{ padding: '0 0 15px' }}>
@@ -276,45 +402,12 @@ const UserProfile = ({ user, setView, BACKEND_URL, onViewInvoice, t, lang, toggl
            </div>
         </div>
       )}
-
-
-      {/* 🛡 SENIOR PRINCIPAL: Help Center Ecosystem */}
-      <div className="help-center-lux animate-in">
-         <div className="section-header" style={{ padding: '0 0 20px' }}>
-            <h2 style={{ fontSize: 20, fontWeight: 950, color: 'var(--text-bold)' }}>{lang === 'kh' ? 'មជ្ឈមណ្ឌលជំនួយ' : 'Help Center'}</h2>
-         </div>
-
-         <div className="help-grid-lux">
-            <div className="help-action-card" onClick={() => window.Telegram?.WebApp?.openTelegramLink('https://t.me/momo_support')}>
-               <div className="help-action-icon" style={{ background: '#ec489915' }}>
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ec4899" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                     <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-                  </svg>
-               </div>
-               <div className="help-action-title">{lang === 'kh' ? 'ភ្នាក់ងារជំនួយ' : 'Chat with Agent'}</div>
-               <div className="help-action-desc">{lang === 'kh' ? 'ក្រុមការងារតបតក្នុងពេលឆាប់ៗ' : 'Typical response: 5 mins'}</div>
+      {faqs.length > 0 && (
+         <div className="faq-section-lux" style={{ marginTop: 30 }}>
+            <div className="section-header" style={{ padding: '0 0 20px' }}>
+               <h2 style={{ fontSize: 20, fontWeight: 950, color: 'var(--text-bold)' }}>{lang === 'kh' ? 'សំណួរដែលសួរញឹកញាប់' : 'FAQs'}</h2>
             </div>
-            
-            <div className="help-action-card" onClick={() => window.scrollTo({ top: 400, behavior: 'smooth' })}>
-               <div className="help-action-icon" style={{ background: '#3b82f615' }}>
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                     <rect x="1" y="3" width="15" height="13"></rect>
-                     <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon>
-                     <circle cx="5.5" cy="18.5" r="2.5"></circle>
-                     <circle cx="18.5" cy="18.5" r="2.5"></circle>
-                  </svg>
-               </div>
-               <div className="help-action-title">{lang === 'kh' ? 'តាមដានអីវ៉ាន់' : 'Track Order'}</div>
-               <div className="help-action-desc">{lang === 'kh' ? 'ពិនិត្យមើលស្ថានភាពដឹក' : 'Live shipping updates'}</div>
-            </div>
-         </div>
-
-         <div className="faq-section-lux">
-            {[
-               { id: 1, q_kh: 'តើការដឹកជញ្ជូនចំណាយពេលប៉ុន្មាន?', q_en: 'How long does delivery take?', a_kh: 'សម្រាប់ភ្នំពេញក្នុងរយ:ពេល ២៤-៤៨ ម៉ោង និងខេត្តក្រៅ ១-៣ ថ្ងៃ។', a_en: 'Typically 24-48 hours in Phnom Penh and 1-3 days for provinces.' },
-               { id: 2, q_kh: 'តើខ្ញុំអាចប្តូរអីវ៉ាន់បានទេ?', q_en: 'Can I return or exchange items?', a_kh: 'លោកអ្នកអាចប្តូរបានក្នុងរយ:ពេល ៣ ថ្ងៃប្រសិនបើមានការខូចខាតពីហាង។', a_en: 'Returns or exchanges are accepted within 3 days for shop defects.' },
-               { id: 3, q_kh: 'តើការបង់ប្រាក់មានអមជាមួយអ្វីខ្លះ?', q_en: 'What are the payment methods?', a_kh: 'ហាងយើងខ្ញុំទទួលការបង់តាម ABA, Bakong KHQR និងសាច់ប្រាក់សុទ្ធ។', a_en: 'We accept ABA, Bakong KHQR, and Cash on Delivery.' }
-            ].map((faq) => (
+            {faqs.map((faq) => (
                <div key={faq.id} className={`faq-item-lux ${activeFaq === faq.id ? 'open' : ''}`}>
                   <button className="faq-trigger-lux" onClick={() => setActiveFaq(activeFaq === faq.id ? null : faq.id)}>
                      <span className="faq-q-text">{lang === 'kh' ? faq.q_kh : faq.q_en}</span>
@@ -326,14 +419,9 @@ const UserProfile = ({ user, setView, BACKEND_URL, onViewInvoice, t, lang, toggl
                </div>
             ))}
          </div>
-         
-         <div className="footer-social-strip">
-            <a href="#" className="social-link-lux">📸</a>
-            <a href="#" className="social-link-lux">📘</a>
-            <a href="#" className="social-link-lux">🎵</a>
-         </div>
+      )}
+
       </div>
-    </div>
   );
 };
 

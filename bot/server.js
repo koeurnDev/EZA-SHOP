@@ -8,11 +8,11 @@ const paymentReconciler = require('./workers/paymentReconciler');
 // Error Handling (Global)
 process.on('uncaughtException', (err) => {
   console.error('🔥 UNCAUGHT EXCEPTION:', err);
-  process.exit(1);
+  // process.exit(1); // Keep alive for resilience
 });
 process.on('unhandledRejection', (reason, promise) => {
   console.error('🔥 UNHANDLED REJECTION:', reason);
-  process.exit(1);
+  // process.exit(1); // Keep alive for resilience
 });
 
 const validateEnv = () => {

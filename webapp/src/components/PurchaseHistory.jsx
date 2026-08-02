@@ -9,8 +9,7 @@ const PurchaseHistory = ({ setView, BACKEND_URL }) => {
     'paid': { label: 'បង់រួច', color: '#10b981', icon: '💰', step: 1 },
     'processing': { label: 'រៀបចំ', color: '#f59e0b', icon: '📦', step: 2 },
     'shipped': { label: 'ចេញហាង', color: '#a855f7', icon: '✨', step: 3 },
-    'delivering': { label: 'កំពុងដឹក', color: '#3b82f6', icon: '🚚', step: 4 },
-    'delivered': { label: 'មកដល់', color: '#10b981', icon: '🏠', step: 4 }
+    'cancelled': { label: 'លុបចោល', color: '#ef4444', icon: '❌', step: 0 }
   };
 
   useEffect(() => {
@@ -68,7 +67,7 @@ const PurchaseHistory = ({ setView, BACKEND_URL }) => {
                   <div style={{ position: 'absolute', top: '18px', left: 0, width: '100%', height: '4px', background: 'var(--bg-soft)', borderRadius: 10 }}></div>
                   <div style={{ 
                      position: 'absolute', top: '18px', left: 0, 
-                     width: `${Math.max(0, ((orderStatuses[order.status]?.step || 0) - 1) * 25)}%`, 
+                     width: `${Math.max(0, ((orderStatuses[order.status]?.step || 0) - 1) * 50)}%`, 
                      height: '4px', background: orderStatuses[order.status]?.color || '#cbd5e1', borderRadius: 10, 
                      transition: 'all 1s cubic-bezier(0.4, 0, 0.2, 1)' 
                   }}></div>
@@ -77,9 +76,7 @@ const PurchaseHistory = ({ setView, BACKEND_URL }) => {
                      {[
                        { step: 1, icon: '💰', label: 'Paid' },
                        { step: 2, icon: '📦', label: 'Packing' },
-                       { step: 3, icon: '✨', label: 'Shipped' },
-                       { step: 4, icon: '🚚', label: 'Moving' },
-                       { step: 5, icon: '🏠', label: 'Arrived' }
+                       { step: 3, icon: '✨', label: 'Shipped' }
                      ].map((s, i) => {
                         const stepNum = orderStatuses[order.status]?.step || 0;
                         const isActive = s.step <= stepNum;
@@ -143,6 +140,17 @@ const PurchaseHistory = ({ setView, BACKEND_URL }) => {
                     >
                        Track
                     </button>
+                 </div>
+               )}
+
+               {order.receipt_url && (
+                 <div className="premium-card" style={{ background: 'rgba(16, 185, 129, 0.05)', border: '1px dashed rgba(16, 185, 129, 0.2)', padding: 10, borderRadius: 14, marginBottom: 15 }}>
+                    <div style={{ fontSize: 9, fontWeight: 800, color: '#10b981', textTransform: 'uppercase', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 5 }}>
+                       <span>🧾</span> វិក្កយបត្រដែលបានបញ្ជូន
+                    </div>
+                    <div style={{ width: '100%', borderRadius: 8, overflow: 'hidden' }}>
+                       <img src={order.receipt_url} alt="Receipt" style={{ width: '100%', maxHeight: '150px', objectFit: 'contain', cursor: 'pointer' }} onClick={() => window.Telegram?.WebApp?.openLink ? window.Telegram.WebApp.openLink(order.receipt_url) : window.open(order.receipt_url, '_blank')} />
+                    </div>
                  </div>
                )}
 

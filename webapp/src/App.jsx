@@ -22,7 +22,7 @@ import PromoBanner from './components/PromoBanner';
 import ProductGrid from './components/ProductGrid';
 import ProductDetail from './components/ProductDetail';
 import CartPage from './components/CartPage';
-import PillFooter from './components/PillFooter';
+import ModernBottomNav from './components/ui/ModernBottomNav';
 import VideoFeed from './components/VideoFeed';
 import SplashScreen from './components/ui/SplashScreen';
 import SuccessOverlay from './components/SuccessOverlay';
@@ -33,6 +33,8 @@ import ProductSkeleton from './components/ProductSkeleton';
 import OfflineBanner from './components/ui/OfflineBanner';
 import OfflineService from './services/OfflineService';
 import ErrorBoundary from './components/ui/ErrorBoundary';
+import FilterModal from './components/ui/FilterModal';
+import VisualSearchModal from './components/ui/VisualSearchModal';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || '';
 
@@ -41,7 +43,8 @@ function App() {
   const { user, theme, lang, isSuperAdmin, t } = useUserState();
   const { 
     setView, setSelectedProduct, setSelectedCategory, setSearchTerm,
-    setShopStatus, setDeliveryThreshold, setDeliveryFee, setPromoText, setPromoBannerUrl, setShopLogoUrl
+    setShopStatus, setDeliveryThreshold, setDeliveryFee, setPromoText, setPromoBannerUrl, setShopLogoUrl,
+    setShowFilterModal, setShowScanner
   } = useShopDispatch();
   const { toggleLang, toggleTheme } = useUserDispatch();
   
@@ -53,7 +56,9 @@ function App() {
     view, isSettingsLoaded, shopStatus, products, 
     deliveryThreshold, promoText, promoBannerUrl, selectedCategory, 
     selectedProduct, activeDiscounts, shopLogoUrl, deliveryFee,
-    paymentQrUrl, paymentInfo, searchTerm
+    paymentQrUrl, paymentInfo, searchTerm,
+    showFilterModal,
+    showScanner
   } = useShopState();
   
   const { 
@@ -286,7 +291,7 @@ function App() {
             )}
             {(view === 'home' || view === 'browse') && (
               <div className="animate-in">
-                <Hero />
+                <Hero searchTerm={searchTerm} setSearchTerm={setSearchTerm} view={view} setView={setView} user={user} lang={lang} theme={theme} toggleLang={toggleLang} toggleTheme={toggleTheme} />
                 <PromoBanner threshold={deliveryThreshold} promoText={promoText} promoBannerUrl={promoBannerUrl} t={t} lang={lang} />
                 {view === 'browse' && <CategoryNavigator searchTerm={searchTerm} setSearchTerm={setSearchTerm} selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory} t={t} />}
                 <ProductGrid />
@@ -325,10 +330,12 @@ function App() {
         )}
 
         {view === 'product_detail' && selectedProduct && (
-          <ProductDetail product={selectedProduct} allProducts={products} onAdd={addToCart} onClose={() => setView('home')} onBuyNow={(e) => { addToCart(selectedProduct, e); setView('checkout'); }} activeDiscounts={activeDiscounts} t={t} lang={lang} shopLogoUrl={shopLogoUrl} onSelectRelated={(p) => setSelectedProduct(p)} />
+          <ProductDetail product={selectedProduct} allProducts={products} onAdd={addToCart} onClose={() => setView('home')} onBuyNow={() => setView('checkout')} activeDiscounts={activeDiscounts} t={t} lang={lang} shopLogoUrl={shopLogoUrl} onSelectRelated={(p) => setSelectedProduct(p)} />
         )}
 
-        <PillFooter view={view} setView={setView} totalPrice={totalPrice} isAdmin={isSuperAdmin} cartCount={totalItemsCount} t={t} lang={lang} />
+        <FilterModal />
+        {showScanner && <VisualSearchModal onClose={() => setShowScanner(false)} />}
+        <ModernBottomNav view={view} setView={setView} cartCount={totalItemsCount} isAdmin={isSuperAdmin} t={t} lang={lang} />
         <OfflineBanner />
       </div>
     </ErrorBoundary>

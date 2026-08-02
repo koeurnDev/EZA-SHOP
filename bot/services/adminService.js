@@ -108,7 +108,7 @@ const adminService = {
       orders, 
       products, 
       categories, 
-      settings: settings.settings || {} 
+      settings: settings || {} 
     };
   }
 };

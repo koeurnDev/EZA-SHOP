@@ -15,6 +15,7 @@ const ProductDetail = ({ product, allProducts = [], onAdd, onClose, onBuyNow, ac
   const [newReviewText, setNewReviewText] = useState('');
   const [newReviewRating, setNewReviewRating] = useState(5);
   const [submittingReview, setSubmittingReview] = useState(false);
+  const [showReviewForm, setShowReviewForm] = useState(false);
 
   const scrollRef = React.useRef(null);
   const mainScrollRef = React.useRef(null);
@@ -91,6 +92,22 @@ const ProductDetail = ({ product, allProducts = [], onAdd, onClose, onBuyNow, ac
 
   const relatedProducts = allProducts.filter(p => p.category === product.category && p.id !== product.id).slice(0, 8);
 
+  const handleBuyNow = (e) => {
+    e.stopPropagation();
+    if (product.stock > 0 && quantity > product.stock) {
+      alert(lang === 'kh' ? `សុំទោស! ទំនិញនេះមានក្នុងស្តុកតែ ${product.stock} ប៉ុណ្ណោះ` : `Sorry, only ${product.stock} in stock`);
+      return;
+    }
+    
+    // Add to cart with correct quantity by reusing handleAdd logic
+    if (!isOutOfStock) {
+      for (let i = 0; i < quantity; i++) { onAdd(product, e); }
+    }
+    
+    // Trigger navigation to cart
+    if (typeof onBuyNow === 'function') onBuyNow(e);
+  };
+
   const handleAdd = (e) => {
     if (isOutOfStock) return;
     for (let i = 0; i < quantity; i++) { onAdd(product, e); }
@@ -117,7 +134,7 @@ const ProductDetail = ({ product, allProducts = [], onAdd, onClose, onBuyNow, ac
                   <path d="M15 18l-6-6 6-6"/>
                 </svg>
               </button>
-              <button className="pd-floating-btn" onClick={() => typeof onBuyNow === 'function' && onBuyNow()} aria-label="Cart">
+              <button className="pd-floating-btn" onClick={(e) => { e.stopPropagation(); if (typeof onBuyNow === 'function') onBuyNow(e); }} aria-label="Cart">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
                   <line x1="3" y1="6" x2="21" y2="6"/>
@@ -201,17 +218,33 @@ const ProductDetail = ({ product, allProducts = [], onAdd, onClose, onBuyNow, ac
               </div>
             )}
 
-            {/* Price */}
-            <div className="pd-price-row">
-              <span className="pd-price-now" style={isDiscounted ? { color: '#ef4444' } : {}}>${discountedPriceValue} USD</span>
-              {isDiscounted && (
-                <>
-                  <span className="pd-price-was" style={{ textDecoration: 'line-through', color: '#999' }}>${product.price} USD</span>
-                  <span className="pd-pct-badge" style={{ background: '#ef4444', color: 'white', padding: '2px 6px', borderRadius: '4px', fontSize: '11px', fontWeight: 'bold', marginLeft: '8px' }}>
-                    -{bestDiscount.value}{bestDiscount.discount_type === 'percent' ? '%' : '$'}
-                  </span>
-                </>
-              )}
+            {/* Price and Quantity */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', marginTop: '8px' }}>
+              <div className="pd-price-row" style={{ margin: 0 }}>
+                <span className="pd-price-now" style={isDiscounted ? { color: '#ef4444' } : {}}>${discountedPriceValue} USD</span>
+                {isDiscounted && (
+                  <>
+                    <span className="pd-price-was" style={{ textDecoration: 'line-through', color: '#999' }}>${product.price} USD</span>
+                    <span className="pd-pct-badge" style={{ background: '#ef4444', color: 'white', padding: '2px 6px', borderRadius: '4px', fontSize: '11px', fontWeight: 'bold', marginLeft: '8px' }}>
+                      -{bestDiscount.value}{bestDiscount.discount_type === 'percent' ? '%' : '$'}
+                    </span>
+                  </>
+                )}
+              </div>
+              
+              <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                 <button onClick={() => setQuantity(prev => (prev > 1 ? prev - 1 : 1))} className="pd-qty-btn"
+                   style={{ width: '32px', height: '32px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--border-subtle)', background: 'var(--bg-surface)', color: 'var(--text-main)', cursor: 'pointer' }}>
+                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14"/></svg>
+                 </button>
+                 <span style={{ fontSize: '17px', fontWeight: '800', color: 'var(--text-main)', minWidth: '20px', textAlign: 'center' }}>{quantity}</span>
+                 <button 
+                   onClick={() => setQuantity(prev => prev + 1)} 
+                   style={{ width: '32px', height: '32px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: 'var(--primary-accent)', color: 'white', cursor: 'pointer' }}
+                 >
+                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                 </button>
+              </div>
             </div>
 
             {/* Info rows */}
@@ -267,35 +300,67 @@ const ProductDetail = ({ product, allProducts = [], onAdd, onClose, onBuyNow, ac
 
             {/* Reviews Section */}
             <div className="pd-reviews-section" style={{ marginTop: '32px', paddingTop: '24px', borderTop: '1px solid var(--border-subtle)' }}>
-              <h3 style={{ fontSize: '18px', fontWeight: '900', marginBottom: '16px', color: 'var(--text-main)' }}>
-                {lang === 'kh' ? 'ការវាយតម្លៃអតិថិជន' : 'Customer Reviews'}
-              </h3>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                <h3 style={{ fontSize: '18px', fontWeight: '900', margin: 0, color: 'var(--text-main)' }}>
+                  {lang === 'kh' ? 'ការវាយតម្លៃអតិថិជន' : 'Customer Reviews'}
+                </h3>
+                {!showReviewForm && (
+                  <button 
+                    onClick={() => setShowReviewForm(true)}
+                    style={{ background: 'var(--primary-gradient)', color: 'white', padding: '6px 16px', borderRadius: '100px', fontWeight: '800', border: 'none', fontSize: '13px' }}
+                  >
+                    {lang === 'kh' ? 'សរសេរការវាយតម្លៃ' : 'Write Review'}
+                  </button>
+                )}
+              </div>
               
               {/* Add Review Form */}
-              <div style={{ background: 'var(--bg-soft)', padding: '16px', borderRadius: '16px', marginBottom: '20px', border: '1px solid var(--border-subtle)' }}>
-                <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
-                  {[1,2,3,4,5].map(star => (
-                    <span 
-                      key={star} 
-                      onClick={() => setNewReviewRating(star)}
-                      style={{ fontSize: '28px', color: star <= newReviewRating ? '#fbbf24' : 'var(--border-subtle)', cursor: 'pointer', transition: 'transform 0.1s', textShadow: star <= newReviewRating ? '0 2px 10px rgba(251, 191, 36, 0.4)' : 'none' }}
-                    >★</span>
-                  ))}
+              {showReviewForm && (
+                <div style={{ background: 'var(--bg-soft)', padding: '16px', borderRadius: '16px', marginBottom: '20px', border: '1px solid var(--border-subtle)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'center', gap: '4px', marginBottom: '16px' }}>
+                    {[1,2,3,4,5].map(star => (
+                      <span 
+                        key={star} 
+                        onClick={() => setNewReviewRating(star)}
+                        style={{ 
+                          fontSize: '36px', 
+                          padding: '10px 14px', 
+                          color: star <= newReviewRating ? '#fbbf24' : 'var(--border-subtle)', 
+                          cursor: 'pointer', 
+                          transition: 'transform 0.1s', 
+                          textShadow: star <= newReviewRating ? '0 2px 10px rgba(251, 191, 36, 0.4)' : 'none',
+                          WebkitTapHighlightColor: 'transparent',
+                          userSelect: 'none'
+                        }}
+                      >★</span>
+                    ))}
+                  </div>
+                  <textarea 
+                    value={newReviewText}
+                    onChange={(e) => setNewReviewText(e.target.value)}
+                    placeholder={lang === 'kh' ? 'សរសេរមតិយោបល់របស់អ្នក...' : 'Write your review...'}
+                    style={{ width: '100%', padding: '14px', borderRadius: '12px', border: '1px solid var(--border-subtle)', background: 'var(--bg-surface)', outline: 'none', resize: 'none', height: '80px', fontFamily: 'inherit', marginBottom: '12px', fontSize: '14px' }}
+                  />
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <button 
+                      onClick={() => setShowReviewForm(false)}
+                      style={{ background: 'transparent', color: 'var(--text-muted)', padding: '10px 16px', borderRadius: '100px', fontWeight: '800', border: '1px solid var(--border-subtle)', flex: 1 }}
+                    >
+                      {lang === 'kh' ? 'បោះបង់' : 'Cancel'}
+                    </button>
+                    <button 
+                      onClick={() => {
+                        handleSubmitReview();
+                        if (newReviewText.trim()) setShowReviewForm(false);
+                      }}
+                      disabled={submittingReview || !newReviewText.trim()}
+                      style={{ background: 'var(--primary-gradient)', color: 'white', padding: '10px 16px', borderRadius: '100px', fontWeight: '800', border: 'none', opacity: (submittingReview || !newReviewText.trim()) ? 0.5 : 1, flex: 2, boxShadow: '0 4px 15px rgba(0,0,0,0.1)' }}
+                    >
+                      {submittingReview ? '...' : (lang === 'kh' ? 'បញ្ជូនមតិយោបល់' : 'Submit Review')}
+                    </button>
+                  </div>
                 </div>
-                <textarea 
-                  value={newReviewText}
-                  onChange={(e) => setNewReviewText(e.target.value)}
-                  placeholder={lang === 'kh' ? 'សរសេរមតិយោបល់របស់អ្នក...' : 'Write your review...'}
-                  style={{ width: '100%', padding: '14px', borderRadius: '12px', border: '1px solid var(--border-subtle)', background: 'var(--bg-surface)', outline: 'none', resize: 'none', height: '80px', fontFamily: 'inherit', marginBottom: '12px', fontSize: '14px' }}
-                />
-                <button 
-                  onClick={handleSubmitReview}
-                  disabled={submittingReview || !newReviewText.trim()}
-                  style={{ background: 'var(--primary-gradient)', color: 'white', padding: '10px 24px', borderRadius: '100px', fontWeight: '800', border: 'none', opacity: (submittingReview || !newReviewText.trim()) ? 0.5 : 1, boxShadow: '0 4px 15px rgba(0,0,0,0.1)' }}
-                >
-                  {submittingReview ? '...' : (lang === 'kh' ? 'បញ្ជូនមតិយោបល់' : 'Submit Review')}
-                </button>
-              </div>
+              )}
 
               {/* Review List */}
               {loadingReviews ? (
@@ -340,10 +405,23 @@ const ProductDetail = ({ product, allProducts = [], onAdd, onClose, onBuyNow, ac
             className={`pd-cart-btn ${isOutOfStock ? 'disabled' : ''}`}
             onClick={handleAdd}
             disabled={isOutOfStock}
+            style={{ flex: 1, padding: '0 8px' }}
           >
             {isOutOfStock
               ? (lang === 'kh' ? 'អស់ស្តុក' : 'Out of Stock')
-              : (t ? t('add_to_cart') : (lang === 'kh' ? 'បន្ថែមទៅកន្ត្រក' : 'Add to Cart'))
+              : (t ? t('add_to_cart') : (lang === 'kh' ? 'ដាក់ចូលកន្ត្រក' : 'Add to Cart'))
+            }
+          </button>
+          
+          <button
+            className={`pd-cart-btn ${isOutOfStock ? 'disabled' : ''}`}
+            onClick={handleBuyNow}
+            disabled={isOutOfStock}
+            style={{ flex: 1, padding: '0 8px', background: 'var(--primary-accent)', color: 'white' }}
+          >
+            {isOutOfStock
+              ? (lang === 'kh' ? 'អស់ស្តុក' : 'Out of Stock')
+              : (lang === 'kh' ? 'ទិញឥឡូវនេះ' : 'Buy Now')
             }
           </button>
         </div>

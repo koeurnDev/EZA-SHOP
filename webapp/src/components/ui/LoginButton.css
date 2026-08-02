@@ -1,0 +1,36 @@
+.login-btn-container {
+  padding: 40px;
+  display: flex;
+  justify-content: center;
+}
+
+.login-btn {
+  background-color: #f59e0b; /* Amber/Orange color matching the Good example */
+  color: white;
+  border: none;
+  border-radius: 12px;
+  padding: 16px 64px;
+  font-size: 18px;
+  font-weight: 700;
+  cursor: pointer;
+  
+  /* 
+    The Magic Trick:
+    Using a negative spread radius (the 4th value: -8px) shrinks the shadow
+    so it is smaller than the button itself (around 70-80% size), 
+    while the vertical offset (20px) pushes it down.
+  */
+  box-shadow: 0px 20px 30px -8px rgba(245, 158, 11, 0.7);
+  
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.login-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0px 24px 34px -8px rgba(245, 158, 11, 0.8);
+}
+
+.login-btn:active {
+  transform: translateY(1px);
+  box-shadow: 0px 12px 18px -8px rgba(245, 158, 11, 0.6);
+}

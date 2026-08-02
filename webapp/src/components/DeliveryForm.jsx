@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import CambodiaAddress from './ui/CambodiaAddress';
 
 const DeliveryForm = ({ formData, setFormData, onPhoneChange, t, lang, validationErrors = {} }) => {
   const [imgErrors, setImgErrors] = useState({ jt: false, vet: false });
@@ -102,35 +103,11 @@ const DeliveryForm = ({ formData, setFormData, onPhoneChange, t, lang, validatio
         </div>
 
         <div className="input-group-luxury">
-          <label className="input-label-luxury">
-             {t('address_placeholder')} <span style={{ color: '#ef4444' }}>*</span>
-          </label>
-          <div className="input-with-icon">
-             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
-             <input 
-               type="text" 
-               className="input-glass" 
-               placeholder={lang === 'kh' ? 'ឧទាហរណ៍: ទួលទំពូង' : 'Ex: Toul Tompung'} 
-               value={formData.address}
-               onChange={(e) => setFormData(prev => ({ ...prev, address: e.target.value }))}
-             />
-          </div>
-        </div>
-
-        <div className="input-group-luxury" style={{ marginTop: 15 }}>
-          <label className="input-label-luxury">
-             {t('province_label')} <span style={{ color: '#ef4444' }}>*</span>
-          </label>
-          <div className="input-with-icon">
-             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 21s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 7.2c0 7.3-8 11.8-8 11.8z"/><circle cx="12" cy="9" r="3"/></svg>
-             <select 
-               className="input-glass select-luxury"
-               value={formData.province}
-               onChange={(e) => setFormData(prev => ({ ...prev, province: e.target.value }))}
-             >
-               {provinces.map(p => <option key={p} value={p}>{p}</option>)}
-             </select>
-          </div>
+          <CambodiaAddress 
+            value={formData.address}
+            onChange={(val) => setFormData(prev => ({ ...prev, address: val, province: '' }))} // Clear province since address contains it now
+            lang={lang}
+          />
         </div>
 
         <div className="input-group-luxury" style={{ marginTop: 15 }}>

@@ -165,8 +165,8 @@ const orderService = {
 
       await client.query('COMMIT');
 
-      // 🚀 persistent Job Queue
-      await QueueService.add('ORDER_POST_PROCESS', { orderId: order.id, items, deliveryInfo, userId, calculatedTotal });
+      // 🚀 persistent Job Queue (Fire and forget to prevent hanging if Redis is down)
+      QueueService.add('ORDER_POST_PROCESS', { orderId: order.id, items, deliveryInfo, userId, calculatedTotal }).catch(err => console.error('Queue Error:', err.message));
 
       // 🕒 Synchronous UI Hint: Ensure frontend knows this is fresh
       order.expires_in = 300;

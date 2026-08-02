@@ -1,0 +1,93 @@
+.modern-bottom-nav-container {
+  /* Using fixed for demo purposes, can be changed based on layout */
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background-color: var(--bg-surface);
+  border-top: 1px solid var(--border-subtle);
+  padding-bottom: env(safe-area-inset-bottom, 0px); /* iOS safe area */
+  box-shadow: 0 -4px 10px rgba(0, 0, 0, 0.05);
+  z-index: 50;
+}
+
+.modern-bottom-nav {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  height: 64px;
+  max-width: 600px;
+  margin: 0 auto; /* Center on larger screens */
+}
+
+.modern-nav-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  height: 100%;
+  color: var(--text-muted); /* Light gray for inactive state */
+  transition: color 0.2s ease;
+  position: relative;
+}
+
+.modern-nav-btn.active {
+  color: var(--text-bold); /* Very dark gray for active state */
+}
+
+.modern-nav-icon {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 32px;
+}
+
+.modern-nav-icon svg {
+  transition: transform 0.1s ease;
+}
+
+.modern-nav-btn:active .modern-nav-icon svg {
+  transform: scale(0.9);
+}
+
+/* Badge styling matching the dark circle in the image */
+.modern-nav-badge {
+  position: absolute;
+  top: -4px;
+  right: -8px;
+  background-color: var(--text-bold); /* Dark background */
+  color: var(--bg-surface);
+  font-size: 11px;
+  font-weight: 700;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--bg-surface); /* Creates a cutout effect against other icons */
+}
+
+/* The thick, rounded underline for active state */
+.modern-nav-indicator {
+  position: absolute;
+  bottom: 6px;
+  width: 18px;
+  height: 3px;
+  background-color: var(--text-bold);
+  border-radius: 2px;
+  opacity: 0;
+  transform: scaleX(0.5);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.modern-nav-btn.active .modern-nav-indicator {
+  opacity: 1;
+  transform: scaleX(1);
+}

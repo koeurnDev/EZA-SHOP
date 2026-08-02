@@ -143,6 +143,57 @@ const orderRepository = {
       [lookbackHours]
     );
     return res.rows;
+  },
+
+  // --- Advanced Analytics / BI ---
+  
+  getTopSellingProducts: async (limit = 5) => {
+    // Unnest the JSON items array to aggregate by product id/name
+    const res = await pool.query(`
+      SELECT 
+        item->>'id' as product_id,
+        item->>'name' as product_name,
+        SUM(CAST(item->>'quantity' AS INTEGER)) as total_quantity,
+        SUM(CAST(item->>'price' AS DECIMAL) * CAST(item->>'quantity' AS INTEGER)) as total_revenue
+      FROM orders,
+      jsonb_array_elements(items::jsonb) as item
+      WHERE status != 'cancelled'
+      GROUP BY item->>'id', item->>'name'
+      ORDER BY total_quantity DESC
+      LIMIT $1
+    `, [limit]);
+    return res.rows;
+  },
+
+  getTopCustomers: async (limit = 5) => {
+    const res = await pool.query(`
+      SELECT 
+        user_id,
+        MAX(user_name) as user_name,
+        MAX(phone) as phone,
+        COUNT(id) as total_orders,
+        SUM(total) as total_spent
+      FROM orders
+      WHERE status != 'cancelled'
+      GROUP BY user_id
+      ORDER BY total_spent DESC
+      LIMIT $1
+    `, [limit]);
+    return res.rows;
+  },
+
+  getAverageOrderValue: async () => {
+    const res = await pool.query(`
+      SELECT 
+        COALESCE(AVG(total), 0) as aov,
+        COALESCE(AVG(total) FILTER (WHERE created_at > NOW() - INTERVAL '30 days'), 0) as aov_30d
+      FROM orders
+      WHERE status != 'cancelled'
+    `);
+    return {
+      aov: parseFloat(res.rows[0]?.aov || 0),
+      aov_30d: parseFloat(res.rows[0]?.aov_30d || 0)
+    };
   }
 };
 

@@ -42,7 +42,6 @@ const schemas = {
   ],
   setting: [
     body('key').notEmpty().trim().escape().withMessage('Key is required'),
-    body('value').exists().trim().escape().withMessage('Value must be provided'),
     validate
   ],
   coupon: [

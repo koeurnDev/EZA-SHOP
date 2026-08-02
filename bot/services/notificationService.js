@@ -52,7 +52,16 @@ notificationQueue.process(async (job) => {
                        `👤 អតិថិជន: *${order.user_name}*\n` +
                        `💰 សរុប: *$${order.total}*\n\n` +
                        `👇 សូមពិនិត្យរូបភាពវិក្កយបត្រខាងក្រោម ឬ ក្នុង Admin Dashboard។`;
-        await bot.telegram.sendPhoto(adminId, order.receipt_url, { caption: ticket, parse_mode: 'Markdown' });
+        await bot.telegram.sendPhoto(adminId, order.receipt_url, { 
+          caption: ticket, 
+          parse_mode: 'Markdown',
+          reply_markup: {
+            inline_keyboard: [
+              [{ text: '✅ អនុម័ត (Approve)', callback_data: `approve_order_${order.order_code}` }],
+              [{ text: '❌ បដិសេធ (Reject)', callback_data: `reject_order_${order.order_code}` }]
+            ]
+          }
+        });
       }
     }
   } catch (e) {

@@ -35,9 +35,11 @@ const VideoFeed = ({ products, onProductSelect, onAddToCart }) => {
 
   if (videoProducts.length === 0) {
     return (
-      <div className="empty-state">
-        <div style={{ fontSize: '48px', marginBottom: '16px' }}>📱</div>
-        <p>មិនទាន់មានវីដេអូទេ (No Videos Yet)</p>
+      <div style={{ padding: '20px', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div className="luxury-empty-state" style={{ width: '100%' }}>
+          <div className="empty-icon-luxury">🎬</div>
+          <p className="empty-text-luxury" style={{ marginTop: '10px' }}>មិនទាន់មានវីដេអូទេ<br/>(No Videos Yet)</p>
+        </div>
       </div>
     );
   }

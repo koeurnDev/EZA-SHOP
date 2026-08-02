@@ -53,10 +53,7 @@ const ProductCard = memo(({
       className={`product-card-standard-green ${isOutOfStock ? 'pc-out-of-stock' : ''}`}
       onClick={handleClick}
     >
-      {/* Top Small Badge */}
-      <div className="standard-green-badge">
-        {badgeText.toUpperCase()}
-      </div>
+      {/* Top Small Badge Removed */}
       
       {/* Flash Sale Tag */}
       {hasFlashSale && (

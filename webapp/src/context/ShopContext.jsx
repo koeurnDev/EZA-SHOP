@@ -28,6 +28,9 @@ export const ShopProvider = ({ children }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [view, setView] = useState('home');
+  const [showFilterModal, setShowFilterModal] = useState(false);
+  const [showScanner, setShowScanner] = useState(false);
+  const [filters, setFilters] = useState({ minPrice: '', maxPrice: '', sort: 'newest' });
 
   // 🕒 Debounce Search: Prevent expensive re-filtering on every keystroke
   useEffect(() => {
@@ -118,9 +121,12 @@ export const ShopProvider = ({ children }) => {
       paymentInfo: settings.payment_info || '',
       promoBannerUrl,
       shopLogoUrl,
-      activeDiscounts: initData?.discounts || []
+      activeDiscounts: initData?.discounts || [],
+      showFilterModal,
+      showScanner,
+      filters
     };
-  }, [initData, isInitLoading, selectedCategory, searchTerm, debouncedSearchTerm, view, selectedProduct, toast, shopStatus, deliveryThreshold, deliveryFee, promoText, promoBannerUrl, shopLogoUrl]);
+  }, [initData, isInitLoading, selectedCategory, searchTerm, debouncedSearchTerm, view, selectedProduct, toast, shopStatus, deliveryThreshold, deliveryFee, promoText, promoBannerUrl, shopLogoUrl, showFilterModal, showScanner, filters]);
 
   const dispatch = useMemo(() => ({
     setSelectedCategory,
@@ -134,10 +140,13 @@ export const ShopProvider = ({ children }) => {
     setPromoText,
     setPromoBannerUrl,
     setShopLogoUrl,
+    setShowFilterModal,
+    setShowScanner,
+    setFilters,
     refetchData: () => {
       refetchInit();
     }
-  }), [refetchInit, showToast, setShopStatus, setDeliveryThreshold, setDeliveryFee, setPromoText, setPromoBannerUrl, setShopLogoUrl]);
+  }), [refetchInit, showToast, setShopStatus, setDeliveryThreshold, setDeliveryFee, setPromoText, setPromoBannerUrl, setShopLogoUrl, setShowFilterModal, setShowScanner, setFilters]);
 
   return (
     <ShopStateContext.Provider value={state}>

@@ -5,6 +5,7 @@ import { useUserState } from '../context/UserContext';
 import { useTelegram } from '../context/TelegramContext';
 import { calculateBestDiscount, getDiscountedPrice } from '../utils/discountUtils';
 import DeliveryForm from './DeliveryForm';
+import './ui/ModernCart.css';
 
 const CartPage = ({
   formData, setFormData, onPhoneChange, isPhoneValid, isAddressValid,
@@ -107,7 +108,7 @@ const CartPage = ({
           {step === 1 ? (
             <div className="animate-in mb-8">
               <h3 className="text-lg font-black text-bold mb-4">{t('items')} ({totalItemsCount})</h3>
-              <div className="flex flex-col gap-4">
+              <div className="cart-items-list">
                 {cart.map(item => {
                   const best = calculateBestDiscount(item, activeDiscounts);
                   const dPrice = best ? getDiscountedPrice(item, best) : null;
@@ -115,31 +116,34 @@ const CartPage = ({
                   const isDiscounted = dPrice !== null && dPrice < item.price;
                   
                   return (
-                  <div key={item.id} className="flex gap-4 p-4 bg-bg-surface rounded-3xl shadow-sm border border-border-subtle">
-                    <div className="w-20 h-20 rounded-2xl overflow-hidden flex-shrink-0 bg-bg-soft">
+                  <div key={item.id} className="cart-item">
+                    <div className="cart-item-image">
                       <img
                         src={item.image.includes('cloudinary') ? item.image.replace('upload/', 'upload/f_auto,q_auto,w_100/') : item.image}
-                        alt="" className="w-full h-full object-cover"
+                        alt="" className="w-full h-full object-cover rounded-[14px]"
                         crossOrigin="anonymous"
                       />
                     </div>
-                    <div className="flex-1 flex flex-col justify-between">
-                      <div className="flex justify-between items-start">
-                        <div className="font-bold text-bold line-clamp-1">{item.name}</div>
-                        <div className={`font-black text-bold ${isDiscounted ? 'text-red-500' : ''}`}>
+                    <div className="cart-item-details">
+                      <button className="cart-item-remove" aria-label="Remove item" onClick={() => updateQty(item.id, -item.quantity)}>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                      </button>
+                      <h3 className="cart-item-title line-clamp-1">{item.name}</h3>
+                      <p className="cart-item-variant">{item.category}</p>
+                      <div className="cart-item-bottom">
+                        <span className={`cart-item-price ${isDiscounted ? 'text-red-500' : ''}`}>
                           ${(finalPrice * item.quantity).toFixed(2)}
-                          {isDiscounted && <span className="block text-[10px] text-muted line-through text-right">${(item.price * item.quantity).toFixed(2)}</span>}
+                          {isDiscounted && <span style={{display: 'block', fontSize: '10px', color: 'var(--text-muted)', textDecoration: 'line-through'}}>${(item.price * item.quantity).toFixed(2)}</span>}
+                        </span>
+                        <div className="cart-item-controls">
+                          <button className="cart-qty-btn minus" aria-label="Decrease quantity" onClick={() => updateQty(item.id, -1)}>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                          </button>
+                          <span className="cart-qty-value">{item.quantity}</span>
+                          <button className="cart-qty-btn plus" aria-label="Increase quantity" onClick={() => updateQty(item.id, 1)}>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                          </button>
                         </div>
-                      </div>
-                      <div className="flex justify-between items-end">
-                        <div className="flex items-center gap-3 bg-bg-soft rounded-2xl p-1">
-                          <button className="w-10 h-10 flex items-center justify-center font-black text-lg active:scale-90 transition-transform" onClick={() => updateQty(item.id, -1)} aria-label="Decrease quantity">−</button>
-                          <span className="font-black text-base w-6 text-center tabular-nums">{item.quantity}</span>
-                          <button className="w-10 h-10 flex items-center justify-center font-black text-lg active:scale-90 transition-transform" onClick={() => updateQty(item.id, 1)} aria-label="Increase quantity">+</button>
-                        </div>
-                        <button className="text-[10px] font-black uppercase text-rose-500 tracking-wider" onClick={() => updateQty(item.id, -item.quantity)}>
-                          {t('remove')}
-                        </button>
                       </div>
                     </div>
                   </div>
@@ -153,22 +157,7 @@ const CartPage = ({
                 onPhoneChange={onPhoneChange} setFormData={setFormData}
                 t={t} lang={lang} validationErrors={validationErrors}
               />
-              <div className="mt-8 p-6 bg-bg-surface rounded-3xl border border-border-subtle shadow-sm">
-                <h3 className="text-lg font-black text-bold mb-4">{t('paid_by')}</h3>
-                <div className="flex items-center gap-4 p-4 rounded-2xl bg-gray-100 border-2 border-emerald-600 shadow-sm">
-                  <div className="w-12 h-12 flex items-center justify-center bg-white rounded-xl shadow-sm overflow-hidden">
-                    <img src="Bakong.png" alt="Bakong" className="max-w-[70%]" />
-                  </div>
-                  <div className="flex-1">
-                    <div className="font-black text-bold">Bakong KHQR</div>
-                    <div className="text-[10px] font-bold text-muted">{lang === 'kh' ? 'ទូទាត់បានគ្រប់ធានាគាទាំងអស់' : 'Compatible with all banks'}</div>
-                  </div>
-                  <div className="w-6 h-6 flex items-center justify-center bg-emerald-600 text-white rounded-full">✓</div>
-                </div>
-                <div className="mt-4 text-[10px] font-black text-rose-500 text-center opacity-75">
-                  {lang === 'kh' ? '* រាល់ការបង់ប្រាក់រួចហើយមិនអាចដកវិញទេ' : '* All payments are non-refundable.'}
-                </div>
-              </div>
+              {/* Payment info hidden as requested */}
               <button className="mt-6 flex items-center gap-2 text-xs font-black uppercase text-muted tracking-widest" onClick={() => setStep(1)}>
                 ← {t('edit_cart')}
               </button>
