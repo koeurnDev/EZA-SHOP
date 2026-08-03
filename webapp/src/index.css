@@ -15,12 +15,12 @@
 
 @layer base {
   body {
-    @apply font-khmer bg-app text-main antialiased transition-colors duration-300;
+    @apply font-khmer text-main antialiased transition-colors duration-300;
     margin: 0;
     padding: 0;
     overflow-x: hidden;
     min-height: 100dvh;
-    background-color: var(--bg-app) !important; /* Force background sync */
+    background-color: var(--bg-app); /* Use raw var for theme syncing */
   }
 
   * {
@@ -55,7 +55,6 @@
 
   @media (max-width: 380px) {
     .app-container {
-      padding-top: 0 !important;
       padding-bottom: calc(var(--safe-bottom) + 110px);
     }
   }
@@ -128,7 +127,7 @@
 }
 
 /* 🚀 2GB RAM OPTIMIZATION: Disable expensive effects globally to fix lag */
-* {
+body * {
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
 }

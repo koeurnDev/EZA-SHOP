@@ -1,7 +1,7 @@
 :root {
   /* 🎨 Primary Brand Colors */
-  --primary-accent: #2F483A;
-  --primary-gradient: linear-gradient(135deg, #2F483A 0%, #617A63 100%);
+  --primary-accent: #ffffff;
+  --primary-gradient: linear-gradient(135deg, #242424 0%, #121212 100%);
   /* 🌗 Theme Tokens (Light Mode - Default) */
   --bg-app: #FDFBF0;
   --bg-surface: #ffffff;
@@ -23,16 +23,16 @@
   --font-display: 'Outfit', 'Kantumruy Pro', sans-serif;
 }
 [data-theme='dark'] {
-  --bg-app: #020617;
-  --bg-surface: #0f172a;
-  --bg-input: #1e293b;
+  --bg-app: #121212;
+  --bg-surface: #181818;
+  --bg-input: #242424;
   --text-main: #f8fafc;
   --text-bold: #ffffff;
-  --text-muted: #94a3b8;
+  --text-muted: #a1a1aa; /* Warmer muted gray to match charcoal */
   --border-subtle: rgba(255, 255, 255, 0.08);
   --bg-soft: rgba(255, 255, 255, 0.05);
-  --glass-bg: rgba(15, 23, 42, 0.85);
-  --profile-banner-bg: linear-gradient(135deg, #0f172a 0%, rgba(255, 114, 160, 0.25) 100%);
+  --glass-bg: rgba(18, 18, 18, 0.85);
+  --profile-banner-bg: linear-gradient(135deg, #181818 0%, rgba(255, 255, 255, 0.1) 100%);
 }
 * {
   box-sizing: border-box;
@@ -177,7 +177,7 @@ body::-webkit-scrollbar,
   min-width: 100% !important;
   height: 220px !important;
   flex-direction: row !important;
-  background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%) !important;
+  background: linear-gradient(135deg, #121212 0%, #1e1b4b 100%) !important;
   border: none !important;
   color: white !important;
   padding: 0 !important;
@@ -216,7 +216,7 @@ body::-webkit-scrollbar,
   left: -10%;
   width: 200px;
   height: 200px;
-  background: radial-gradient(circle, rgba(236, 72, 153, 0.25) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
   pointer-events: none;
   z-index: 1;
 }
@@ -377,7 +377,7 @@ body::-webkit-scrollbar,
 }
 .stock-pill-muted {
   background: white;
-  color: #0f172a;
+  color: #121212;
   padding: 8px 18px;
   border-radius: 100px;
   font-size: 11px;
@@ -464,7 +464,7 @@ body::-webkit-scrollbar,
   color: white;
   border-color: transparent;
   transform: scale(1.1) rotate(90deg);
-  box-shadow: 0 4px 15px rgba(255, 114, 160, 0.3);
+  box-shadow: 0 4px 15px rgba(255, 255, 255, 0.1);
 }
 .add-btn-luxury.success {
   background: #10b981 !important;
@@ -545,7 +545,7 @@ body::-webkit-scrollbar,
   justify-content: center;
 }
 .out-of-stock-overlay span {
-  background: rgba(15, 23, 42, 0.7);
+  background: rgba(18, 18, 18, );
   padding: 6px 14px;
   border-radius: 100px;
   font-size: 10px;
@@ -708,12 +708,12 @@ h3,
 }
 .scale-up-hover:active {
   transform: scale(0.96);
-  box-shadow: 0 5px 12px rgba(236, 72, 153, 0.15);
+  box-shadow: 0 5px 12px rgba(255, 255, 255, 0.1);
 }
 @media (min-width: 768px) {
   .scale-up-hover:hover {
     transform: translateY(-8px) scale(1.03);
-    box-shadow: 0 15px 35px rgba(236, 72, 153, 0.15);
+    box-shadow: 0 15px 35px rgba(255, 255, 255, 0.1);
   }
 }
 .add-btn-minimal {
@@ -724,12 +724,12 @@ h3,
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #ec4899;
+  color: #ffffff;
   font-weight: 800;
   transition: all 0.2s ease;
 }
 .product-grid-card:active .add-btn-minimal {
-  background: #ec4899;
+  background: #ffffff;
   color: white;
   transform: scale(1.2);
 }
@@ -752,8 +752,8 @@ h3,
   background: rgba(255, 255, 255, 0.3);
 }
 .icon-btn-glass.accent {
-  background: rgba(255, 114, 160, 0.25) !important;
-  border-color: rgba(255, 114, 160, 0.4) !important;
+  background: rgba(255, 255, 255, 0.1) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
   color: #ff72a0 !important;
 }
 .grid-card-img {
@@ -792,7 +792,7 @@ h3,
 }
 .grid-card-price {
   font-weight: 900;
-  color: #ec4899;
+  color: #ffffff;
   font-size: 19px;
   letter-spacing: -0.5px;
 }
@@ -842,7 +842,7 @@ h3,
   cursor: default;
 }
 [data-theme='dark'] .promo-banner-luxury {
-  background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+  background: linear-gradient(135deg, #121212 0%, #1e1b4b 100%);
   border-color: rgba(251, 191, 36, 0.15);
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
 }
@@ -902,11 +902,11 @@ h3,
 
 }
 .wishlist-btn-lux.active {
-  background: rgba(236, 72, 153, 0.1);
-  border-color: rgba(236, 72, 153, 0.3);
-  color: #ec4899;
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
   transform: scale(1.05);
-  box-shadow: 0 10px 20px rgba(236, 72, 153, 0.1);
+  box-shadow: 0 10px 20px rgba(255, 255, 255, 0.1);
 }
 .wishlist-btn-lux:active {
   transform: scale(0.9);
@@ -977,7 +977,7 @@ h3,
   background: var(--primary-gradient);
   color: white;
   border: none;
-  box-shadow: 0 10px 25px rgba(236,72,153,0.25);
+  box-shadow: 0 10px 25px rgba(255, 255, 255, 0.1);
 }
 .profile-action-btn-lux i {
   font-size: 18px;
@@ -1105,7 +1105,7 @@ h3,
   outline: none;
   background: var(--bg-surface);
   border-color: var(--primary-accent);
-  box-shadow: 0 12px 30px rgba(255, 114, 160, 0.12);
+  box-shadow: 0 12px 30px rgba(255, 255, 255, 0.1);
   transform: translateY(-1px);
 }
 .category-navigator {
@@ -1198,7 +1198,7 @@ h3,
   background: var(--bg-surface);
   border-radius: var(--inner-radius);
   padding: 20px;
-  border: 2px dashed rgba(236, 72, 153, 0.2);
+  border: 2px dashed rgba(255, 255, 255, 0.1);
   margin-bottom: 20px;
 }
 .coupon-label {
@@ -1262,7 +1262,7 @@ h3,
   align-items: center;
   justify-content: center;
   margin-top: 25px;
-  box-shadow: 0 10px 25px rgba(236, 72, 153, 0.3);
+  box-shadow: 0 10px 25px rgba(255, 255, 255, 0.1);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   letter-spacing: 0.5px;
 }
@@ -1340,7 +1340,7 @@ h3,
   color: #ffffff !important;
 }
 [data-theme='dark'] .card-content-luxury {
-  background: linear-gradient(to bottom, transparent, rgba(15, 23, 42, 0.8)) !important;
+  background: linear-gradient(to bottom, transparent, rgba(18, 18, 18, )) !important;
 }
 .vip-card-glass {
   background: rgba(255, 255, 255, 0.1);
@@ -1502,7 +1502,7 @@ h3,
   color: white;
   font-size: 18px;
   font-weight: 800;
-  box-shadow: 0 10px 25px rgba(236, 72, 153, 0.3);
+  box-shadow: 0 10px 25px rgba(255, 255, 255, 0.1);
   margin-bottom: 20px;
 }
 /* ðŸ›¡ Senior UXUI */
@@ -1559,7 +1559,7 @@ h3,
 .buy-slots-btn-premium:hover {
   background: var(--bg-soft);
   transform: translateY(-2px);
-  box-shadow: 0 10px 20px rgba(236, 72, 153, 0.1);
+  box-shadow: 0 10px 20px rgba(255, 255, 255, 0.1);
 }
 /* ðŸŒ€ BUTTON LOADING SPINNER */
 .pulse-animation {
@@ -1568,7 +1568,7 @@ h3,
 /* ðŸ ” Executive 22yr: Luxury Brand Success Palette */
 .success-accent-luxury {
   color: var(--primary-color);
-  text-shadow: 0 0 15px rgba(255, 114, 160, 0.4);
+  text-shadow: 0 0 15px rgba(255, 255, 255, 0.1);
 }
 .btn-spinner {
   width: 18px;
@@ -1912,7 +1912,7 @@ h3,
 .input-glass-admin:focus {
   outline: none;
   border-color: var(--primary-accent);
-  box-shadow: 0 0 15px rgba(236, 72, 153, 0.15);
+  box-shadow: 0 0 15px rgba(255, 255, 255, 0.1);
   background: var(--bg-surface);
 }
 .btn-glass-lux {
@@ -1944,7 +1944,7 @@ h3,
 }
 .btn-glass-lux.berry {
   background: var(--primary-gradient);
-  box-shadow: 0 10px 25px rgba(236, 72, 153, 0.2);
+  box-shadow: 0 10px 25px rgba(255, 255, 255, 0.1);
 }
 /* âœ¨ Admin Premium List Styles */
 .admin-order-card-premium {
@@ -2282,16 +2282,16 @@ input[type=number] {
   transition: all 0.3s ease;
 }
 .icon-btn-glass.primary-fill {
-  background: rgba(255, 114, 160, 0.12); /* Soft Glass Rose */
+  background: rgba(255, 255, 255, 0.1); /* Soft Glass Rose */
   color: var(--primary-accent);
-  border: 1.5px solid rgba(255, 114, 160, 0.2);
-  box-shadow: 0 4px 15px rgba(236, 72, 153, 0.1);
+  border: 1.5px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 15px rgba(255, 255, 255, 0.1);
 }
 [data-theme='dark'] .icon-btn-glass.primary-fill {
   background: var(--primary-accent);
   color: white;
   border: none;
-  box-shadow: 0 8px 25px rgba(236, 72, 153, 0.25);
+  box-shadow: 0 8px 25px rgba(255, 255, 255, 0.1);
 }
 /* 🛍 Unified Boutique Product Cards (Non-Clumping) */
 .product-card-luxury {
@@ -2431,7 +2431,7 @@ input[type=number] {
 .fav-item-circle .zoom-hover:hover {
   transform: scale(1.08) translateY(-4px);
   border-color: #fce7f3 !important;
-  box-shadow: 0 15px 35px rgba(236, 72, 153, 0.2) !important;
+  box-shadow: 0 15px 35px rgba(255, 255, 255, 0.1) !important;
 }
 .favorites-gallery-scroll::-webkit-scrollbar {
   display: none;
@@ -2463,7 +2463,7 @@ input[type=number] {
   justify-content: center;
   font-size: 20px;
   font-weight: 800;
-  box-shadow: 0 5px 15px rgba(255, 114, 160, 0.3);
+  box-shadow: 0 5px 15px rgba(255, 255, 255, 0.1);
   color: white;
   position: relative;
 }
@@ -2820,7 +2820,7 @@ input[type=number] {
   font-size: 16px;
   font-weight: 800;
   border: none;
-  box-shadow: 0 10px 30px rgba(236, 72, 153, 0.3);
+  box-shadow: 0 10px 30px rgba(255, 255, 255, 0.1);
   cursor: pointer;
 }
 /* 💳 Checkout Overhaul Styles (Modern & Professional) */
@@ -2909,7 +2909,7 @@ input[type=number] {
 }
 .input-glass:focus {
   border-color: var(--primary-accent);
-  box-shadow: 0 0 0 4px rgba(255, 114, 160, 0.1);
+  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.1);
   background: var(--bg-app);
 }
 .select-luxury {
@@ -3195,7 +3195,7 @@ input[type=number] {
   font-size: 35px;
   color: white;
   margin-bottom: 15px;
-  box-shadow: 0 10px 25px rgba(236, 72, 153, 0.3);
+  box-shadow: 0 10px 25px rgba(255, 255, 255, 0.1);
 }
 .user-details-large h2 {
   font-size: 22px;
@@ -3337,12 +3337,12 @@ input:checked+.toggle-slider:before {
   font-size: 16px;
   font-weight: 800;
   cursor: pointer;
-  box-shadow: 0 10px 25px rgba(236, 72, 153, 0.3);
+  box-shadow: 0 10px 25px rgba(255, 255, 255, 0.1);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .shop-now-btn:active {
   transform: scale(0.95);
-  box-shadow: 0 5px 15px rgba(236, 72, 153, 0.2);
+  box-shadow: 0 5px 15px rgba(255, 255, 255, 0.1);
 }
 .history-list {
   display: flex;
@@ -3432,7 +3432,7 @@ input:checked+.toggle-slider:before {
   background: var(--primary-accent);
   color: white;
   border-color: var(--primary-accent);
-  box-shadow: 0 4px 12px rgba(255, 114, 160, 0.3);
+  box-shadow: 0 4px 12px rgba(255, 255, 255, 0.1);
 }
 .orders-filter-bar {
   display: flex;
@@ -4109,7 +4109,7 @@ input:checked+.toggle-slider:before {
 .ap-price {
   font-size: 16px;
   font-weight: 900;
-  color: #ec4899;
+  color: #ffffff;
 }
 .del-p-btn {
   position: absolute;
@@ -4259,7 +4259,7 @@ input:checked+.toggle-slider:before {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(15, 23, 42, 0.4);
+  background: rgba(18, 18, 18, );
 
 
   z-index: 9999;
@@ -4420,7 +4420,7 @@ input:checked+.toggle-slider:before {
   border-radius: 50%;
   pointer-events: none;
   z-index: 10000;
-  box-shadow: 0 4px 15px rgba(236, 72, 153, 0.4);
+  box-shadow: 0 4px 15px rgba(255, 255, 255, 0.1);
   /* Use custom properties for start/end */
   transform: translate(var(--start-x), var(--start-y));
   animation: fly-to-header 1s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
@@ -4442,7 +4442,7 @@ input:checked+.toggle-slider:before {
   background: var(--primary-gradient);
   color: white;
   border: none;
-  box-shadow: 0 8px 20px rgba(236, 72, 153, 0.25);
+  box-shadow: 0 8px 20px rgba(255, 255, 255, 0.1);
 }
 .cart-badge-pill-top {
   position: absolute;
@@ -4460,7 +4460,7 @@ input:checked+.toggle-slider:before {
   justify-content: center;
   padding: 0 2px;
   box-shadow: var(--shadow-soft);
-  border: 1.5px solid #ec4899;
+  border: 1.5px solid #ffffff;
   z-index: 10;
 }
 .pulse-badge-pop {
@@ -5555,12 +5555,12 @@ input:checked+.toggle-slider:before {
   font-size: 15px;
   font-weight: 900;
   cursor: pointer;
-  box-shadow: 0 10px 30px rgba(255, 114, 160, 0.4);
+  box-shadow: 0 10px 30px rgba(255, 255, 255, 0.1);
   transition: all 0.2s;
 }
 .detail-btn-buy-luxury:active {
   transform: scale(0.96);
-  box-shadow: 0 5px 15px rgba(255, 114, 160, 0.4);
+  box-shadow: 0 5px 15px rgba(255, 255, 255, 0.1);
 }
 .detail-btn-buy-luxury.disabled {
   background: #cbd5e1 !important;
@@ -5816,7 +5816,7 @@ input:checked+.toggle-slider:before {
 .help-action-card:hover {
   transform: translateY(-5px);
   border-color: var(--primary-accent);
-  box-shadow: 0 15px 35px rgba(236,72,153,0.1);
+  box-shadow: 0 15px 35px rgba(255, 255, 255, 0.1);
 }
 .help-action-icon {
   width: 44px;
@@ -6263,7 +6263,7 @@ input:checked+.toggle-slider:before {
 }
 .add-gallery-slot:hover {
   border-color: var(--primary-accent);
-  background: rgba(236, 72, 153, 0.05);
+  background: rgba(255, 255, 255, 0.1);
 }
 .add-gallery-slot span {
   font-size: 18px;
@@ -6306,7 +6306,7 @@ input:checked+.toggle-slider:before {
   animation: slideUp 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 [data-theme='dark'] .glass-card-luxury {
-  background: rgba(15, 23, 42, 0.95);
+  background: rgba(18, 18, 18, );
   box-shadow:
     0 30px 80px rgba(0, 0, 0, 0.5),
     0 0 0 1px rgba(255, 255, 255, 0.08) inset;
@@ -6329,7 +6329,7 @@ input:checked+.toggle-slider:before {
 }
 .upload-zone-luxury:hover {
   border-color: var(--primary-accent);
-  background: rgba(236, 72, 153, 0.04);
+  background: rgba(255, 255, 255, 0.1);
 }
 .upload-zone-luxury input[type="file"] {
   display: none;
@@ -6385,8 +6385,8 @@ input:checked+.toggle-slider:before {
 }
 .add-gallery-slot {
   border-radius: 14px;
-  border: 2px dashed rgba(236, 72, 153, 0.35);
-  background: rgba(236, 72, 153, 0.04);
+  border: 2px dashed rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.1);
   aspect-ratio: 3/4;
   display: flex;
   flex-direction: column;
@@ -6399,7 +6399,7 @@ input:checked+.toggle-slider:before {
 }
 .add-gallery-slot:hover {
   border-color: var(--primary-accent);
-  background: rgba(236, 72, 153, 0.1);
+  background: rgba(255, 255, 255, 0.1);
   transform: scale(1.04);
 }
 /* ðŸŽ› Admin Gallery Editor Wrapper */
@@ -6424,7 +6424,7 @@ input:checked+.toggle-slider:before {
   font-size: 14px;
   cursor: pointer;
   transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
-  box-shadow: 0 8px 24px rgba(236, 72, 153, 0.25);
+  box-shadow: 0 8px 24px rgba(255, 255, 255, 0.1);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -6433,7 +6433,7 @@ input:checked+.toggle-slider:before {
 }
 .ticket-btn-primary:hover {
   transform: translateY(-2px);
-  box-shadow: 0 12px 30px rgba(236, 72, 153, 0.35);
+  box-shadow: 0 12px 30px rgba(255, 255, 255, 0.1);
 }
 .ticket-btn-primary:active {
   transform: scale(0.97);
@@ -6472,7 +6472,7 @@ input:checked+.toggle-slider:before {
   background: var(--primary-gradient);
   color: white;
   border-color: transparent;
-  box-shadow: 0 8px 20px rgba(236, 72, 153, 0.25);
+  box-shadow: 0 8px 20px rgba(255, 255, 255, 0.1);
   transform: translateY(-2px);
 }
 /* âœ… Settings Glass Card */
@@ -6623,15 +6623,15 @@ input:checked+.toggle-slider:before {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #ec4899;
+  color: #ffffff;
   flex-shrink: 0;
   transition: all 0.2s ease;
   cursor: pointer;
 }
 .pd-wishlist-btn.active {
   background: #fdf2f8;
-  border-color: #ec4899;
-  color: #ec4899;
+  border-color: #ffffff;
+  color: #ffffff;
 }
 .pd-wishlist-btn:active { transform: scale(0.92); }
 .pd-add-to-cart-btn {
@@ -6920,4 +6920,23 @@ input:checked+.toggle-slider:before {
   background-color: #10b981;
   color: white;
   border-color: #10b981;
+}
+
+
+.skeleton-pulse { animation: skeleton-loading 1.2s ease-in-out infinite alternate; }
+@keyframes skeleton-loading { 0% { opacity: 0.5; } 100% { opacity: 1; } }
+
+
+body { overscroll-behavior-y: none; }
+:root { --tg-safe-area-inset-top: env(safe-area-inset-top); --tg-safe-area-inset-bottom: env(safe-area-inset-bottom); }
+
+.input-glass-admin option {
+  background: #1a1a1a;
+  color: #f8fafc;
+}
+
+select,
+select option {
+  background-color: #1a1a1a;
+  color: #f8fafc;
 }

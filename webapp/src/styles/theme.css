@@ -20,7 +20,18 @@
   --inner-radius: 22px;
   --shadow-soft: 0 2px 8px rgba(0, 0, 0, 0.05);
   --shadow-hover: 0 6px 16px rgba(0, 0, 0, 0.08);
-  --font-khmer: 'Kantumruy Pro', sans-serif;
+  
+  /* 🔤 Typography (with fallback stack) */
+  --font-khmer: 'Kantumruy Pro', 'Inter', sans-serif;
+  --font-primary: 'Inter', 'Kantumruy Pro', sans-serif;
+
+  /* 💡 Dynamic RGB for Opacity */
+  --primary-accent-rgb: 255, 114, 160;
+  
+  /* 🚨 Status Color Tokens */
+  --color-success: #10b981;
+  --color-error: #ef4444;
+  --color-warning: #f59e0b;
 }
 
 [data-theme='dark'] {
@@ -33,5 +44,5 @@
   --border-subtle: rgba(255, 255, 255, 0.08);
   --bg-soft: rgba(255, 255, 255, 0.05);
   --glass-bg: rgba(15, 23, 42, 0.85);
-  --profile-banner-bg: linear-gradient(135deg, #0f172a 0%, rgba(255, 114, 160, 0.25) 100%);
+  --profile-banner-bg: linear-gradient(135deg, #0f172a 0%, rgba(var(--primary-accent-rgb), 0.25) 100%);
 }

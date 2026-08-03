@@ -1,10 +1,26 @@
-import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import AdminSkeleton from './AdminSkeleton';
 import { useTelegram } from '../context/TelegramContext';
 import { useQuery } from '../hooks/useQuery';
 import { useApi } from '../hooks/useApi';
 import ProductDetail from './ProductDetail';
+import { compressImage } from '../utils/imageUtils';
 import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import '../styles/admin-dashboard.css';
+
+// 🗂️ Modular tab sub-components (Senior Review Fix: split monolithic component)
+import AdminOverviewTab from './admin/AdminOverviewTab';
+import AdminOrdersTab from './admin/AdminOrdersTab';
+import AdminProductsTab from './admin/AdminProductsTab';
+import AdminBroadcastTab from './admin/AdminBroadcastTab';
+import AdminFaqsTab from './admin/AdminFaqsTab';
+import AdminSettingsTab from './admin/AdminSettingsTab';
+import DarkSelect from './admin/DarkSelect';
+
+// 🗂️ Modular modals
+import AdminEditProductModal from './admin/modals/AdminEditProductModal';
+import AdminAddProductModal from './admin/modals/AdminAddProductModal';
+import AdminFaqModal from './admin/modals/AdminFaqModal';
 
 const AdminDashboard = ({
   BACKEND_URL,
@@ -26,6 +42,10 @@ const AdminDashboard = ({
   const [showSuccessToast, setShowSuccessToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [localSearchTerm, setLocalSearchTerm] = useState('');
+  const [productSearchTerm, setProductSearchTerm] = useState('');
+  const [localProductSearchTerm, setLocalProductSearchTerm] = useState('');
+  const [visibleProductLimit, setVisibleProductLimit] = useState(30);
   const [orderFilter, setOrderFilter] = useState('all');
   const [trackingNumbers, setTrackingNumbers] = useState({});
   const [isBroadcasting, setIsBroadcasting] = useState(false);
@@ -82,6 +102,17 @@ const AdminDashboard = ({
   const [receiptShopName, setReceiptShopName] = useState('MO-MO Boutique');
   const [receiptSubtitle, setReceiptSubtitle] = useState('អីវ៉ាន់បោះដុំ និងរាយ');
   const [receiptNote, setReceiptNote] = useState('សូមអរគុណសម្រាប់ការគាំទ្រ!');
+
+  // Debounce search terms for performance
+  useEffect(() => {
+    const timer = setTimeout(() => setSearchTerm(localSearchTerm), 300);
+    return () => clearTimeout(timer);
+  }, [localSearchTerm]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setProductSearchTerm(localProductSearchTerm), 300);
+    return () => clearTimeout(timer);
+  }, [localProductSearchTerm]);
 
   useEffect(() => {
     if (settingsData?.success) {
@@ -166,14 +197,17 @@ const AdminDashboard = ({
     refetchDashboard();
   }, [refetchDashboard]);
 
+  // 🔒 Senior Review Fix: use stable ref to avoid interval reset on refetchData identity change
+  const refetchDataRef = useRef(refetchData);
+  useEffect(() => { refetchDataRef.current = refetchData; }, [refetchData]);
   useEffect(() => {
     const interval = setInterval(() => {
       if (document.visibilityState === 'visible') {
-        refetchData(true);
+        refetchDataRef.current(true);
       }
-    }, 300000); // Increased interval to 5 minutes (300s) for stability as requested by audit
+    }, 300000);
     return () => clearInterval(interval);
-  }, [refetchData]);
+  }, []); // ✅ Empty deps — interval never resets
 
   const updateStatus = async (orderId, status) => {
     const trackingNumber = trackingNumbers[orderId] || '';
@@ -284,7 +318,8 @@ const AdminDashboard = ({
 
   const handleBroadcastUpload = async (file) => {
     const formData = new FormData();
-    formData.append('image', file);
+    const compressed = await compressImage(file);
+    formData.append('image', compressed);
     try {
       const res = await fetchWithRetry(`${BACKEND_URL}/api/admin/upload`, { method: 'POST', headers: headers, body: formData });
       if (res.success) setBroadcastImage(res.data?.url);
@@ -344,7 +379,8 @@ const AdminDashboard = ({
 
   const handleBannerUpload = async (file) => {
     const formData = new FormData();
-    formData.append('image', file);
+    const compressed = await compressImage(file);
+    formData.append('image', compressed);
     try {
       const res = await fetchWithRetry(`${BACKEND_URL}/api/admin/upload`, { method: 'POST', headers: headers, body: formData });
       if (res.success && res.data?.url) {
@@ -369,7 +405,8 @@ const AdminDashboard = ({
 
   const handleLogoUpload = async (file) => {
     const formData = new FormData();
-    formData.append('image', file);
+    const compressed = await compressImage(file);
+    formData.append('image', compressed);
     setIsUploading(true);
     try {
       const res = await fetchWithRetry(`${BACKEND_URL}/api/admin/upload`, { method: 'POST', headers, body: formData });
@@ -384,7 +421,8 @@ const AdminDashboard = ({
   };
   const handleQrUpload = async (file) => {
     const formData = new FormData();
-    formData.append('image', file);
+    const compressed = await compressImage(file);
+    formData.append('image', compressed);
     setIsUploading(true);
     try {
       const res = await fetchWithRetry(`${BACKEND_URL}/api/admin/upload`, { method: 'POST', headers, body: formData });
@@ -398,276 +436,25 @@ const AdminDashboard = ({
   };
 
   const statusTags = {
-    'pending': { label: 'រង់ចាំបង់', color: '#64748b', icon: '⏳' },
-    'paid': { label: 'បង់រួច', color: '#10b981', icon: '✅' },
-    'processing': { label: 'រៀបចំអីវ៉ាន់', color: '#f59e0b', icon: '📦' },
-    'shipped': { label: 'អីវ៉ាន់បានចេញ', color: '#a855f7', icon: '✨' },
-    'delivering': { label: 'ប្រគល់ឱ្យដឹកជញ្ជូន', color: '#10b981', icon: '🚚' },
-    'delivered': { label: 'បានដល់ដៃ', color: '#10b981', icon: '🏠' }
+    'pending': { label: 'រង់ចាំបង់', color: 'var(--text-main)', icon: '⏳' },
+    'paid': { label: 'បង់រួច', color: 'var(--text-main)', icon: '✅' },
+    'processing': { label: 'រៀបចំអីវ៉ាន់', color: 'var(--text-main)', icon: '📦' },
+    'shipped': { label: 'អីវ៉ាន់បានចេញ', color: 'var(--text-main)', icon: '✨' },
+    'delivering': { label: 'ប្រគល់ឱ្យដឹកជញ្ជូន', color: 'var(--text-main)', icon: '🚚' },
+    'delivered': { label: 'បានដល់ដៃ', color: 'var(--text-main)', icon: '🏠' }
   };
 
   return (
     <>
       {printingOrder && <PrintableOrder order={printingOrder} shopName={receiptShopName} subtitle={receiptSubtitle} shopNote={receiptNote} />}
       <div className="admin-dashboard-overhaul animate-in no-print" style={{ paddingBottom: 100 }}>
-        <style>{`
-          :root {
-            --bg-midnight: #020617;
-            --glass-card: rgba(15, 23, 42, 0.7);
-            --glass-border: rgba(255, 255, 255, 0.08);
-            --rose-gradient: linear-gradient(135deg, #8b7fb8 0%, #6d63a0 100%);
-            --nebula-gradient: linear-gradient(135deg, #a89fcc 0%, #8b7fb8 100%);
-            --text-luxury: #f8fafc;
-            --text-dim: #94a3b8;
-            --admin-shadow: 0 20px 50px -12px rgba(0,0,0,0.8);
-            --primary-accent: #8b7fb8;
-            --gold-glow: 0 0 20px rgba(139, 127, 184, 0.25);
-          }
-          [data-theme='light'] {
-            --bg-midnight: #FDFBF0;
-            --glass-card: rgba(253, 251, 240, 0.85);
-            --glass-border: rgba(47, 72, 58, 0.1);
-            --text-luxury: #1c1917;
-            --text-dim: #78716c;
-            --admin-shadow: 0 15px 35px -10px rgba(0,0,0,0.1);
-          }
-          .admin-dashboard-overhaul { 
-            background: var(--bg-midnight); 
-            min-height: 100vh; 
-            color: var(--text-luxury); 
-            font-family: 'Kantumruy Pro', 'Inter', sans-serif; 
-            transition: all 0.5s ease;
-          }
-          .admin-header-luxury { 
-            background: var(--glass-card); 
-            border: 1px solid var(--glass-border); 
-            border-radius: 28px; 
-            padding: 18px 20px; 
-            display: flex; 
-            justify-content: space-between; 
-            align-items: center; 
-            margin: 16px 12px 24px 12px; 
-            backdrop-filter: blur(30px); 
-            box-shadow: var(--admin-shadow); 
-            gap: 12px;
-            flex-wrap: wrap;
-          }
-          .admin-title-pro { 
-            margin: 0; 
-            font-size: 15px; 
-            font-weight: 950; 
-            letter-spacing: -0.5px;
-            white-space: nowrap;
-            background: linear-gradient(135deg, var(--text-luxury) 0%, var(--primary-accent) 150%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            drop-shadow: 0 4px 10px rgba(0,0,0,0.1);
-          }
-          
-          .back-btn-pill { 
-            background: var(--glass-card); 
-            border: 1px solid var(--glass-border); 
-            border-radius: 20px; 
-            padding: 8px 16px; 
-            font-size: 13px; 
-            font-weight: 900; 
-            color: var(--text-luxury); 
-            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
-            backdrop-filter: blur(20px); 
-            cursor: pointer;
-            min-height: 48px; 
-            display: flex; 
-            align-items: center;
-            box-shadow: var(--shadow-soft);
-            white-space: nowrap;
-          }
-          .back-btn-pill:hover { 
-            background: var(--bg-midnight);
-            border-color: #ef4444;
-            color: #ef4444;
-            transform: translateY(-3px) scale(1.03); 
-            box-shadow: 0 12px 24px -5px rgba(239, 68, 68, 0.2);
-          }
-
-          .input-glass-admin { 
-            width: 100%; 
-            background: rgba(255, 255, 255, 0.04); 
-            border: 1.5px solid var(--glass-border); 
-            border-radius: 18px; 
-            color: var(--text-luxury); 
-            padding: 16px 20px; 
-            outline: none; 
-            transition: all 0.3s ease; 
-          }
-          .input-glass-admin:focus { 
-            border-color: var(--primary-accent); 
-            background: rgba(255, 255, 255, 0.07); 
-            box-shadow: 0 0 25px -5px rgba(244, 114, 182, 0.25); 
-            transform: translateY(-1px);
-          }
-          
-          .button-group-pro {
-            display: flex;
-            gap: 12px;
-            align-items: stretch;
-            width: 100%;
-          }
-          .button-group-pro .ticket-btn-primary {
-            flex: 1;
-            width: auto;
-            margin: 0;
-          }
-          .icon-btn-admin {
-            background: var(--glass-card);
-            border: 1px solid var(--glass-border);
-            border-radius: 22px;
-            width: 58px;
-            height: 58px;
-            flex-shrink: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 22px;
-            cursor: pointer;
-            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            box-shadow: var(--admin-shadow);
-            color: var(--text-luxury);
-          }
-          .icon-btn-admin:hover {
-            transform: translateY(-4px) scale(1.05);
-            background: var(--bg-midnight);
-            border-color: var(--primary-accent);
-            box-shadow: 0 20px 35px -10px rgba(219, 39, 119, 0.4);
-          }
-
-          .ticket-id-luxury {
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid var(--glass-border);
-            padding: 4px 10px;
-            border-radius: 8px;
-            font-family: monospace;
-            font-weight: bold;
-            letter-spacing: 1px;
-            font-size: 11px;
-          }
-          
-          .ticket-btn-primary { 
-            background: var(--rose-gradient); 
-            color: white; 
-            border: none; 
-            border-radius: 22px; 
-            padding: 18px 26px; 
-            font-weight: 950; 
-            font-size: 15px; 
-            box-shadow: 0 12px 25px -5px rgba(219, 39, 119, 0.4); 
-            cursor: pointer; 
-            width: 100%; 
-            transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1); 
-            display: flex; 
-            align-items: center; 
-            justify-content: center; 
-            gap: 10px;
-          }
-          .ticket-btn-primary:hover { 
-            transform: translateY(-4px); 
-            box-shadow: 0 20px 35px -10px rgba(219, 39, 119, 0.5); 
-            filter: brightness(1.1);
-          }
-          .ticket-btn-primary:active { transform: translateY(1px) scale(0.97); }
-
-          .nav-pill-btn { 
-            flex: 1; 
-            min-width: 85px; 
-            padding: 14px 10px; 
-            border-radius: 20px; 
-            background: rgba(255, 255, 255, 0.03); 
-            border: 1px solid var(--glass-border); 
-            color: var(--text-dim); 
-            font-size: 12px; 
-            font-weight: 800; 
-            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); 
-            cursor: pointer;
-            display: flex; 
-            align-items: center; 
-            justify-content: center;
-          }
-          .nav-pill-btn.active { 
-            background: var(--rose-gradient); 
-            color: white; 
-            border-color: transparent; 
-            box-shadow: 0 10px 20px -5px rgba(219, 39, 119, 0.4); 
-            transform: scale(1.05) translateY(-2px); 
-          }
-
-          .glass-card-luxury { 
-            background: var(--glass-card); 
-            border: 1px solid var(--glass-border); 
-            border-radius: 32px; 
-            padding: 28px; 
-            backdrop-filter: blur(35px); 
-            box-shadow: var(--admin-shadow); 
-            position: relative; 
-            transition: all 0.3s ease;
-          }
-          .glass-card-luxury:hover { border-color: rgba(255,255,255,0.15); }
-          
-          .beauty-modal-card {
-            background: var(--glass-card);
-            border: 1px solid rgba(255,255,255,0.15);
-            border-radius: 36px;
-            padding: 35px;
-            width: 90%;
-            max-width: 380px;
-            backdrop-filter: blur(50px);
-            box-shadow: 0 40px 100px -20px rgba(0,0,0,0.9);
-            animation: modal-pop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
-            text-align: center;
-          }
-          @keyframes modal-pop { 
-            from { transform: scale(0.8); opacity: 0; } 
-            to { transform: scale(1); opacity: 1; } 
-          }
-
-          .live-status-pill {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            background: rgba(16, 185, 129, 0.1);
-            border: 1px solid rgba(16, 185, 129, 0.2);
-            padding: 4px 10px;
-            border-radius: 12px;
-            margin-top: 6px;
-            white-space: nowrap;
-            width: fit-content;
-          }
-          .live-dot-pulse { 
-            width: 10px; 
-            height: 10px; 
-            background: #10b981; 
-            border-radius: 50%; 
-            animation: pulse-live 2s infinite; 
-            box-shadow: 0 0 10px rgba(16, 185, 129, 0.4);
-          }
-          @keyframes pulse-live { 
-            0% { transform: scale(0.85); opacity: 0.6; } 
-            50% { transform: scale(1.1); opacity: 1; box-shadow: 0 0 15px rgba(16, 185, 129, 0.6); } 
-            100% { transform: scale(0.85); opacity: 0.6; } 
-          }
-          
-          .admin-toast-float {
-            background: var(--rose-gradient);
-            padding: 18px 32px;
-            border-radius: 24px;
-            box-shadow: 0 25px 50px -10px rgba(219, 39, 119, 0.5);
-          }
-        `}</style>
-
+        
         <div className="admin-header-luxury">
           <div>
             <h2 className="admin-title-pro">⚙️ គ្រប់គ្រង MO-MO</h2>
             <div className="live-status-pill">
               <div className="live-dot-pulse"></div>
-              <span style={{ fontSize: 9, fontWeight: 950, color: '#10b981', textTransform: 'uppercase', letterSpacing: 1.2 }}>Real-time Live</span>
+              <span style={{ fontSize: 9, fontWeight: 950, color: 'var(--text-main)', textTransform: 'uppercase', letterSpacing: 1.2 }}>Real-time Live</span>
             </div>
           </div>
           <div style={{ display: 'flex', gap: 10 }}>
@@ -691,448 +478,92 @@ const AdminDashboard = ({
           ))}
         </div>
 
-        <div style={{ padding: '0 15px' }}>
+                <div style={{ padding: '0 15px' }}>
           {activeTab === 'overview' && (
-            <div className="tab-pane-animate">
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 15, marginBottom: 25 }}>
-                <div className="glass-card-luxury" style={{ padding: '20px', background: 'rgba(236,72,153,0.1)', borderColor: 'rgba(236,72,153,0.3)' }}>
-                  <div style={{ fontSize: 10, fontWeight: 900, color: '#ec4899', textTransform: 'uppercase', marginBottom: 8 }}>💰 ចំណូលសរុប</div>
-                  <div style={{ fontSize: 26, fontWeight: 950 }}>${summary.totalRevenue.toLocaleString()}</div>
-                </div>
-                <div className="glass-card-luxury" style={{ padding: '20px' }}>
-                  <div style={{ fontSize: 10, fontWeight: 900, color: '#a855f7', textTransform: 'uppercase', marginBottom: 8 }}>🎫 កម្មង់កំពុងដើរ</div>
-                  <div style={{ fontSize: 26, fontWeight: 950 }}>{summary.activeOrders}</div>
-                </div>
-                <div className="glass-card-luxury" style={{ padding: '20px' }}>
-                  <div style={{ fontSize: 10, fontWeight: 900, color: '#3b82f6', textTransform: 'uppercase', marginBottom: 8 }}>👤 អតិថិជន</div>
-                  <div style={{ fontSize: 26, fontWeight: 950 }}>{summary.totalCustomers}</div>
-                </div>
-                <div className="glass-card-luxury" style={{ padding: '20px' }}>
-                  <div style={{ fontSize: 10, fontWeight: 900, color: '#10b981', textTransform: 'uppercase', marginBottom: 8 }}>✨ សុខភាពហាង</div>
-                  <div style={{ fontSize: 26, fontWeight: 950 }}>{summary.businessHealth}%</div>
-                </div>
-              </div>
-
-              <div className="glass-card-luxury" style={{ marginBottom: 25, padding: 20 }}>
-                <div style={{ fontSize: 14, fontWeight: 900, marginBottom: 15, display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span>📈</span> <span>ការវិភាគស៊ីជម្រៅ</span>
-                </div>
-
-                <div style={{ marginBottom: 25, background: 'var(--bg-soft)', padding: 15, borderRadius: 16 }}>
-                  <div style={{ fontSize: 11, fontWeight: 900, opacity: 0.6, marginBottom: 10 }}>កំណើនចំណូល (14 ថ្ងៃចុងក្រោយ)</div>
-                  <div style={{ width: '100%', height: 200 }}>
-                    <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={paddedDailyAnalytics}>
-                        <defs>
-                          <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#ec4899" stopOpacity={0.8}/>
-                            <stop offset="95%" stopColor="#ec4899" stopOpacity={0}/>
-                          </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.1)" />
-                        <XAxis dataKey="dateShort" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: 'var(--text-muted)' }} />
-                        <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: 'var(--text-muted)' }} />
-                        <Tooltip contentStyle={{ background: 'var(--glass-card)', border: 'none', borderRadius: 8, boxShadow: '0 4px 12px rgba(0,0,0,0.2)' }} itemStyle={{ color: '#ec4899', fontWeight: 900 }} />
-                        <Area type="monotone" dataKey="revenue" stroke="#ec4899" strokeWidth={3} fillOpacity={1} fill="url(#colorRev)" isAnimationActive={true} />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-
-                <div style={{ marginBottom: 25, background: 'var(--bg-soft)', padding: 15, borderRadius: 16 }}>
-                  <div style={{ fontSize: 11, fontWeight: 900, opacity: 0.6, marginBottom: 10 }}>ចំនួនកម្ម៉ង់ (14 ថ្ងៃចុងក្រោយ)</div>
-                  <div style={{ width: '100%', height: 180 }}>
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={paddedDailyAnalytics}>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.1)" />
-                        <XAxis dataKey="dateShort" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: 'var(--text-muted)' }} />
-                        <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: 'var(--text-muted)' }} allowDecimals={false} />
-                        <Tooltip contentStyle={{ background: 'var(--glass-card)', border: 'none', borderRadius: 8, boxShadow: '0 4px 12px rgba(0,0,0,0.2)' }} itemStyle={{ color: '#3b82f6', fontWeight: 900 }} cursor={{ fill: 'rgba(255,255,255,0.05)' }} />
-                        <Bar dataKey="orders" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={20} isAnimationActive={true} />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 15, marginBottom: 20 }}>
-                  <div style={{ background: 'var(--bg-soft)', padding: 15, borderRadius: 16 }}>
-                    <div style={{ fontSize: 11, fontWeight: 900, opacity: 0.6, marginBottom: 5 }}>តម្លៃមធ្យមក្នុងមួយកម្មង់</div>
-                    <div style={{ fontSize: 24, fontWeight: 950, color: '#f59e0b' }}>${advancedAnalytics.aov?.aov?.toFixed(2) || '0.00'}</div>
-                    <div style={{ fontSize: 10, color: '#10b981', marginTop: 4 }}>30 ថ្ងៃចុងក្រោយ: ${advancedAnalytics.aov?.aov_30d?.toFixed(2) || '0.00'}</div>
-                  </div>
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-                  <div>
-                    <div style={{ fontSize: 12, fontWeight: 900, marginBottom: 10, borderBottom: '1px solid var(--border-subtle)', paddingBottom: 5 }}>🔥 ទំនិញលក់ដាច់បំផុត</div>
-                    {(advancedAnalytics.topProducts || []).map((p, i) => (
-                      <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, padding: '6px 0' }}>
-                        <span style={{ fontWeight: 800 }}>{i + 1}. {p.product_name}</span>
-                        <span style={{ color: '#10b981', fontWeight: 900 }}>x{p.total_quantity}</span>
-                      </div>
-                    ))}
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 12, fontWeight: 900, marginBottom: 10, borderBottom: '1px solid var(--border-subtle)', paddingBottom: 5 }}>👑 អតិថិជនឆ្នើម</div>
-                    {(advancedAnalytics.topCustomers || []).map((c, i) => (
-                      <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, padding: '6px 0' }}>
-                        <span style={{ fontWeight: 800 }}>{i + 1}. {c.user_name}</span>
-                        <span style={{ color: '#ec4899', fontWeight: 900 }}>${parseFloat(c.total_spent).toFixed(2)}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              <div className="glass-card-luxury" style={{ marginBottom: 25 }}>
-                <div style={{ fontSize: 14, fontWeight: 900, marginBottom: 15 }}>🛍️ កម្ម៉ង់ថ្មីៗ</div>
-                {orders.slice(0, 3).map(o => (
-                  <div key={o.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid var(--glass-border)' }}>
-                    <div>
-                      <div style={{ fontSize: 13, fontWeight: 800 }}>{o.user_name}</div>
-                      <div className="ticket-id-luxury" style={{ fontSize: 9, padding: '2px 6px', marginTop: 4 }}>{o.order_code || `#MO-${o.id}`}</div>
-                    </div>
-                    <div style={{ textAlign: 'right' }}>
-                      <div style={{ fontSize: 14, fontWeight: 900 }}>${parseFloat(o.total).toFixed(2)}</div>
-                      <div style={{ fontSize: 9, color: '#ec4899', fontWeight: 800 }}>{(statusTags[o.status] || {}).label}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+            <AdminOverviewTab
+              summary={summary}
+              paddedDailyAnalytics={paddedDailyAnalytics}
+              advancedAnalytics={advancedAnalytics}
+              orders={orders}
+              statusTags={statusTags}
+            />
           )}
 
           {activeTab === 'orders' && (
-            <div className="tab-pane-animate">
-              <div style={{ marginBottom: 20, display: 'flex', gap: 10 }}>
-                <input className="input-glass-admin" style={{ flex: 1 }} placeholder="ស្វែងរកលេខកម្ម៉ង់ ឬឈ្មោះ..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
-                <select className="input-glass-admin" style={{ width: 150 }} value={orderFilter} onChange={e => setOrderFilter(e.target.value)}>
-                  <option value="all">ទាំងអស់</option>
-                  <option value="pending">⌛ រង់ចាំបង់</option>
-                  <option value="paid">✅ បង់រួច</option>
-                  <option value="processing">📦 កំពុងរៀបចំ</option>
-                  <option value="shipped">🚚 បញ្ជូនរួចរាល់ (Shipped)</option>
-                  <option value="cancelled">❌ បានលុបចោល</option>
-                  <option value="active">🚀 កំពុងដើរ (រួមបញ្ចូល)</option>
-                </select>
-              </div>
-              {orders
-                .filter(o => {
-                  const matchesSearch = (o.user_name || '').toLowerCase().includes(searchTerm.toLowerCase()) || (o.order_code || '').toLowerCase().includes(searchTerm.toLowerCase());
-                  if (orderFilter === 'pending') return matchesSearch && o.status === 'pending';
-                  if (orderFilter === 'paid') return matchesSearch && o.status === 'paid';
-                  if (orderFilter === 'processing') return matchesSearch && o.status === 'processing';
-                  if (orderFilter === 'shipped') return matchesSearch && (o.status === 'shipped' || o.status === 'delivering');
-                  if (orderFilter === 'cancelled') return matchesSearch && o.status === 'cancelled';
-                  if (orderFilter === 'active') return matchesSearch && ['paid', 'processing', 'shipped', 'delivering'].includes(o.status);
-                  // Default 'all' - still hide pending by default unless searching specific code
-                  if (orderFilter === 'all' && !searchTerm) return o.status !== 'pending';
-                  return matchesSearch;
-                })
-                .map(o => (
-                  <div key={o.id} className="glass-card-luxury" style={{ marginBottom: 15, padding: 15 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 }}>
-                      <span className="ticket-id-luxury">{o.order_code || `#MO-${o.id}`}</span>
-                      <span style={{ fontSize: 11, fontWeight: 900, background: 'var(--glass-border)', padding: '4px 10px', borderRadius: 8 }}>{(statusTags[o.status] || {}).icon} {(statusTags[o.status] || {}).label}</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 15 }}>
-                      <div>
-                        <div style={{ fontWeight: 800 }}>{o.user_name}</div>
-                        <div style={{ fontSize: 11, opacity: 0.6 }}>📞 {o.phone}</div>
-                      </div>
-                      <div style={{ fontSize: 18, fontWeight: 950 }}>${parseFloat(o.total).toFixed(2)}</div>
-                    </div>
-                    <div className="button-group-pro" style={{ flexWrap: 'wrap' }}>
-                      {o.receipt_url && (
-                        <div style={{ width: '100%', marginBottom: 10, borderRadius: 12, overflow: 'hidden', border: '1px solid var(--glass-border)' }}>
-                           <img src={o.receipt_url} alt="Receipt" style={{ width: '100%', maxHeight: '200px', objectFit: 'contain', background: 'rgba(0,0,0,0.2)', cursor: 'pointer' }} onClick={() => window.Telegram?.WebApp?.openLink ? window.Telegram.WebApp.openLink(o.receipt_url) : window.open(o.receipt_url, '_blank')} />
-                        </div>
-                      )}
-                      {o.status === 'pending' && <button className="ticket-btn-primary" style={{ flex: 1 }} onClick={() => updateStatus(o.id, 'paid')}>💰 បញ្ជាក់បង់ប្រាក់</button>}
-                      {o.status === 'paid' && <button className="ticket-btn-primary" onClick={() => updateStatus(o.id, 'processing')}>📦 រៀបចំអីវ៉ាន់</button>}
-                      {o.status === 'processing' && <button className="ticket-btn-primary" onClick={() => updateStatus(o.id, 'shipped')}>✨ អីវ៉ាន់ចេញ</button>}
-                      {['paid', 'processing', 'shipped', 'delivering', 'delivered'].includes(o.status) && (
-                        <button className="icon-btn-admin" style={{ flexShrink: 0 }} aria-label="Print Order" onClick={() => {
-                          setPrintingOrder(o);
-                          setTimeout(() => { window.print(); setPrintingOrder(null); }, 100);
-                        }}>🖨️</button>
-                      )}
-                    </div>
-                  </div>
-                ))}
-            </div>
+            <AdminOrdersTab
+              orders={orders}
+              searchTerm={searchTerm}
+              orderFilter={orderFilter}
+              setOrderFilter={setOrderFilter}
+              localSearchTerm={localSearchTerm}
+              setLocalSearchTerm={setLocalSearchTerm}
+              updateStatus={updateStatus}
+              setPrintingOrder={setPrintingOrder}
+              statusTags={statusTags}
+            />
           )}
 
           {activeTab === 'products' && (
-            <div className="tab-pane-animate">
-              <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 20 }}>
-                <button className="ticket-btn-primary" style={{ flex: 'none', width: 'auto', padding: '10px 20px', height: 'auto' }} onClick={() => setIsAddingProduct(true)}>➕ បន្ថែមទំនិញថ្មី</button>
-              </div>
-              <div style={{ display: 'grid', gap: 12, marginBottom: 30 }}>
-                {products.map(p => (
-                  <div key={p.id} className="glass-card-luxury" style={{ padding: 12, display: 'flex', gap: 12, alignItems: 'center' }}>
-                    <img src={p.image} style={{ width: 50, height: 50, borderRadius: 12, objectFit: 'cover' }} alt={p.name} crossOrigin="anonymous" />
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 800, fontSize: 14 }}>{p.name}</div>
-                      <div style={{ fontSize: 11, color: '#ec4899', fontWeight: 800, marginTop: 4 }}>
-                        {p.category} • ${p.price} • {p.stock} {[...Array(Math.ceil(p.stock / 20))].map((_, i) => <span key={i}>📦</span>)}
-                      </div>
-                    </div>
-                    <button className="icon-btn-admin" aria-label="Edit product" onClick={() => {
-                      setEditingProduct(p);
-                      setEditFormData({
-                        name: p.name,
-                        price: p.price,
-                        stock: p.stock,
-                        category: p.category,
-                        description: p.description || '',
-                        image: p.image || '',
-                        additional_images: typeof p.additional_images === 'string' ? JSON.parse(p.additional_images) : (p.additional_images || []),
-                        flash_sale_price: p.flash_sale_price || '',
-                        flash_sale_end: p.flash_sale_end ? new Date(p.flash_sale_end).toISOString().slice(0, 16) : '',
-                        video_url: p.video_url || ''
-                      });
-                    }}>✏️</button>
-                  </div>
-                ))}
-              </div>
-            </div>
+            <AdminProductsTab
+              products={products}
+              productSearchTerm={productSearchTerm}
+              localProductSearchTerm={localProductSearchTerm}
+              setLocalProductSearchTerm={setLocalProductSearchTerm}
+              setIsAddingProduct={setIsAddingProduct}
+              setEditingProduct={setEditingProduct}
+              setEditFormData={setEditFormData}
+              visibleProductLimit={visibleProductLimit}
+              setVisibleProductLimit={setVisibleProductLimit}
+            />
           )}
 
           {activeTab === 'broadcast' && (
-            <div className="tab-pane-animate">
-              <div className="glass-card-luxury">
-                <div style={{ textAlign: 'center', marginBottom: 25 }}>
-                  <div style={{ fontSize: 40 }}>📢</div>
-                  <h3 style={{ margin: '10px 0', fontSize: 18, fontWeight: 950 }}>ផ្សាយដំណឹង</h3>
-                </div>
-                <div style={{ marginBottom: 15 }}>
-                  <label style={{ display: 'block', fontSize: 11, fontWeight: 800, marginBottom: 8, opacity: 0.6 }}>រូបភាពបដា</label>
-                  <label className="upload-zone-luxury">
-                    {broadcastImage ? (
-                      <img src={broadcastImage} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="" crossOrigin="anonymous" />
-                    ) : (
-                      <div className="upload-label-content">
-                        <div style={{ fontSize: 24 }}>📸</div>
-                        <div style={{ fontSize: 13, fontWeight: 800 }}>ចុចដាក់រូបភាព</div>
-                        <div style={{ fontSize: 10, opacity: 0.5 }}>PNG, JPG (Max 5MB)</div>
-                      </div>
-                    )}
-                    <input type="file" accept="image/*" onChange={e => {
-                      const file = e.target.files?.[0];
-                      if (file) handleBroadcastUpload(file);
-                    }} />
-                  </label>
-                </div>
-                <textarea className="input-glass-admin" rows="4" style={{ marginBottom: 20 }} value={broadcastMsg} onChange={e => setBroadcastMsg(e.target.value)} placeholder="សរសេរសារដំណឹង..."></textarea>
-                <button className="ticket-btn-primary" onClick={handleBroadcast} disabled={isBroadcasting}>{isBroadcasting ? '⌛ កំពុងផ្ញើ...' : '🚀 ផ្ញើដំណឹងឥឡូវនេះ'}</button>
-              </div>
-            </div>
+            <AdminBroadcastTab
+              broadcastImage={broadcastImage}
+              broadcastMsg={broadcastMsg}
+              setBroadcastMsg={setBroadcastMsg}
+              isBroadcasting={isBroadcasting}
+              handleBroadcast={handleBroadcast}
+              handleBroadcastUpload={handleBroadcastUpload}
+            />
           )}
 
           {activeTab === 'faqs' && (
-            <div className="tab-pane-animate">
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
-                  <h3 style={{ fontSize: 18, fontWeight: 900 }}>គ្រប់គ្រងសំណួរ-ចម្លើយ</h3>
-                  <button className="ticket-btn-primary" style={{ flex: 'none', width: 'auto', padding: '10px 20px', height: 'auto' }} onClick={() => {
-                    setEditingFaq({ id: null, q_kh: '', q_en: '', a_kh: '', a_en: '', sort_order: 0, is_active: true });
-                    setIsFaqModalOpen(true);
-                  }}>➕ បន្ថែមថ្មី</button>
-                </div>
-
-                {faqsLoading ? (
-                  <div style={{ padding: 40, textAlign: 'center', opacity: 0.5 }}>កំពុងទាញទិន្នន័យ...</div>
-                ) : faqsList.length === 0 ? (
-                  <div className="glass-card-luxury" style={{ padding: 40, textAlign: 'center', opacity: 0.5 }}>មិនមានទិន្នន័យទេ</div>
-                ) : (
-                  faqsList.map(faq => (
-                    <div key={faq.id} className="glass-card-luxury" style={{ padding: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <div>
-                        <div style={{ fontWeight: 800, fontSize: 15, marginBottom: 4 }}>{faq.q_kh}</div>
-                        <div style={{ opacity: 0.7, fontSize: 13, marginBottom: 10 }}>{faq.a_kh}</div>
-                        <div style={{ fontWeight: 800, fontSize: 14, color: '#3b82f6', marginBottom: 4 }}>{faq.q_en}</div>
-                        <div style={{ opacity: 0.7, fontSize: 12 }}>{faq.a_en}</div>
-                      </div>
-                      <div style={{ display: 'flex', gap: 10 }}>
-                        <button className="nav-pill-btn" style={{ padding: '8px 16px', background: '#fef3c7', color: '#d97706' }} onClick={() => {
-                          setEditingFaq(faq);
-                          setIsFaqModalOpen(true);
-                        }}>កែប្រែ</button>
-                        <button className="nav-pill-btn" style={{ padding: '8px 16px', background: '#fee2e2', color: '#ef4444' }} onClick={() => handleDeleteFaq(faq.id)}>លុប</button>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
+            <AdminFaqsTab
+              faqsLoading={faqsLoading}
+              faqsList={faqsList}
+              setEditingFaq={setEditingFaq}
+              setIsFaqModalOpen={setIsFaqModalOpen}
+              handleDeleteFaq={handleDeleteFaq}
+            />
           )}
 
           {activeTab === 'settings' && (
-            <div className="tab-pane-animate">
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-                <div className="glass-card-luxury" style={{ display: 'flex', gap: 20, alignItems: 'center', padding: '20px 28px' }}>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 950, fontSize: 16 }}>🏪 ស្ថានភាពហាង</div>
-                    <div style={{ fontSize: 13, opacity: 0.6, marginTop: 4 }}>កំណត់ថាហាងបើក ឬបិទបណ្តោះអាសន្ន</div>
-                  </div>
-                  <div style={{ width: 150 }}>
-                    <select
-                      className="input-glass-admin"
-                      style={{ padding: '10px 14px', borderRadius: 14, fontSize: 13 }}
-                      value={shopStatus}
-                      onChange={e => {
-                        const newVal = e.target.value;
-                        showConfirm(
-                          `តើអ្នកពិតជាចង់ ${newVal === 'open' ? 'បើក' : 'បិទ'} ហាងមែនទេ?`,
-                          () => {
-                            setShopStatus(newVal);
-                            updateSettingValue('shop_status', newVal);
-                          },
-                          '🏪'
-                        );
-                      }}
-                    >
-                      <option value="open">🟢 បើកលក់</option>
-                      <option value="closed">🔴 បិទផ្អាក</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="glass-card-luxury">
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
-                    <div style={{ fontSize: 24 }}>🚚</div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 950, fontSize: 16 }}>សេវាដឹកជញ្ជូន</div>
-                      <div style={{ fontSize: 12, opacity: 0.6 }}>កំណត់តម្លៃដឹក និងលក្ខខណ្ឌដឹកហ្វ្រី</div>
-                    </div>
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
-                    <div>
-                      <label style={{ display: 'block', fontSize: 11, fontWeight: 900, marginBottom: 8, opacity: 0.7 }}>តម្លៃដឹកធម្មតា ($)</label>
-                      <input className="input-glass-admin" placeholder="0.00" value={deliveryFee} onChange={e => setDeliveryFee(e.target.value)} />
-                    </div>
-                    <div>
-                      <label style={{ display: 'block', fontSize: 11, fontWeight: 900, marginBottom: 8, opacity: 0.7 }}>ដឹកហ្វ្រីលើសពី ($)</label>
-                      <input className="input-glass-admin" placeholder="50.00" value={deliveryThreshold} onChange={e => setDeliveryThreshold(e.target.value)} />
-                    </div>
-                  </div>
-                  <button className="ticket-btn-primary" onClick={() => { updateSettingValue('delivery_fee', deliveryFee); updateSettingValue('delivery_threshold', deliveryThreshold); }}>
-                    💾 រក្សាទុកការកំណត់
-                  </button>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 15 }}>
-                  <div className="glass-card-luxury" style={{ padding: 20, minWidth: 0 }}>
-                    <div style={{ fontWeight: 950, marginBottom: 15, fontSize: 14 }}>🖼️ បដាហាង</div>
-                    <div style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 10 }}>
-                      {(promoBannerUrl ? promoBannerUrl.split(',').map(u => u.trim()).filter(Boolean) : []).map((img, idx) => (
-                        <div key={idx} style={{ position: 'relative', flexShrink: 0, width: 140, height: 80, borderRadius: 12, overflow: 'hidden', border: '1px solid var(--border-subtle)' }}>
-                          <img src={img} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="" crossOrigin="anonymous" />
-                          <button className="remove-thumb-btn" onClick={() => removeBanner(idx)}>✕</button>
-                        </div>
-                      ))}
-                      <label className="upload-zone-luxury" style={{ flexShrink: 0, width: 140, height: 80 }}>
-                        <div className="upload-label-content">
-                          <div style={{ fontSize: 22 }}>🌄</div>
-                          <div style={{ fontSize: 11, fontWeight: 900 }}>ថែមបដា</div>
-                        </div>
-                        <input type="file" accept="image/*" onChange={e => {
-                          const file = e.target.files?.[0];
-                          if (file) handleBannerUpload(file);
-                        }} />
-                      </label>
-                    </div>
-                  </div>
-                  <div className="glass-card-luxury" style={{ padding: 20, minWidth: 0 }}>
-                    <div style={{ fontWeight: 950, marginBottom: 15, fontSize: 14 }}>🏷️ ឡូហ្គោហាង</div>
-                    <label className="upload-zone-luxury" style={{ height: 110 }}>
-                      {shopLogoUrl ? (
-                        <img src={shopLogoUrl} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="" crossOrigin="anonymous" />
-                      ) : (
-                        <div className="upload-label-content">
-                          <div style={{ fontSize: 22 }}>🏷️</div>
-                          <div style={{ fontSize: 11, fontWeight: 900 }}>ប្តូរឡូហ្គោ</div>
-                        </div>
-                      )}
-                      <input type="file" accept="image/*" onChange={e => {
-                        const file = e.target.files?.[0];
-                        if (file) handleLogoUpload(file);
-                      }} />
-                    </label>
-                  </div>
-                </div>
-              </div>
-
-              <div className="glass-card-luxury">
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
-                  <div style={{ fontSize: 24 }}>💳</div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 950, fontSize: 16 }}>ព័ត៌មានបង់ប្រាក់</div>
-                    <div style={{ fontSize: 12, opacity: 0.6 }}>កំណត់រូប QR និងលេខគណនីធនាគារ</div>
-                  </div>
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 15 }}>
-                  <div>
-                    <label style={{ display: 'block', fontSize: 11, fontWeight: 900, marginBottom: 8, opacity: 0.7 }}>រូបភាព QR (KHQR)</label>
-                    <label className="upload-zone-luxury" style={{ height: 120 }}>
-                      {paymentQrUrl ? (
-                        <img src={paymentQrUrl} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="" crossOrigin="anonymous" />
-                      ) : (
-                        <div className="upload-label-content">
-                          <div style={{ fontSize: 22 }}>📸</div>
-                          <div style={{ fontSize: 10, fontWeight: 900 }}>ដាក់រូប QR</div>
-                        </div>
-                      )}
-                      <input type="file" accept="image/*" onChange={e => {
-                        const file = e.target.files?.[0];
-                        if (file) handleQrUpload(file);
-                      }} />
-                    </label>
-                  </div>
-                  <div>
-                    <label style={{ display: 'block', fontSize: 11, fontWeight: 900, marginBottom: 8, opacity: 0.7 }}>ព័ត៌មានគណនី</label>
-                    <textarea
-                      className="input-glass-admin"
-                      style={{ height: 120, fontSize: 12 }}
-                      placeholder="ឧទាហរណ៍៖ ABA: 000 111 222 (NAME)"
-                      value={paymentInfo}
-                      onChange={e => setPaymentInfo(e.target.value)}
-                    />
-                  </div>
-                </div>
-                <button className="ticket-btn-primary" onClick={() => updateSettingValue('payment_info', paymentInfo)}>
-                  💾 រក្សាទុកព័ត៌មានបង់ប្រាក់
-                </button>
-              </div>
-
-              <div className="glass-card-luxury">
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
-                  <div style={{ fontSize: 24 }}>🖨️</div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 950, fontSize: 16 }}>ព័ត៌មានវិក្កយបត្រ</div>
-                    <div style={{ fontSize: 12, opacity: 0.6 }}>កំណត់ឈ្មោះ និងអក្សររត់ពីក្រោមលើវិក្កយបត្រ</div>
-                  </div>
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 15 }}>
-                  <div>
-                    <label style={{ display: 'block', fontSize: 11, fontWeight: 900, marginBottom: 8, opacity: 0.7 }}>ឈ្មោះហាង</label>
-                    <input className="input-glass-admin" value={receiptShopName} onChange={e => setReceiptShopName(e.target.value)} />
-                  </div>
-                  <div>
-                    <label style={{ display: 'block', fontSize: 11, fontWeight: 900, marginBottom: 8, opacity: 0.7 }}>អក្សររត់ពីក្រោម</label>
-                    <input className="input-glass-admin" value={receiptSubtitle} onChange={e => setReceiptSubtitle(e.target.value)} />
-                  </div>
-                </div>
-                <div style={{ marginBottom: 15 }}>
-                  <label style={{ display: 'block', fontSize: 11, fontWeight: 900, marginBottom: 8, opacity: 0.7 }}>កំណត់ចំណាំហាង</label>
-                  <textarea className="input-glass-admin" rows="2" value={receiptNote} onChange={e => setReceiptNote(e.target.value)} placeholder="សូមអរគុណសម្រាប់ការគាំទ្រ!"></textarea>
-                </div>
-                <button className="ticket-btn-primary" onClick={() => { updateSettingValue('receipt_shop_name', receiptShopName); updateSettingValue('receipt_subtitle', receiptSubtitle); updateSettingValue('receipt_note', receiptNote); }}>
-                  💾 រក្សាទុកវិក្កយបត្រ
-                </button>
-              </div>
-            </div>
+            <AdminSettingsTab
+              shopStatus={shopStatus}
+              showConfirm={showConfirm}
+              setShopStatus={setShopStatus}
+              updateSettingValue={updateSettingValue}
+              deliveryFee={deliveryFee}
+              setDeliveryFee={setDeliveryFee}
+              deliveryThreshold={deliveryThreshold}
+              setDeliveryThreshold={setDeliveryThreshold}
+              promoBannerUrl={promoBannerUrl}
+              removeBanner={removeBanner}
+              handleBannerUpload={handleBannerUpload}
+              shopLogoUrl={shopLogoUrl}
+              handleLogoUpload={handleLogoUpload}
+              paymentQrUrl={paymentQrUrl}
+              handleQrUpload={handleQrUpload}
+              paymentInfo={paymentInfo}
+              setPaymentInfo={setPaymentInfo}
+              receiptShopName={receiptShopName}
+              setReceiptShopName={setReceiptShopName}
+              receiptSubtitle={receiptSubtitle}
+              setReceiptSubtitle={setReceiptSubtitle}
+              receiptNote={receiptNote}
+              setReceiptNote={setReceiptNote}
+            />
           )}
 
         </div>
@@ -1145,254 +576,48 @@ const AdminDashboard = ({
         )}
       </div>
 
-      {/* ✅ Modals rendered OUTSIDE the animate-in container so position:fixed works correctly */}
-      {editingProduct && (
-        <div style={{ position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, background: 'rgba(0,0,0,0.65)' }}>
-          <div className="glass-card-luxury" style={{ width: '92%', maxWidth: 440, maxHeight: '85vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-            <h3 style={{ marginBottom: 20, flexShrink: 0 }}>✏️ កែប្រែទំនិញ</h3>
+            {/* ✅ Modals rendered OUTSIDE the animate-in container so position:fixed works correctly */}
+      <AdminEditProductModal
+        editingProduct={editingProduct}
+        isUploading={isUploading}
+        editFormData={editFormData}
+        setEditFormData={setEditFormData}
+        compressImage={compressImage}
+        setIsUploading={setIsUploading}
+        fetchWithRetry={fetchWithRetry}
+        BACKEND_URL={BACKEND_URL}
+        headers={headers}
+        categories={categories}
+        setEditingProduct={setEditingProduct}
+        handlePreview={handlePreview}
+        isSaving={isSaving}
+        submitEditProduct={submitEditProduct}
+      />
 
-            <div style={{ overflowY: 'auto', flex: 1, paddingRight: 5, paddingBottom: 5 }}>
-              <div style={{ marginBottom: 14 }}>
-                <label style={{ display: 'block', fontSize: 11, fontWeight: 800, marginBottom: 8, opacity: 0.6 }}>រូបភាពទំនិញ</label>
-                <label className="upload-zone-luxury" style={{ height: 140, position: 'relative' }}>
-                  {isUploading && (
-                    <div style={{ position: 'absolute', inset: 0, background: 'rgba(255,255,255,0.7)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', zIndex: 10, borderRadius: 20 }}>
-                      <div className="pd-pulse-loader" style={{ fontSize: 28, marginBottom: 8 }}>⌛</div>
-                      <div style={{ fontSize: 12, fontWeight: 800, color: '#1e293b' }}>កំពុងផ្ទុក...</div>
-                    </div>
-                  )}
-                  {editFormData.image ? (
-                    <img src={editFormData.image} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="" crossOrigin="anonymous" />
-                  ) : (
-                    <div className="upload-label-content"><div style={{ fontSize: 24 }}>📦</div><div style={{ fontSize: 13, fontWeight: 800 }}>ប្តូររូបភាព</div></div>
-                  )}
-                  <input type="file" accept="image/*" disabled={isUploading} onChange={e => {
-                    const file = e.target.files?.[0];
-                    if (file) {
-                      const fd = new FormData();
-                      fd.append('image', file);
-                      setIsUploading(true);
-                      fetchWithRetry(`${BACKEND_URL}/api/admin/upload`, { method: 'POST', headers, body: fd }).then(res => {
-                        if (res.success && res.data?.url) setEditFormData(prev => ({ ...prev, image: res.data.url }));
-                      }).finally(() => setIsUploading(false));
-                    }
-                  }} />
-                </label>
-              </div>
-              <div style={{ marginBottom: 12 }}>
-                <label style={{ display: 'block', fontSize: 11, fontWeight: 800, marginBottom: 8, opacity: 0.6 }}>ឈ្មោះទំនិញ</label>
-                <input className="input-glass-admin" placeholder="ឈ្មោះ" value={editFormData.name} onChange={e => setEditFormData({ ...editFormData, name: e.target.value })} />
-              </div>
+      <AdminAddProductModal
+        isAddingProduct={isAddingProduct}
+        isUploading={isUploading}
+        newProductData={newProductData}
+        setNewProductData={setNewProductData}
+        compressImage={compressImage}
+        setIsUploading={setIsUploading}
+        fetchWithRetry={fetchWithRetry}
+        BACKEND_URL={BACKEND_URL}
+        headers={headers}
+        categories={categories}
+        setIsAddingProduct={setIsAddingProduct}
+        handlePreview={handlePreview}
+        isSaving={isSaving}
+        submitAddProduct={submitAddProduct}
+      />
 
-              <div style={{ marginBottom: 12 }}>
-                <label style={{ display: 'block', fontSize: 11, fontWeight: 800, marginBottom: 8, opacity: 0.6 }}>ប្រភេទ</label>
-                <select className="input-glass-admin" value={categories.some(c => c.name === editFormData.category) ? editFormData.category : 'OTHER'} onChange={e => setEditFormData({ ...editFormData, category: e.target.value })}>
-                  <option value="" disabled>រើសប្រភេទ...</option>
-                  {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
-                  <option value="OTHER">➕ បន្ថែមប្រភេទថ្មី (Add New)</option>
-                </select>
-                <input
-                  className="input-glass-admin"
-                  style={{ marginTop: 8, display: categories.some(c => c.name === editFormData.category) ? 'none' : 'block' }}
-                  placeholder="វាយបញ្ចូលឈ្មោះប្រភេទថ្មី..."
-                  value={editFormData.category === 'OTHER' ? '' : editFormData.category}
-                  onChange={e => setEditFormData({ ...editFormData, category: e.target.value })}
-                />
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: 11, fontWeight: 800, marginBottom: 8, opacity: 0.6 }}>តម្លៃ ($)</label>
-                  <input className="input-glass-admin" type="number" placeholder="តម្លៃ ($)" value={editFormData.price} onChange={e => setEditFormData({ ...editFormData, price: e.target.value })} />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: 11, fontWeight: 800, marginBottom: 8, opacity: 0.6 }}>ស្តុក</label>
-                  <input className="input-glass-admin" type="number" placeholder="ស្តុក" value={editFormData.stock} onChange={e => setEditFormData({ ...editFormData, stock: e.target.value })} />
-                </div>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: 11, fontWeight: 800, marginBottom: 8, opacity: 0.8 }}>⚡ តម្លៃ Flash Sale ($)</label>
-                  <input className="input-glass-admin" type="number" placeholder="តម្លៃ Flash Sale ($)" value={editFormData.flash_sale_price} onChange={e => setEditFormData({ ...editFormData, flash_sale_price: e.target.value })} />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: 11, fontWeight: 800, marginBottom: 8, opacity: 0.8 }}>⚡ ថ្ងៃបញ្ចប់ Flash Sale</label>
-                  <input className="input-glass-admin" type="datetime-local" value={editFormData.flash_sale_end} onChange={e => setEditFormData({ ...editFormData, flash_sale_end: e.target.value })} />
-                </div>
-              </div>
-
-              <div style={{ marginBottom: 14 }}>
-                <label style={{ display: 'block', fontSize: 11, fontWeight: 800, marginBottom: 8, opacity: 0.6 }}>ការពណ៌នា</label>
-                <textarea className="input-glass-admin" rows="3" value={editFormData.description} onChange={e => setEditFormData({ ...editFormData, description: e.target.value })} placeholder="ការពណ៌នាចំណុចពិសេស..."></textarea>
-              </div>
-
-
-              <div className="admin-gallery-editor" style={{ marginBottom: 16 }}>
-                <label style={{ fontSize: 11, fontWeight: 800, opacity: 0.6 }}>ជំនួយរូបភាព (Gallery)</label>
-                <div className="gallery-grid-lux">
-                  {(editFormData.additional_images || []).map((img, idx) => (
-                    <div key={idx} className="gallery-thumb-item">
-                      <img src={img} alt="" crossOrigin="anonymous" />
-                      <button className="remove-thumb-btn" onClick={() => { const n = [...editFormData.additional_images]; n.splice(idx, 1); setEditFormData({ ...editFormData, additional_images: n }); }}>✕</button>
-                    </div>
-                  ))}
-                  <label className="add-gallery-slot" style={{ position: 'relative' }}>
-                    {isUploading && (
-                      <div style={{ position: 'absolute', inset: 0, background: 'rgba(255,255,255,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 5, borderRadius: 16 }}>
-                        <div className="pd-pulse-loader" style={{ fontSize: 18 }}>⌛</div>
-                      </div>
-                    )}
-                    <span>+</span><label>ថែមរូប</label>
-                    <input type="file" accept="image/*" style={{ display: 'none' }} disabled={isUploading} onChange={e => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        const fd = new FormData();
-                        fd.append('image', file);
-                        setIsUploading(true);
-                        fetchWithRetry(`${BACKEND_URL}/api/admin/upload`, { method: 'POST', headers, body: fd }).then(d => {
-                          if (d.success && d.data?.url) setEditFormData(prev => ({ ...prev, additional_images: [...(prev.additional_images || []), d.data.url] }));
-                        }).finally(() => setIsUploading(false));
-                      }
-                    }} />
-                  </label>
-                </div>
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', gap: 12, marginTop: 15, flexShrink: 0 }}>
-              <button className="nav-pill-btn btn-destructive" style={{ flex: 1 }} disabled={isSaving} onClick={() => setEditingProduct(null)}>បោះបង់</button>
-              <button className="nav-pill-btn" style={{ flex: 1, background: '#f8fafc', color: '#1e293b', border: '1px solid #e2e8f0' }} onClick={() => handlePreview(editFormData)}>👁️ មើលសិន</button>
-              <button className="ticket-btn-primary" style={{ flex: 1.5 }} disabled={isSaving} onClick={submitEditProduct}>
-                {isSaving ? '⌛...' : 'រក្សាទុក'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {isAddingProduct && (
-        <div style={{ position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, background: 'rgba(0,0,0,0.65)' }}>
-          <div className="glass-card-luxury" style={{ width: '92%', maxWidth: 440, maxHeight: '85vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-            <h3 style={{ marginBottom: 20, flexShrink: 0 }}>➕ បន្ថែមទំនិញថ្មី</h3>
-
-            <div style={{ overflowY: 'auto', flex: 1, paddingRight: 5, paddingBottom: 5 }}>
-              <div style={{ marginBottom: 14 }}>
-                <label style={{ display: 'block', fontSize: 11, fontWeight: 800, marginBottom: 8, opacity: 0.6 }}>រូបភាពទំនិញ</label>
-                <label className="upload-zone-luxury" style={{ height: 140, position: 'relative' }}>
-                  {isUploading && (
-                    <div style={{ position: 'absolute', inset: 0, background: 'rgba(255,255,255,0.7)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', zIndex: 10, borderRadius: 20 }}>
-                      <div className="pd-pulse-loader" style={{ fontSize: 28, marginBottom: 8 }}>⌛</div>
-                      <div style={{ fontSize: 12, fontWeight: 800, color: '#1e293b' }}>កំពុងផ្ទុក...</div>
-                    </div>
-                  )}
-                  {newProductData.image ? (
-                    <img src={newProductData.image} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="" crossOrigin="anonymous" />
-                  ) : (
-                    <div className="upload-label-content"><div style={{ fontSize: 24 }}>✨</div><div style={{ fontSize: 13, fontWeight: 800 }}>ដាក់រូបភាព</div></div>
-                  )}
-                  <input type="file" accept="image/*" disabled={isUploading} onChange={e => {
-                    const file = e.target.files?.[0];
-                    if (file) {
-                      const fd = new FormData();
-                      fd.append('image', file);
-                      setIsUploading(true);
-                      fetchWithRetry(`${BACKEND_URL}/api/admin/upload`, { method: 'POST', headers, body: fd }).then(res => {
-                        if (res.success && res.data?.url) setNewProductData(prev => ({ ...prev, image: res.data.url }));
-                      }).finally(() => setIsUploading(false));
-                    }
-                  }} />
-                </label>
-              </div>
-              <div style={{ marginBottom: 12 }}>
-                <label style={{ display: 'block', fontSize: 11, fontWeight: 800, marginBottom: 8, opacity: 0.6 }}>ឈ្មោះទំនិញ</label>
-                <input className="input-glass-admin" placeholder="ឈ្មោះទំនិញ" value={newProductData.name} onChange={e => setNewProductData({ ...newProductData, name: e.target.value })} />
-              </div>
-
-              <div style={{ marginBottom: 12 }}>
-                <label style={{ display: 'block', fontSize: 11, fontWeight: 800, marginBottom: 8, opacity: 0.6 }}>ប្រភេទ</label>
-                <select className="input-glass-admin" value={categories.some(c => c.name === newProductData.category) ? newProductData.category : 'OTHER'} onChange={e => setNewProductData({ ...newProductData, category: e.target.value })}>
-                  <option value="" disabled>រើសប្រភេទ...</option>
-                  {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
-                  <option value="OTHER">➕ បន្ថែមប្រភេទថ្មី (Add New)</option>
-                </select>
-                <input
-                  className="input-glass-admin"
-                  style={{ marginTop: 8, display: categories.some(c => c.name === newProductData.category) ? 'none' : 'block' }}
-                  placeholder="វាយបញ្ចូលឈ្មោះប្រភេទថ្មី..."
-                  value={newProductData.category === 'OTHER' ? '' : newProductData.category}
-                  onChange={e => setNewProductData({ ...newProductData, category: e.target.value })}
-                />
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: 11, fontWeight: 800, marginBottom: 8, opacity: 0.6 }}>តម្លៃ ($)</label>
-                  <input className="input-glass-admin" type="number" placeholder="តម្លៃ ($)" value={newProductData.price} onChange={e => setNewProductData({ ...newProductData, price: e.target.value })} />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: 11, fontWeight: 800, marginBottom: 8, opacity: 0.6 }}>ស្តុក</label>
-                  <input className="input-glass-admin" type="number" placeholder="ស្តុក" value={newProductData.stock} onChange={e => setNewProductData({ ...newProductData, stock: e.target.value })} />
-                </div>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: 11, fontWeight: 800, marginBottom: 8, opacity: 0.8 }}>⚡ តម្លៃ Flash Sale ($)</label>
-                  <input className="input-glass-admin" type="number" placeholder="តម្លៃ Flash Sale ($)" value={newProductData.flash_sale_price} onChange={e => setNewProductData({ ...newProductData, flash_sale_price: e.target.value })} />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: 11, fontWeight: 800, marginBottom: 8, opacity: 0.8 }}>⚡ ថ្ងៃបញ្ចប់ Flash Sale</label>
-                  <input className="input-glass-admin" type="datetime-local" value={newProductData.flash_sale_end} onChange={e => setNewProductData({ ...newProductData, flash_sale_end: e.target.value })} />
-                </div>
-              </div>
-
-              <div style={{ marginBottom: 14 }}>
-                <label style={{ display: 'block', fontSize: 11, fontWeight: 800, marginBottom: 8, opacity: 0.6 }}>ចំណុចពិសេស (Description)</label>
-                <textarea className="input-glass-admin" rows="3" value={newProductData.description} onChange={e => setNewProductData({ ...newProductData, description: e.target.value })} placeholder="ចំណុចពិសេស (Description)..."></textarea>
-              </div>
-
-
-              <div className="admin-gallery-editor" style={{ marginBottom: 16 }}>
-                <label style={{ fontSize: 11, fontWeight: 800, opacity: 0.6 }}>ជំនួយរូបភាព (Gallery)</label>
-                <div className="gallery-grid-lux">
-                  {(newProductData.additional_images || []).map((img, idx) => (
-                    <div key={idx} className="gallery-thumb-item">
-                      <img src={img} alt="" crossOrigin="anonymous" />
-                      <button className="remove-thumb-btn" onClick={() => { const n = [...newProductData.additional_images]; n.splice(idx, 1); setNewProductData({ ...newProductData, additional_images: n }); }}>✕</button>
-                    </div>
-                  ))}
-                  <label className="add-gallery-slot" style={{ position: 'relative' }}>
-                    {isUploading && (
-                      <div style={{ position: 'absolute', inset: 0, background: 'rgba(255,255,255,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 5, borderRadius: 16 }}>
-                        <div className="pd-pulse-loader" style={{ fontSize: 18 }}>⌛</div>
-                      </div>
-                    )}
-                    <span>+</span><label>ថែមរូប</label>
-                    <input type="file" accept="image/*" style={{ display: 'none' }} disabled={isUploading} onChange={e => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        const fd = new FormData();
-                        fd.append('image', file);
-                        setIsUploading(true);
-                        fetchWithRetry(`${BACKEND_URL}/api/admin/upload`, { method: 'POST', headers, body: fd }).then(d => {
-                          if (d.success && d.data?.url) setNewProductData(prev => ({ ...prev, additional_images: [...(prev.additional_images || []), d.data.url] }));
-                        }).finally(() => setIsUploading(false));
-                      }
-                    }} />
-                  </label>
-                </div>
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', gap: 12, marginTop: 15, flexShrink: 0 }}>
-              <button className="nav-pill-btn btn-destructive" style={{ flex: 1 }} disabled={isSaving} onClick={() => setIsAddingProduct(false)}>បោះបង់</button>
-              <button className="nav-pill-btn" style={{ flex: 1, background: '#f8fafc', color: '#1e293b', border: '1px solid #e2e8f0' }} onClick={() => handlePreview(newProductData)}>👁️ មើលសិន</button>
-              <button className="ticket-btn-primary" style={{ flex: 1.5 }} disabled={isSaving} onClick={submitAddProduct}>
-                {isSaving ? '⌛...' : 'រក្សាទុក'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <AdminFaqModal
+        isFaqModalOpen={isFaqModalOpen}
+        editingFaq={editingFaq}
+        setEditingFaq={setEditingFaq}
+        setIsFaqModalOpen={setIsFaqModalOpen}
+        handleSaveFaq={handleSaveFaq}
+      />
 
       {isPreviewing && previewData && (
         <ProductDetail
@@ -1403,42 +628,6 @@ const AdminDashboard = ({
           isFavorited={previewFavorited}
           onToggleWishlist={() => setPreviewFavorited(!previewFavorited)}
         />
-      )}
-
-      {isFaqModalOpen && (
-        <div style={{ position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, background: 'rgba(0,0,0,0.65)' }}>
-          <div className="glass-card-luxury" style={{ width: '92%', maxWidth: 440, maxHeight: '85vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-            <h3 style={{ marginBottom: 20, flexShrink: 0 }}>{editingFaq?.id ? '✏️ កែប្រែ FAQ' : '➕ បន្ថែម FAQ'}</h3>
-
-            <div style={{ overflowY: 'auto', flex: 1, paddingRight: 5, paddingBottom: 5, display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <div>
-                <label style={{ display: 'block', fontSize: 11, fontWeight: 800, marginBottom: 8, opacity: 0.6 }}>សំណួរ (ភាសាខ្មែរ)</label>
-                <input className="input-glass-admin" value={editingFaq?.q_kh || ''} onChange={e => setEditingFaq({ ...editingFaq, q_kh: e.target.value })} />
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: 11, fontWeight: 800, marginBottom: 8, opacity: 0.6 }}>សំណួរ (English)</label>
-                <input className="input-glass-admin" value={editingFaq?.q_en || ''} onChange={e => setEditingFaq({ ...editingFaq, q_en: e.target.value })} />
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: 11, fontWeight: 800, marginBottom: 8, opacity: 0.6 }}>ចម្លើយ (ភាសាខ្មែរ)</label>
-                <textarea className="input-glass-admin" rows="3" value={editingFaq?.a_kh || ''} onChange={e => setEditingFaq({ ...editingFaq, a_kh: e.target.value })}></textarea>
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: 11, fontWeight: 800, marginBottom: 8, opacity: 0.6 }}>ចម្លើយ (English)</label>
-                <textarea className="input-glass-admin" rows="3" value={editingFaq?.a_en || ''} onChange={e => setEditingFaq({ ...editingFaq, a_en: e.target.value })}></textarea>
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: 11, fontWeight: 800, marginBottom: 8, opacity: 0.6 }}>លំដាប់លំដោយ (Sort Order)</label>
-                <input type="number" className="input-glass-admin" value={editingFaq?.sort_order || 0} onChange={e => setEditingFaq({ ...editingFaq, sort_order: parseInt(e.target.value) || 0 })} />
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', gap: 12, marginTop: 20, flexShrink: 0 }}>
-              <button className="nav-pill-btn btn-destructive" style={{ flex: 1 }} onClick={() => setIsFaqModalOpen(false)}>បោះបង់</button>
-              <button className="ticket-btn-primary" style={{ flex: 1.5 }} onClick={handleSaveFaq}>រក្សាទុក</button>
-            </div>
-          </div>
-        </div>
       )}
 
       {confirmDialog && (
@@ -1455,7 +644,7 @@ const AdminDashboard = ({
 };
 
 const BeautyModal = ({ text, icon, isAlert, onConfirm, onCancel }) => (
-  <div className="modal-overlay">
+  <div className="admin-dashboard-overhaul modal-overlay">
     <div className="beauty-modal-card">
       <div style={{ fontSize: 50, marginBottom: 20 }}>{icon || '✨'}</div>
       <div style={{ fontSize: 18, fontWeight: 900, marginBottom: 30, lineHeight: 1.6, color: 'var(--text-luxury)' }}>{text}</div>

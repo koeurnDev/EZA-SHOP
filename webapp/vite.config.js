@@ -12,5 +12,18 @@ export default defineConfig({
     proxy: {
       '/api': 'http://127.0.0.1:3005'
     }
+  },
+  build: {
+    target: 'esnext',
+    minify: 'esbuild', // Faster minification
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom'],
+          tfjs: ['@tensorflow/tfjs', '@tensorflow-models/mobilenet'],
+          ui: ['recharts', 'qrcode']
+        }
+      }
+    }
   }
 })

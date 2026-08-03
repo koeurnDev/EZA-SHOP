@@ -35,7 +35,7 @@ const adminService = {
 
   getInitialData: async () => {
     const [products, settings, categories, discounts] = await Promise.all([
-      productRepository.findAll(),
+      productRepository.findAllMinimal(),
       settingsRepository.getByKeys([
         'shop_status', 'delivery_threshold', 'delivery_fee', 'promo_text', 
         'payment_qr_url', 'payment_info', 'promo_banner_url', 'shop_logo_url'
@@ -44,7 +44,7 @@ const adminService = {
       couponRepository.findActiveAuto()
     ]);
 
-    return { products, settings, categories, discounts };
+    return { products, totalProducts: products.length, settings, categories, discounts };
   },
 
   // --- Category Management ---

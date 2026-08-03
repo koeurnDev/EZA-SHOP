@@ -184,8 +184,10 @@ const orderService = {
     const order = await orderRepository.findByCode(orderCode);
     if (!order) throw new Error('Order not found');
     
+    const isAdmin = String(tgUser.id) === String(process.env.SUPERADMIN_ID);
+
     // 🛡️ Principal: Admin-Bypass or Identity Verification
-    if (tgUser.id !== 'SYSTEM' && String(tgUser.id) !== String(order.user_id)) {
+    if (tgUser.id !== 'SYSTEM' && String(tgUser.id) !== String(order.user_id) && !isAdmin) {
        throw new Error('Access Denied');
     }
     
@@ -193,6 +195,15 @@ const orderService = {
     if (order.status !== 'pending') {
       console.log(`ℹ️ Order ${orderCode} already in state: ${order.status}. Skipping.`);
       return order;
+    }
+
+    // 🛡️ SECURITY FIX: If the user manually triggered this, force real-time Bakong verification!
+    if (tgUser.id !== 'SYSTEM' && !isAdmin) {
+      console.log(`🔒 Verifying user-claimed payment for ${orderCode} via Bakong API...`);
+      const result = await bakongService.checkTransaction(order.qr_string);
+      if (!result.success) {
+        throw new Error('Payment not yet received or verified by Bakong. Please wait a moment and try again.');
+      }
     }
 
     const updated = await orderRepository.updateStatus(order.id, 'paid');

@@ -24,7 +24,7 @@ const schemas = {
     body('userId').optional(),
     body('items').isArray({ min: 1 }).withMessage('Items must be a non-empty array'),
     body('items.*.id').notEmpty().withMessage('Item ID is required'),
-    body('items.*.quantity').isInt({ min: 1 }).withMessage('Quantity must be at least 1'),
+    body('items.*.quantity').isInt({ min: 1, max: 100 }).withMessage('Quantity must be between 1 and 100'),
     body('total').isFloat({ min: 0 }).withMessage('Total must be a positive number'),
     body('deliveryInfo').isObject().withMessage('Delivery info is required'),
     body('deliveryInfo.phone').notEmpty().trim().escape().withMessage('Phone number is required'),

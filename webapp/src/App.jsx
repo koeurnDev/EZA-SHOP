@@ -34,7 +34,7 @@ import OfflineBanner from './components/ui/OfflineBanner';
 import OfflineService from './services/OfflineService';
 import ErrorBoundary from './components/ui/ErrorBoundary';
 import FilterModal from './components/ui/FilterModal';
-import VisualSearchModal from './components/ui/VisualSearchModal';
+const VisualSearchModal = lazy(() => import('./components/ui/VisualSearchModal'));
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || '';
 
@@ -109,6 +109,16 @@ function App() {
       tg.BackButton.hide();
     }
   }, [view, tg, setView, isVersionAtLeast]);
+
+  // Prevent accidental closing if cart has items
+  useEffect(() => {
+    if (!tg || !isVersionAtLeast('6.2')) return;
+    if (cart.length > 0) {
+      tg.enableClosingConfirmation();
+    } else {
+      tg.disableClosingConfirmation();
+    }
+  }, [cart.length, tg, isVersionAtLeast]);
 
   const { fetchWithRetry, loading: isApiLoading } = useApi();
   
@@ -334,7 +344,11 @@ function App() {
         )}
 
         <FilterModal />
-        {showScanner && <VisualSearchModal onClose={() => setShowScanner(false)} />}
+        {showScanner && (
+        <Suspense fallback={<div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 text-white backdrop-blur-md">Loading AI Engine...</div>}>
+          <VisualSearchModal onClose={() => setShowScanner(false)} />
+        </Suspense>
+      )}
         <ModernBottomNav view={view} setView={setView} cartCount={totalItemsCount} isAdmin={isSuperAdmin} t={t} lang={lang} />
         <OfflineBanner />
       </div>

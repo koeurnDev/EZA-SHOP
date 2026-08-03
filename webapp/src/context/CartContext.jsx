@@ -32,6 +32,15 @@ export const CartProvider = ({ children }) => {
   useEffect(() => {
     localStorage.setItem('momo_cart_v1', JSON.stringify(cart));
     
+    // ☁️ Sync to Telegram Cloud Storage (Cross-device persistence)
+    if (tg?.CloudStorage && tg?.isVersionAtLeast?.('6.9')) {
+      try {
+        tg.CloudStorage.setItem('momo_cart_v1', JSON.stringify(cart));
+      } catch (e) {
+        console.warn('CloudStorage setItem failed:', e);
+      }
+    }
+    
     // 🛡️ Principal: If cart changes, the previous idempotency key is no longer valid for this "attempt".
     // This prevents price mismatches if the user adds items after a failed/pending checkout.
     if (idempotencyKey) {
@@ -43,7 +52,25 @@ export const CartProvider = ({ children }) => {
       localStorage.removeItem('momo_idemp_key');
       setIdempotencyKey(null);
     }
-  }, [cart]);
+  }, [cart, tg, idempotencyKey]);
+
+  // ☁️ Initial Sync from Telegram Cloud Storage on Mount
+  useEffect(() => {
+    if (tg?.CloudStorage && tg?.isVersionAtLeast?.('6.9')) {
+      try {
+        tg.CloudStorage.getItem('momo_cart_v1', (err, value) => {
+          if (!err && value) {
+            const cloudCart = JSON.parse(value);
+            if (Array.isArray(cloudCart)) {
+              setCart(cloudCart); // Overwrite local storage with cloud truth
+            }
+          }
+        });
+      } catch (e) {
+        console.warn('CloudStorage getItem failed:', e);
+      }
+    }
+  }, [tg]);
 
   useEffect(() => {
     if (idempotencyKey) localStorage.setItem('momo_idemp_key', idempotencyKey);

@@ -64,6 +64,43 @@ const CartPage = ({
     }
   };
 
+  // 🛡️ Advanced Telegram Native UX: MainButton
+  React.useEffect(() => {
+    if (!tg?.MainButton) return;
+    const mb = tg.MainButton;
+    
+    if (totalItemsCount > 0) {
+      if (step === 1) {
+        mb.text = lang === 'kh' ? `បន្តការបញ្ជាទិញ • $${finalTotal.toFixed(2)}` : `CONTINUE • $${finalTotal.toFixed(2)}`;
+      } else {
+        mb.text = isPlacingOrder 
+          ? (lang === 'kh' ? 'កំពុងដំណើរការ...' : 'PROCESSING...') 
+          : (lang === 'kh' ? `បញ្ជាក់ការកម្ម៉ង់ • $${finalTotal.toFixed(2)}` : `PLACE ORDER • $${finalTotal.toFixed(2)}`);
+      }
+      
+      mb.color = '#059669'; // Emerald-600
+      mb.textColor = '#ffffff';
+      
+      if (isPlacingOrder || (step === 2 && (!isPhoneValid || !isAddressValid))) {
+         mb.disable();
+         mb.color = '#94a3b8'; // disabled gray
+      } else {
+         mb.enable();
+         mb.color = '#059669';
+      }
+      
+      mb.show();
+      mb.onClick(handlePrimaryAction);
+    } else {
+      mb.hide();
+    }
+    
+    return () => {
+      mb.offClick(handlePrimaryAction);
+      mb.hide();
+    };
+  }, [tg, step, finalTotal, isPlacingOrder, isPhoneValid, isAddressValid, totalItemsCount, lang]);
+
   if (totalItemsCount === 0) {
     return (
       <main className="checkout-section animate-in p-5">

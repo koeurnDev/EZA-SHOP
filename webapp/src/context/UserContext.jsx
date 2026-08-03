@@ -59,8 +59,8 @@ export const UserProvider = ({ children }) => {
       if (tg?.HapticFeedback) tg.HapticFeedback.selectionChanged();
       
       // Sync with Telegram core UI (Using strictly validated Hex strings)
-      const headerColor = next === 'dark' ? '#0f172a' : '#ff72a0';
-      const bgColor = next === 'dark' ? '#020617' : '#fff8f9';
+      const headerColor = next === 'dark' ? '#0f172a' : '#fdfbf0';
+      const bgColor = next === 'dark' ? '#020617' : '#fdfbf0';
       
       if (tg?.isVersionAtLeast?.('6.1')) {
         if (tg.setHeaderColor) tg.setHeaderColor(headerColor);
@@ -84,8 +84,8 @@ export const UserProvider = ({ children }) => {
       document.documentElement.setAttribute('data-theme', finalTheme);
       
       // Initial Sync
-      const hColor = finalTheme === 'dark' ? '#0f172a' : '#ff72a0';
-      const bColor = finalTheme === 'dark' ? '#020617' : '#fff8f9';
+      const hColor = finalTheme === 'dark' ? '#0f172a' : '#fdfbf0';
+      const bColor = finalTheme === 'dark' ? '#020617' : '#fdfbf0';
       if (tg?.isVersionAtLeast?.('6.1')) {
         if (tg.setHeaderColor) tg.setHeaderColor(hColor);
         if (tg.setBackgroundColor) tg.setBackgroundColor(bColor);

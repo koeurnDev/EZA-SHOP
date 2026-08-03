@@ -1,4 +1,5 @@
 const adminService = require('../services/adminService');
+const cacheService = require('../services/cacheService');
 const productRepository = require('../repositories/productRepository');
 const settingsRepository = require('../repositories/settingsRepository');
 const couponRepository = require('../repositories/couponRepository');
@@ -16,7 +17,11 @@ const adminController = {
 
   getDashboardData: async (req, res) => {
     try {
-      const data = await adminService.getDashboardData();
+      const data = await cacheService.getOrFetch(
+        'admin:dashboard_data',
+        async () => await adminService.getDashboardData(),
+        30 // 30 seconds cache for real-time feel without crushing the DB
+      );
       res.json({ success: true, ...data });
     } catch (err) {
       console.error('🔴 Admin Batch Data Error:', err.message);

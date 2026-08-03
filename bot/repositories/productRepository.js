@@ -31,6 +31,64 @@ const productRepository = {
     return res.rows;
   },
 
+  findWithFilters: async (options = {}) => {
+    const limit = Math.min(parseInt(options.limit) || 20, 100);
+    const offset = parseInt(options.offset) || 0;
+    const search = options.search || '';
+    const category = options.category || 'all';
+    const minPrice = parseFloat(options.minPrice) || 0;
+    const maxPrice = parseFloat(options.maxPrice) || 999999;
+    const sort = options.sort || 'newest';
+    
+    let query = 'SELECT * FROM products WHERE price >= $1 AND price <= $2';
+    const params = [minPrice, maxPrice];
+    let paramIndex = 3;
+
+    if (search) {
+      query += ` AND name ILIKE $${paramIndex}`;
+      params.push(`%${search}%`);
+      paramIndex++;
+    }
+
+    if (category !== 'all') {
+      if (category === 'flash_sale') {
+        query += ` AND flash_sale_price IS NOT NULL AND flash_sale_end > NOW()`;
+      } else {
+        query += ` AND category = $${paramIndex}`;
+        params.push(category);
+        paramIndex++;
+      }
+    }
+
+    if (sort === 'price_asc') {
+      query += ` ORDER BY price ASC`;
+    } else if (sort === 'price_desc') {
+      query += ` ORDER BY price DESC`;
+    } else {
+      query += ` ORDER BY (stock > 0) DESC, id DESC`;
+    }
+
+    query += ` LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+    params.push(limit, offset);
+
+    const res = await pool.query(query, params);
+    
+    let countQuery = 'SELECT COUNT(*) FROM products WHERE price >= $1 AND price <= $2';
+    const countParams = [minPrice, maxPrice];
+    let cIndex = 3;
+    if (search) { countQuery += ` AND name ILIKE $${cIndex}`; countParams.push(`%${search}%`); cIndex++; }
+    if (category !== 'all') {
+      if (category === 'flash_sale') { countQuery += ` AND flash_sale_price IS NOT NULL AND flash_sale_end > NOW()`; }
+      else { countQuery += ` AND category = $${cIndex}`; countParams.push(category); cIndex++; }
+    }
+    const countRes = await pool.query(countQuery, countParams);
+    
+    return {
+      products: res.rows,
+      total: parseInt(countRes.rows[0].count)
+    };
+  },
+
   // ⚡ Optimized for high-frequency storefront/admin-grid loads
   findAllMinimal: async () => {
     return await cacheService.getOrFetch(

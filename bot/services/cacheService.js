@@ -108,6 +108,10 @@ class CacheService {
   // DELETE KEY
   async delete(key) {
     try {
+      // Always clear in-memory cache
+      this.fallbackCache.delete(key);
+      this.fallbackTTL.delete(key);
+
       if (redisRest) {
         try {
           await this._withTimeout(redisRest.del(key), 'DELETE_REST');
@@ -122,8 +126,6 @@ class CacheService {
         return true;
       }
 
-      this.fallbackCache.delete(key);
-      this.fallbackTTL.delete(key);
       return true;
     } catch (err) {
       console.error(`⚠️ Cache DELETE Error (${key}):`, err.message);
@@ -134,6 +136,18 @@ class CacheService {
   // CLEAR PATTERN (e.g., "products:*")
   async clearPattern(pattern) {
     try {
+      // Fallback: ALWAYS clear in-memory
+      let cleared = 0;
+      const patternRegex = new RegExp(pattern.replace('*', '.*'));
+      for (const key of this.fallbackCache.keys()) {
+        if (patternRegex.test(key)) {
+          this.fallbackCache.delete(key);
+          this.fallbackTTL.delete(key);
+          cleared++;
+        }
+      }
+      if (cleared > 0) console.log(`🗑️ Cache CLEAR PATTERN (Memory): ${pattern} (${cleared} keys)`);
+
       if (redisRest || redisClient?.isOpen) {
         // Pattern matching is limited, so we use del with pattern
         if (redisRest) {
@@ -151,18 +165,6 @@ class CacheService {
           return true;
         }
       }
-
-      // Fallback: clear in-memory
-      let cleared = 0;
-      const patternRegex = new RegExp(pattern.replace('*', '.*'));
-      for (const key of this.fallbackCache.keys()) {
-        if (patternRegex.test(key)) {
-          this.fallbackCache.delete(key);
-          this.fallbackTTL.delete(key);
-          cleared++;
-        }
-      }
-      if (cleared > 0) console.log(`🗑️ Cache CLEAR PATTERN (Memory): ${pattern} (${cleared} keys)`);
       return true;
     } catch (err) {
       console.error(`⚠️ Cache CLEAR PATTERN Error (${pattern}):`, err.message);

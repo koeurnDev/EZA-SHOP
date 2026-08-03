@@ -66,12 +66,26 @@ const startServer = async () => {
 
     // 3. Telegram Bot Start (🛡️ Hardened: Non-blocking launch)
     console.log('⏳ Launching Telegram Bot...');
-    bot.launch()
+    bot.launch({
+      dropPendingUpdates: true, // Prevent webhook/polling conflicts from stale updates
+    })
       .then(() => console.log('🤖 Bot: Launched'))
       .catch(botErr => {
         console.error('⚠️ Bot Launch Warning:', botErr.message);
         console.log('ℹ️ Server is running for Webapp API despite Bot conflict.');
       });
+
+    // Graceful Stop
+    process.once('SIGINT', () => {
+      bot.stop('SIGINT');
+      pool.end();
+      process.exit(0);
+    });
+    process.once('SIGTERM', () => {
+      bot.stop('SIGTERM');
+      pool.end();
+      process.exit(0);
+    });
 
     // 4. Express Start
     console.log('⏳ Starting Express Server...');

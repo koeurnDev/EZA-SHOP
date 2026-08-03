@@ -26,8 +26,16 @@ const publicController = {
   }),
 
   getProducts: asyncHandler(async (req, res) => {
-    const products = await productRepository.findAll();
-    res.json({ success: true, products });
+    const result = await productRepository.findWithFilters(req.query);
+    res.json({ success: true, ...result });
+  }),
+
+  getProductById: asyncHandler(async (req, res) => {
+    const product = await productRepository.findById(req.params.id);
+    if (!product) {
+      return res.status(404).json({ success: false, error: 'Product not found' });
+    }
+    res.json({ success: true, product });
   }),
 
   getAutoDiscounts: asyncHandler(async (req, res) => {

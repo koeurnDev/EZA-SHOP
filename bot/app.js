@@ -109,6 +109,7 @@ app.get('/api/products', (req, res, next) => {
 app.get('/api/init', publicController.getInitData);
 app.get('/api/settings', publicController.getSettings);
 app.get('/api/products', publicController.getProducts);
+app.get('/api/products/:id', publicController.getProductById);
 app.get('/api/flags', publicController.getFlags); // 🚀 Combined Feature Flags
 app.get('/api/faqs', faqController.getFaqs);
 

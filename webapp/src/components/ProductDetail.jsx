@@ -21,28 +21,36 @@ const ProductDetail = ({ product, allProducts = [], onAdd, onClose, onBuyNow, ac
   const mainScrollRef = React.useRef(null);
   const scrollTimeoutRef = React.useRef(null);
 
+  // Full Product Lazy Load
+  const [fullProduct, setFullProduct] = useState(product);
+  const [loadingFullProduct, setLoadingFullProduct] = useState(false);
+
   React.useEffect(() => {
     setQuantity(1);
     setActiveImg(0);
+    setFullProduct(product); // Reset when product changes
     if (mainScrollRef.current) mainScrollRef.current.scrollTop = 0;
     if (scrollRef.current) scrollRef.current.scrollLeft = 0;
     
-    // Fetch Reviews
+    // Fetch Reviews & Full Product
     if (product?.id) {
-      setLoadingReviews(true);
       const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3005';
+      
+      setLoadingReviews(true);
       fetch(`${BACKEND_URL}/api/products/${product.id}/reviews`)
-        .then(res => {
-          if (!res.ok) throw new Error('Network response was not ok');
-          return res.json();
-        })
-        .then(data => {
-          if (data.success) setReviews(data.reviews || []);
-        })
+        .then(res => res.json())
+        .then(data => { if (data.success) setReviews(data.reviews || []); })
         .catch(console.error)
         .finally(() => setLoadingReviews(false));
+        
+      setLoadingFullProduct(true);
+      fetch(`${BACKEND_URL}/api/products/${product.id}`)
+        .then(res => res.json())
+        .then(data => { if (data.success) setFullProduct({ ...product, ...data.product }); })
+        .catch(console.error)
+        .finally(() => setLoadingFullProduct(false));
     }
-  }, [product?.id]);
+  }, [product]);
 
   const handleSubmitReview = async () => {
     if (!newReviewText.trim()) return;
@@ -77,11 +85,11 @@ const ProductDetail = ({ product, allProducts = [], onAdd, onClose, onBuyNow, ac
   if (!product) return null;
 
   const gallery = React.useMemo(() => [
-    product.image,
-    ...(typeof product.additional_images === 'string'
-      ? JSON.parse(product.additional_images || '[]')
-      : (product.additional_images || []))
-  ].filter(img => img && typeof img === 'string'), [product.image, product.additional_images]);
+    fullProduct.image,
+    ...(typeof fullProduct.additional_images === 'string'
+      ? JSON.parse(fullProduct.additional_images || '[]')
+      : (fullProduct.additional_images || []))
+  ].filter(img => img && typeof img === 'string'), [fullProduct.image, fullProduct.additional_images]);
 
   const bestDiscount = calculateBestDiscount(product, activeDiscounts);
   const discountedPriceValue = getDiscountedPrice(product, bestDiscount);
@@ -134,13 +142,32 @@ const ProductDetail = ({ product, allProducts = [], onAdd, onClose, onBuyNow, ac
                   <path d="M15 18l-6-6 6-6"/>
                 </svg>
               </button>
-              <button className="pd-floating-btn" onClick={(e) => { e.stopPropagation(); if (typeof onBuyNow === 'function') onBuyNow(e); }} aria-label="Cart">
+              
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button className="pd-floating-btn" onClick={(e) => {
+                  e.stopPropagation();
+                  const tg = window.Telegram?.WebApp;
+                  const shareText = `🔥 មើលនេះសិន! ${product.name} លក់ត្រឹមតែ $${product.price} នៅ MO MO Boutique! 👗`;
+                  if (tg?.openTelegramLink) {
+                    tg.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent('https://t.me/mo_mo_boutique_bot')}&text=${encodeURIComponent(shareText)}`);
+                  }
+                }} aria-label="Share">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="18" cy="5" r="3"></circle>
+                    <circle cx="6" cy="12" r="3"></circle>
+                    <circle cx="18" cy="19" r="3"></circle>
+                    <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+                    <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+                  </svg>
+                </button>
+                <button className="pd-floating-btn" onClick={(e) => { e.stopPropagation(); if (typeof onBuyNow === 'function') onBuyNow(e); }} aria-label="Cart">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
                   <line x1="3" y1="6" x2="21" y2="6"/>
                   <path d="M16 10a4 4 0 0 1-8 0"/>
                 </svg>
               </button>
+              </div>
             </div>
             <div className="pd-image-area">
               <div
@@ -260,8 +287,14 @@ const ProductDetail = ({ product, allProducts = [], onAdd, onClose, onBuyNow, ac
             </div>
 
             {/* Description */}
-            {product.description && (
-              <p className="pd-desc">{product.description}</p>
+            {loadingFullProduct ? (
+              <div style={{ padding: '15px 0' }}>
+                 <div className="skeleton-pulse" style={{ height: 14, width: '100%', marginBottom: 8, borderRadius: 4, background: 'var(--border-subtle)' }} />
+                 <div className="skeleton-pulse" style={{ height: 14, width: '90%', marginBottom: 8, borderRadius: 4, background: 'var(--border-subtle)' }} />
+                 <div className="skeleton-pulse" style={{ height: 14, width: '70%', borderRadius: 4, background: 'var(--border-subtle)' }} />
+              </div>
+            ) : fullProduct.description && (
+              <p className="pd-desc">{fullProduct.description}</p>
             )}
 
             {/* Related Products */}
