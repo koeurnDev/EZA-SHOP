@@ -133,18 +133,20 @@ const CartPage = ({
 
   return (
     <main className="checkout-section animate-in p-5">
-      <div className="flex items-center gap-4 mb-8">
-        <button className="w-10 h-10 flex items-center justify-center glass-effect rounded-full" onClick={handleBack} aria-label={t('back')}>
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
-        </button>
-        <h2 className="text-xl font-black text-bold">{step === 1 ? t('cart_title') : t('checkout')}</h2>
-      </div>
+      {step === 2 && (
+        <div className="flex items-center gap-4 mb-8">
+          <button className="w-10 h-10 flex items-center justify-center glass-effect rounded-full" onClick={handleBack} aria-label={t('back')}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+          </button>
+          <h2 className="text-xl font-black text-bold">{t('checkout')}</h2>
+        </div>
+      )}
 
       <div className="flex flex-col lg:flex-row gap-8">
         <div className="flex-1">
           {step === 1 ? (
             <div className="animate-in mb-8">
-              <h3 className="text-lg font-black text-bold mb-4">{t('items')} ({totalItemsCount})</h3>
+              <h3 className="text-xl font-black text-bold mb-6 lowercase">{t('items') || 'items'} ({totalItemsCount})</h3>
               <div className="cart-items-list">
                 {cart.map(item => {
                   const best = calculateBestDiscount(item, activeDiscounts);
@@ -203,32 +205,32 @@ const CartPage = ({
         </div>
 
         <div className="lg:w-80">
-          <div className="sticky top-5 p-6 bg-bg-surface rounded-3xl border border-border-subtle shadow-lg">
-            <h3 className="text-lg font-black text-bold mb-6">{t('summary')}</h3>
-            <div className="flex flex-col gap-4 mb-6 pb-6 border-b border-dashed border-border-subtle">
+          <div className="sticky top-5 p-6 bg-[#fcfbf7] rounded-[32px] shadow-sm mb-20" style={{ border: '1px solid rgba(0,0,0,0.03)' }}>
+            <h3 className="text-lg font-black text-bold mb-6">Summary</h3>
+            <div className="flex flex-col gap-4 mb-6 pb-6 border-b border-dashed border-gray-200">
               {cart.map(item => {
                 const best = calculateBestDiscount(item, activeDiscounts);
                 const dPrice = best ? getDiscountedPrice(item, best) : null;
                 return (
-                  <div key={item.id} className="flex justify-between items-baseline text-sm">
-                <div className="text-bold font-bold truncate max-w-[140px] tracking-tight">{item.name} x {item.quantity}</div>
-                <div className="font-black text-bold tabular-nums">
+                  <div key={item.id} className="flex justify-between items-baseline text-[15px] font-bold">
+                <div className="truncate max-w-[140px] tracking-tight">{item.name} x {item.quantity}</div>
+                <div className="font-black tabular-nums">
                   {dPrice ? `$${(dPrice * item.quantity).toFixed(2)}` : `$${(item.price * item.quantity).toFixed(2)}`}
                 </div>
               </div>
             );
           })}
-          <div className="flex justify-between items-center text-sm">
-            <div className="text-bold font-bold uppercase tracking-tight">{t('delivery_label')}</div>
-            <div className="font-black text-bold tabular-nums">${appliedFee.toFixed(2)}</div>
+          <div className="flex justify-between items-center text-[15px] font-bold mt-2">
+            <div className="uppercase tracking-tight">DELIVERY</div>
+            <div className="font-black tabular-nums">${appliedFee.toFixed(2)}</div>
           </div>
         </div>
-        <div className="flex justify-between items-center mb-8">
-          <span className="text-lg font-black uppercase text-bold">{lang === 'kh' ? 'សរុប:' : 'Total:'}</span>
-          <span className="text-2xl font-black text-emerald-600 tabular-nums">${finalTotal.toFixed(2)}</span>
+        <div className="flex justify-between items-center mb-6">
+          <span className="text-lg font-black uppercase text-bold">TOTAL:</span>
+          <span className="text-2xl font-black text-[#059669] tabular-nums">${finalTotal.toFixed(2)}</span>
         </div>
         <button
-          className={`w-full py-4 flex items-center justify-center gap-3 bg-emerald-600 text-white rounded-2xl font-black uppercase tracking-widest shadow-lg transition-all ${isPlacingOrder ? 'opacity-75 cursor-wait' : 'hover:scale-[1.02] hover:shadow-xl active:scale-[0.98]'} ${(step === 2 && (!isPhoneValid || !isAddressValid)) ? 'opacity-50 grayscale' : ''}`}
+          className={`w-full py-[18px] flex items-center justify-center gap-3 bg-[#059669] text-white rounded-xl font-black uppercase tracking-wider shadow-md transition-all ${isPlacingOrder ? 'opacity-75 cursor-wait' : 'hover:scale-[1.02] active:scale-[0.98]'} ${(step === 2 && (!isPhoneValid || !isAddressValid)) ? 'opacity-50 grayscale' : ''}`}
           onClick={handlePrimaryAction}
           disabled={isPlacingOrder || totalItemsCount === 0}
         >

@@ -63,7 +63,7 @@ const ProductDetail = ({ product, allProducts = [], onAdd, onClose, onBuyNow, ac
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `tma ${initData}` },
         body: JSON.stringify({
-          productId: product.id,
+          product_id: product.id,
           rating: newReviewRating,
           comment: newReviewText
         })

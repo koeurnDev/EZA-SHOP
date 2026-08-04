@@ -17,7 +17,15 @@ notificationQueue.process(async (job) => {
                       `👤 អតិថិជន: *${order.user_name}*\n` +
                       `📝 ទំនិញ:\n${itemsList}\n\n` +
                       `💰 សរុប: *$${order.total}*`;
-        await bot.telegram.sendMessage(adminId, ticket, { parse_mode: 'Markdown' });
+        await bot.telegram.sendMessage(adminId, ticket, { 
+          parse_mode: 'Markdown',
+          reply_markup: {
+            inline_keyboard: [
+              [{ text: '✅ បញ្ជាក់ការបង់ប្រាក់ (Confirm)', callback_data: `approve_order_${order.order_code}` }],
+              [{ text: '❌ បដិសេធ (Reject)', callback_data: `reject_order_${order.order_code}` }]
+            ]
+          }
+        });
         
         const userTicket = `🛒 *ការកម្ម៉ង់របស់អ្នកត្រូវបានទទួល!*\n` +
                           `🆔 លេខសម្គាល់: \`${order.order_code}\`\n` +

@@ -438,10 +438,13 @@ const orderService = {
         if (p && p.stock <= 5) {
           await notificationService.sendLowStockAlert(process.env.SUPERADMIN_ID, p).catch(() => {});
         }
-      })
+      }),
+      
+      // 4. Send Order Created Notification
+      notificationService.notifyOrderCreated(process.env.SUPERADMIN_ID, userId, order, items)
     ]);
 
-    // 4. Watchdog: Start Auto-Verification
+    // 5. Watchdog: Start Auto-Verification
     if (order.status === 'pending' && order.qr_string) {
       orderService.startPaymentWatcher(order, order.qr_string).catch(console.error);
     }
