@@ -1,21 +1,23 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import DarkSelect from './DarkSelect';
-
-const ORDER_FILTER_OPTIONS = [
-  { value: 'all', label: 'ទាំងអស់' },
-  { value: 'pending', label: '⌛ រង់ចាំបង់' },
-  { value: 'paid', label: '✅ បង់រួច' },
-  { value: 'processing', label: '📦 កំពុងរៀបចំ' },
-  { value: 'shipped', label: '🚚 បញ្ជូនរួចរាល់' },
-  { value: 'cancelled', label: '❌ បានលុបចោល' },
-  { value: 'active', label: '🚀 កំពុងដើរ' },
-];
+import { useUser } from '../../context/UserContext';
 
 const AdminOrdersTab = React.memo(({
   orders, searchTerm, orderFilter, setOrderFilter,
   localSearchTerm, setLocalSearchTerm,
   updateStatus, setPrintingOrder, statusTags
 }) => {
+  const { t } = useUser();
+
+  const ORDER_FILTER_OPTIONS = useMemo(() => [
+    { value: 'all', label: t('admin_filter_all') },
+    { value: 'pending', label: `⌛ ${t('admin_filter_pending')}` },
+    { value: 'paid', label: `✅ ${t('admin_filter_paid')}` },
+    { value: 'processing', label: `📦 ${t('admin_filter_preparing')}` },
+    { value: 'shipped', label: `🚚 ${t('admin_filter_shipped')}` },
+    { value: 'cancelled', label: `❌ ${t('admin_filter_cancelled')}` },
+    { value: 'active', label: `🚀 ${t('admin_active_orders')}` },
+  ], [t]);
   const filtered = orders.filter(o => {
     const matchesSearch = (o.user_name || '').toLowerCase().includes(searchTerm.toLowerCase())
       || (o.order_code || '').toLowerCase().includes(searchTerm.toLowerCase());
@@ -35,7 +37,7 @@ const AdminOrdersTab = React.memo(({
         <input
           className="input-glass-admin"
           style={{ flex: 1 }}
-          placeholder="ស្វែងរកលេខកម្ម៉ង់ ឬឈ្មោះ..."
+          placeholder={t('admin_search_order')}
           value={localSearchTerm}
           onChange={e => setLocalSearchTerm(e.target.value)}
         />
@@ -73,14 +75,16 @@ const AdminOrdersTab = React.memo(({
                 />
               </div>
             )}
-            {o.status === 'pending' && <button className="ticket-btn-primary" style={{ flex: 1 }} onClick={() => updateStatus(o.id, 'paid')}>💰 បញ្ជាក់បង់ប្រាក់</button>}
-            {o.status === 'paid' && <button className="ticket-btn-primary" onClick={() => updateStatus(o.id, 'processing')}>📦 រៀបចំអីវ៉ាន់</button>}
-            {o.status === 'processing' && <button className="ticket-btn-primary" onClick={() => updateStatus(o.id, 'shipped')}>✨ អីវ៉ាន់ចេញ</button>}
+            {o.status === 'pending' && <button className="ticket-btn-primary" style={{ flex: 1 }} onClick={() => updateStatus(o.id, 'paid')}>💰 {t('admin_filter_paid')}</button>}
+            {o.status === 'paid' && <button className="ticket-btn-primary" onClick={() => updateStatus(o.id, 'processing')}>📦 {t('admin_filter_preparing')}</button>}
+            {o.status === 'processing' && <button className="ticket-btn-primary" onClick={() => updateStatus(o.id, 'shipped')}>✨ {t('admin_filter_shipped')}</button>}
             {['paid', 'processing', 'shipped', 'delivering', 'delivered'].includes(o.status) && (
               <button className="icon-btn-admin" style={{ flexShrink: 0 }} aria-label="Print Order" onClick={() => {
                 setPrintingOrder(o);
                 setTimeout(() => { window.print(); setPrintingOrder(null); }, 100);
-              }}>🖨️</button>
+              }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+              </button>
             )}
           </div>
         </div>

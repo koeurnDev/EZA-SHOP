@@ -1,10 +1,12 @@
 import React from 'react';
+import { useUser } from '../../context/UserContext';
 
 const AdminProductsTab = React.memo(({
   products, productSearchTerm, localProductSearchTerm, setLocalProductSearchTerm,
   setIsAddingProduct, setEditingProduct, setEditFormData,
   visibleProductLimit, setVisibleProductLimit
 }) => {
+  const { t } = useUser();
   const filtered = products.filter(p =>
     (p.name || '').toLowerCase().includes(productSearchTerm.toLowerCase()) ||
     (p.category || '').toLowerCase().includes(productSearchTerm.toLowerCase())
@@ -16,7 +18,7 @@ const AdminProductsTab = React.memo(({
         <input
           className="input-glass-admin"
           style={{ flex: 1, maxWidth: 300 }}
-          placeholder="ស្វែងរកទំនិញ ឬប្រភេទ..."
+          placeholder={t('admin_search_product')}
           value={localProductSearchTerm}
           onChange={e => setLocalProductSearchTerm(e.target.value)}
         />
@@ -24,15 +26,15 @@ const AdminProductsTab = React.memo(({
           onClick={() => setIsAddingProduct(true)}
           style={{
             flexShrink: 0, padding: '12px 18px', borderRadius: 14,
-            border: '1.5px solid rgba(255,255,255,0.6)', background: 'transparent',
-            color: '#ffffff', fontWeight: 900, fontSize: 13, cursor: 'pointer',
+            border: '1.5px solid var(--border-subtle)', background: 'transparent',
+            color: 'var(--text-luxury)', fontWeight: 900, fontSize: 13, cursor: 'pointer',
             display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap',
             transition: 'all 0.2s ease'
           }}
-          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; }}
+          onMouseEnter={e => { e.currentTarget.style.background = 'var(--glass-border)'; }}
           onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
         >
-          ➕ បន្ថែមទំនិញថ្មី
+          ➕ {t('admin_add_product')}
         </button>
       </div>
 
@@ -43,7 +45,7 @@ const AdminProductsTab = React.memo(({
             <div style={{ flex: 1 }}>
               <div style={{ fontWeight: 800, fontSize: 14 }}>{p.name}</div>
               <div style={{ fontSize: 11, color: 'var(--text-main)', fontWeight: 800, marginTop: 4 }}>
-                {p.category} • ${p.price} • {p.stock} {[...Array(Math.min(5, Math.ceil(p.stock / 20)))].map((_, i) => <span key={i}>📦</span>)}
+                {(p.category || '').replace(/\s*\(.*?\)/g, '')} • ${p.price} • {t('stock')} {p.stock}
               </div>
             </div>
             <button className="icon-btn-admin" aria-label="Edit product" onClick={() => {
@@ -56,7 +58,9 @@ const AdminProductsTab = React.memo(({
                 flash_sale_end: p.flash_sale_end ? new Date(p.flash_sale_end).toISOString().slice(0, 16) : '',
                 video_url: p.video_url || ''
               });
-            }}>✏️</button>
+            }}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
+            </button>
           </div>
         ))}
       </div>
@@ -64,7 +68,7 @@ const AdminProductsTab = React.memo(({
       {filtered.length > visibleProductLimit && (
         <div style={{ textAlign: 'center', marginBottom: 20 }}>
           <button className="nav-pill-btn" style={{ margin: '0 auto', maxWidth: 200 }} onClick={() => setVisibleProductLimit(prev => prev + 30)}>
-            ⬇️ បង្ហាញបន្ថែមទៀត
+            ⬇️ {t('admin_load_more')}
           </button>
         </div>
       )}

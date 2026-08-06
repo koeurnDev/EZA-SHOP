@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import AdminSkeleton from './AdminSkeleton';
 import { useTelegram } from '../context/TelegramContext';
+import { useUser } from '../context/UserContext';
 import { useQuery } from '../hooks/useQuery';
 import { useApi } from '../hooks/useApi';
 import ProductDetail from './ProductDetail';
@@ -34,6 +35,7 @@ const AdminDashboard = ({
   theme
 }) => {
   const { tg, initData, showAlert: tgShowAlert } = useTelegram();
+  const { t } = useUser();
   const { fetchWithRetry } = useApi();
   const headers = useMemo(() => ({ 'X-TG-Data': initData || '' }), [initData]);
 
@@ -70,15 +72,15 @@ const AdminDashboard = ({
   const analytics = dashboardData ? { daily: dashboardData.analytics?.daily || [], status: dashboardData.analytics?.status || [] } : { daily: [], status: [] };
   const paddedDailyAnalytics = useMemo(() => {
     const daily = analytics.daily || [];
-    const dataMap = new Map(daily.map(d => [d.date.slice(5), d]));
+    const dataMap = new Map(daily.map(d => [d.date.slice(0, 10), d]));
     const padded = [];
     for (let i = 13; i >= 0; i--) {
       const d = new Date();
       d.setDate(d.getDate() - i);
       const dateStr = d.toISOString().split('T')[0];
-      const shortDate = dateStr.slice(5);
-      if (dataMap.has(shortDate)) {
-        padded.push({ ...dataMap.get(shortDate), dateShort: shortDate, revenue: parseFloat(dataMap.get(shortDate).revenue), orders: parseInt(dataMap.get(shortDate).orders) });
+      const shortDate = `${dateStr.slice(8, 10)}-${dateStr.slice(5, 7)}`;
+      if (dataMap.has(dateStr)) {
+        padded.push({ ...dataMap.get(dateStr), dateShort: shortDate, revenue: parseFloat(dataMap.get(dateStr).revenue), orders: parseInt(dataMap.get(dateStr).orders) });
       } else {
         padded.push({ date: dateStr, dateShort: shortDate, revenue: 0, orders: 0 });
       }
@@ -451,26 +453,26 @@ const AdminDashboard = ({
         
         <div className="admin-header-luxury">
           <div>
-            <h2 className="admin-title-pro">⚙️ គ្រប់គ្រង MO-MO</h2>
+            <h2 className="admin-title-pro">⚙️ {t('admin_title')}</h2>
             <div className="live-status-pill">
               <div className="live-dot-pulse"></div>
-              <span style={{ fontSize: 9, fontWeight: 950, color: 'var(--text-main)', textTransform: 'uppercase', letterSpacing: 1.2 }}>Real-time Live</span>
+              <span style={{ fontSize: 9, fontWeight: 950, color: 'var(--text-main)', textTransform: 'uppercase', letterSpacing: 1.2 }}>{t('admin_live_status')}</span>
             </div>
           </div>
           <div style={{ display: 'flex', gap: 10 }}>
-            <button onClick={() => refetchData(false)} className="icon-btn-admin" aria-label="Refresh Data" title="Refresh">🔄</button>
-            <button onClick={() => setView('home')} className="back-btn-pill">← ចាកចេញ</button>
+            <button onClick={() => refetchData(false)} className="icon-btn-admin" aria-label="Refresh Data" title={t('admin_refresh')}>🔄</button>
+            <button onClick={() => setView('home')} className="back-btn-pill">← {t('admin_logout')}</button>
           </div>
         </div>
 
         <div className="admin-nav-luxury-grid">
           {[
-            { id: 'overview', label: '📊 ទិន្នន័យ' },
-            { id: 'orders', label: '🎫 កម្មង់' },
-            { id: 'products', label: '🛍️ ទំនិញ' },
-            { id: 'broadcast', label: '📢 ដំណឹង' },
-            { id: 'faqs', label: '❓ សំណួរ' },
-            { id: 'settings', label: '⚙️ កំណត់' }
+            { id: 'overview', label: `📊 ${t('admin_tab_overview')}` },
+            { id: 'orders', label: `🎫 ${t('admin_tab_orders')}` },
+            { id: 'products', label: `🛍️ ${t('admin_tab_products')}` },
+            { id: 'broadcast', label: `📢 ${t('admin_tab_broadcast')}` },
+            { id: 'faqs', label: `❓ ${t('admin_tab_faqs')}` },
+            { id: 'settings', label: `⚙️ ${t('admin_tab_settings')}` }
           ].map(tab => (
             <button key={tab.id} className={`nav-pill-btn ${activeTab === tab.id ? 'active' : ''}`} onClick={() => setActiveTab(tab.id)}>
               {tab.label}

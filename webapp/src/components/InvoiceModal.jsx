@@ -267,7 +267,7 @@ const InvoiceModal = ({ order, onClose, paymentQrUrl, paymentInfo, BACKEND_URL, 
         </div>
 
        {/* 🆔 Serial & Information Section */}
-       <div style={{ textAlign: 'center', marginTop: 32, padding: '20px', border: '1px dashed var(--border-color)', borderRadius: '16px', background: 'var(--bg-card)' }}>
+       <div style={{ textAlign: 'center', marginTop: 32, padding: '20px', border: '1px dashed var(--border-color)', borderRadius: '16px', background: 'var(--bg-surface)' }}>
           <div style={{ fontSize: 10, fontWeight: 900, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 2, marginBottom: 8 }}>{lang === 'kh' ? 'លេខសម្គាល់ប្រតិបត្តិការ' : 'Serial Number'}</div>
           <div style={{ fontSize: 20, fontWeight: 950, color: 'var(--primary-accent)', letterSpacing: 1 }}>{displayId}</div>
        </div>
@@ -336,8 +336,8 @@ const InvoiceModal = ({ order, onClose, paymentQrUrl, paymentInfo, BACKEND_URL, 
   );
 
   return (
-    <div className="modal-overlay" style={{ backgroundColor: 'var(--glass-bg)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ width: '90%', maxWidth: '400px' }}>
+    <div className="modal-overlay" style={{ backgroundColor: 'var(--glass-bg)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+      <div style={{ width: '100%', maxWidth: '400px', maxHeight: '90vh', overflowY: 'auto', borderRadius: '24px' }}>
         
         {isExpired ? (
           <div className="order-card-luxury animate-in" style={{ padding: '60px 30px 40px', textAlign: 'center', borderColor: '#fee2e2' }}>

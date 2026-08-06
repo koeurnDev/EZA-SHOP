@@ -5,6 +5,7 @@ import { useShopState, useShopDispatch } from '../context/ShopContext';
 import { useUserState } from '../context/UserContext';
 import { useCartDispatch } from '../context/CartContext';
 import { useTelegram } from '../context/TelegramContext';
+import { formatCategory } from '../utils/langUtils';
 
 const SkeletonGrid = () => (
   <div className="product-grid-main grid grid-cols-2 gap-3 px-4 pb-5">
@@ -18,7 +19,7 @@ const ProductGrid = () => {
   const [limit, setLimit] = React.useState(14);
   const { products, searchTerm, debouncedSearchTerm, selectedCategory, activeDiscounts, isSettingsLoaded, filters } = useShopState();
   const { setView, setSelectedProduct } = useShopDispatch();
-  const { t } = useUserState();
+  const { t, lang } = useUserState();
   const { addToCart } = useCartDispatch();
   const { tg } = useTelegram();
 
@@ -89,7 +90,7 @@ const ProductGrid = () => {
         <div className="mb-6">
            <div className="section-header px-5 pb-3 flex items-baseline gap-2.5">
              <h2 className="text-lg font-black text-bold">{t('new')}</h2>
-             <span className="text-xs text-primary-accent font-black uppercase tracking-wider">Featured ✨</span>
+             <span className="text-xs text-primary-accent font-black uppercase tracking-wider">{lang === 'kh' ? 'លេចធ្លោ ✨' : 'Featured ✨'}</span>
            </div>
           <div className="featured-slider flex overflow-x-auto gap-4 px-5 pb-5 no-scrollbar">
             {featured.map(fp => (
@@ -109,7 +110,7 @@ const ProductGrid = () => {
       {/* 🛍 MAIN GRID HEADER */}
       <div className="section-header px-5 py-4 flex justify-between items-center">
         <h2 className="text-lg font-black text-bold" style={{ wordBreak: 'break-word', lineHeight: 1.2 }}>
-          {searchTerm ? `"${searchTerm}"` : selectedCategory === 'all' ? t('all') : selectedCategory === 'flash_sale' ? '⚡ Flash Sale' : t(selectedCategory)}
+          {searchTerm ? `"${searchTerm}"` : selectedCategory === 'all' ? t('all') : selectedCategory === 'flash_sale' ? '⚡ Flash Sale' : formatCategory(selectedCategory, lang)}
         </h2>
         <span className="text-xs font-black text-muted whitespace-nowrap">
           {filtered.length} {t('items')}

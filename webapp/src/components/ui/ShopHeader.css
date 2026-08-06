@@ -80,6 +80,7 @@
   font-size: 15px;
   color: #111827;
   background: transparent;
+  font-family: var(--font-primary);
 }
 
 .shop-search-input:focus,

@@ -48,9 +48,9 @@ const DarkSelect = React.memo(({ value, onChange, options, style = {}, placehold
           style={{
             listStyle: 'none', margin: 0, padding: 0,
             position: 'absolute', top: 'calc(100% + 6px)', left: 0, right: 0, zIndex: 9999,
-            background: '#1a1a1a', border: '1px solid rgba(255,255,255,0.12)',
-            borderRadius: 14, overflow: 'auto', maxHeight: 220,
-            boxShadow: '0 8px 32px rgba(0,0,0,0.7)'
+            background: 'var(--bg-midnight)', border: '1px solid var(--border-subtle)',
+            borderRadius: 14, overflowY: 'auto', overflowX: 'hidden', maxHeight: 220,
+            boxShadow: 'var(--admin-shadow)'
           }}
         >
           {options.map(opt => (
@@ -61,13 +61,16 @@ const DarkSelect = React.memo(({ value, onChange, options, style = {}, placehold
               onClick={(e) => { e.preventDefault(); onChange(opt.value); setOpen(false); }}
               style={{
                 padding: '12px 16px', cursor: 'pointer',
-                background: opt.value === value ? 'rgba(255,255,255,0.08)' : 'transparent',
-                color: '#f8fafc',
-                borderBottom: '1px solid rgba(255,255,255,0.05)',
-                transition: 'background 0.15s'
+                background: opt.value === value ? 'rgba(128,128,128,0.1)' : 'transparent',
+                color: 'var(--text-bold)',
+                borderBottom: '1px solid var(--border-subtle)',
+                transition: 'background 0.15s',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis'
               }}
-              onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
-              onMouseLeave={e => e.currentTarget.style.background = opt.value === value ? 'rgba(255,255,255,0.12)' : 'transparent'}
+              onMouseEnter={e => e.currentTarget.style.background = 'rgba(128,128,128,0.08)'}
+              onMouseLeave={e => e.currentTarget.style.background = opt.value === value ? 'rgba(128,128,128,0.12)' : 'transparent'}
             >
               {opt.label}
             </li>

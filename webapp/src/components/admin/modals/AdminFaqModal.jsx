@@ -1,12 +1,14 @@
 import React from 'react';
+import { useUser } from '../../../context/UserContext';
 
 const AdminFaqModal = React.memo(({ isFaqModalOpen, editingFaq, setEditingFaq, setIsFaqModalOpen, handleSaveFaq }) => {
+  const { t } = useUser();
   if (!isFaqModalOpen) return null;
 
   return (
-    <div className="admin-dashboard-overhaul" style={{ position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, background: 'var(--bg-soft)' }}>
+    <div className="admin-dashboard-overhaul" style={{ position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, background: 'var(--bg-soft)', padding: '20px', boxSizing: 'border-box' }}>
       <div className="glass-card-luxury" style={{ width: '92%', maxWidth: 440, maxHeight: '85vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        <h3 style={{ marginBottom: 20, flexShrink: 0 }}>{editingFaq?.id ? '✏️ កែប្រែ FAQ' : '➕ បន្ថែម FAQ'}</h3>
+        <h3 style={{ marginBottom: 20, flexShrink: 0 }}>{editingFaq?.id ? `✏️ ${t('admin_edit')}` : `➕ ${t('admin_add_faq')}`}</h3>
 
         <div style={{ overflowY: 'auto', flex: 1, paddingRight: 5, paddingBottom: 5, display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div>
@@ -32,8 +34,8 @@ const AdminFaqModal = React.memo(({ isFaqModalOpen, editingFaq, setEditingFaq, s
         </div>
 
         <div style={{ display: 'flex', gap: 12, marginTop: 20, flexShrink: 0 }}>
-          <button className="nav-pill-btn btn-destructive" style={{ flex: 1 }} onClick={() => setIsFaqModalOpen(false)}>បោះបង់</button>
-          <button className="ticket-btn-primary" style={{ flex: 1.5 }} onClick={handleSaveFaq}>រក្សាទុក</button>
+          <button className="nav-pill-btn btn-destructive" style={{ flex: 1 }} onClick={() => setIsFaqModalOpen(false)}>{t('cancel')}</button>
+          <button className="ticket-btn-primary" style={{ flex: 1.5 }} onClick={handleSaveFaq}>{t('admin_save_settings')}</button>
         </div>
       </div>
     </div>

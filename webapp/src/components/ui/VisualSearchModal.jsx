@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import * as tf from '@tensorflow/tfjs';
 import * as mobilenet from '@tensorflow-models/mobilenet';
 import { useShopDispatch } from '../../context/ShopContext';
@@ -8,47 +8,19 @@ import './VisualSearchModal.css';
 const VisualSearchModal = ({ onClose }) => {
   const { lang } = useUserState();
   const { setSearchTerm } = useShopDispatch();
-  const videoRef = useRef(null);
   const canvasRef = useRef(null);
+  const fileInputRef = useRef(null);
   
-  const [stream, setStream] = useState(null);
   const [isModelLoading, setIsModelLoading] = useState(true);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [model, setModel] = useState(null);
   const [error, setError] = useState('');
+  const [previewUrl, setPreviewUrl] = useState(null);
 
-  // 1. Initialize Camera
-  useEffect(() => {
-    let activeStream = null;
-    const startCamera = async () => {
-      try {
-        activeStream = await navigator.mediaDevices.getUserMedia({ 
-          video: { facingMode: 'environment' } 
-        });
-        if (videoRef.current) {
-          videoRef.current.srcObject = activeStream;
-        }
-        setStream(activeStream);
-      } catch (err) {
-        console.error('Camera error:', err);
-        setError(lang === 'kh' ? 'មិនអាចបើកកាមេរ៉ាបានទេ។ សូមពិនិត្យសិទ្ធិអនុញ្ញាត។' : 'Unable to access camera. Please check permissions.');
-      }
-    };
-    
-    startCamera();
-
-    return () => {
-      if (activeStream) {
-        activeStream.getTracks().forEach(track => track.stop());
-      }
-    };
-  }, [lang]);
-
-  // 2. Load MobileNet Model
+  // Load MobileNet Model
   useEffect(() => {
     const loadModel = async () => {
       try {
-        // Ensure TF.js is ready
         await tf.ready();
         const loadedModel = await mobilenet.load({ version: 2, alpha: 1.0 });
         setModel(loadedModel);
@@ -62,60 +34,58 @@ const VisualSearchModal = ({ onClose }) => {
     loadModel();
   }, [lang]);
 
-  // 3. Capture & Analyze
-  const handleCapture = useCallback(async () => {
-    if (!model || !videoRef.current) return;
-    
+  // Handle Image Selection
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setError('');
     setIsAnalyzing(true);
-    
-    try {
-      // Draw video frame to canvas to analyze
-      const video = videoRef.current;
-      const canvas = canvasRef.current;
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      
-      // Classify the image
-      const predictions = await model.classify(canvas);
-      console.log('AI Predictions:', predictions);
-      
-      if (predictions && predictions.length > 0) {
-        // Use the highest probability prediction
-        const bestMatch = predictions[0];
-        // The classNames can be comma separated like "lipstick, lip rouge"
-        // We pick the first prominent word to search
-        const searchTerm = bestMatch.className.split(',')[0].trim();
-        
-        // Stop camera
-        if (stream) stream.getTracks().forEach(t => t.stop());
-        
-        // Set search term globally to filter products
-        setSearchTerm(searchTerm);
-        onClose();
-      } else {
-        setError(lang === 'kh' ? 'រកមិនឃើញទំនិញទេ សូមសាកល្បងថតម្តងទៀត។' : 'No items recognized. Try again.');
+
+    const imageUrl = URL.createObjectURL(file);
+    setPreviewUrl(imageUrl);
+
+    const img = new Image();
+    img.onload = async () => {
+      try {
+        const canvas = canvasRef.current;
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, img.width, img.height);
+
+        if (!model) throw new Error("Model not loaded");
+
+        // Classify the image
+        const predictions = await model.classify(canvas);
+        console.log('AI Predictions:', predictions);
+
+        if (predictions && predictions.length > 0) {
+          const bestMatch = predictions[0];
+          const searchTerm = bestMatch.className.split(',')[0].trim();
+          
+          setSearchTerm(searchTerm);
+          onClose();
+        } else {
+          setError(lang === 'kh' ? 'រកមិនឃើញទំនិញទេ សូមសាកល្បងរូបភាពផ្សេង។' : 'No items recognized. Try a different image.');
+          setIsAnalyzing(false);
+        }
+      } catch (err) {
+        console.error('Analysis error:', err);
+        setError(lang === 'kh' ? 'មានបញ្ហាក្នុងការវិភាគរូបភាព។' : 'Error analyzing image.');
         setIsAnalyzing(false);
       }
-    } catch (err) {
-      console.error('Analysis error:', err);
-      setError(lang === 'kh' ? 'មានបញ្ហាក្នុងការវិភាគរូបភាព។' : 'Error analyzing image.');
-      setIsAnalyzing(false);
-    }
-  }, [model, stream, setSearchTerm, onClose, lang]);
+    };
+    img.src = imageUrl;
+  };
 
   return (
     <div className="vs-overlay">
       <div className="vs-container">
         {/* Header */}
         <div className="vs-header">
-          <button className="vs-close-btn" onClick={() => {
-            if (videoRef.current && videoRef.current.srcObject) {
-              videoRef.current.srcObject.getTracks().forEach(t => t.stop());
-            }
-            onClose();
-          }}>
+          <h2>{lang === 'kh' ? 'ស្វែងរកតាមរូបភាព' : 'Visual Search'}</h2>
+          <button className="vs-close-btn" onClick={onClose}>
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <line x1="18" y1="6" x2="6" y2="18"></line>
               <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -123,57 +93,59 @@ const VisualSearchModal = ({ onClose }) => {
           </button>
         </div>
 
-        {/* Viewfinder */}
-        <div className="vs-viewfinder-container">
-          <video 
-            ref={videoRef} 
-            autoPlay 
-            playsInline 
-            muted 
-            className={`vs-video ${isAnalyzing ? 'blur' : ''}`} 
-          />
+        {/* Content Area */}
+        <div className="vs-content-area">
           <canvas ref={canvasRef} style={{ display: 'none' }} />
           
-          {/* Scanner Overlay */}
-          {!isAnalyzing && !error && (
-            <div className="vs-scanner-box">
-              <div className="vs-corner top-left"></div>
-              <div className="vs-corner top-right"></div>
-              <div className="vs-corner bottom-left"></div>
-              <div className="vs-corner bottom-right"></div>
-              <div className="vs-laser"></div>
+          {previewUrl ? (
+            <div className="vs-preview-container">
+              <img src={previewUrl} alt="Preview" className={`vs-preview-img ${isAnalyzing ? 'blur' : ''}`} />
+              {isAnalyzing && (
+                <div className="vs-message analyzing">
+                  <div className="vs-pulse-ring"></div>
+                  {lang === 'kh' ? 'AI កំពុងវិភាគរូបភាព...' : 'Analyzing Image...'}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="vs-upload-prompt">
+              <div className="vs-icon-wrapper">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#a3e635" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                  <circle cx="12" cy="13" r="4"></circle>
+                </svg>
+              </div>
+              <h3>{lang === 'kh' ? 'ជ្រើសរើសរូបភាព' : 'Select an Image'}</h3>
+              <p>{lang === 'kh' ? 'ថតរូបភាពថ្មី ឬជ្រើសរើសរូបភាពពីទូរស័ព្ទរបស់អ្នក ដើម្បីស្វែងរកទំនិញស្រដៀងគ្នា។' : 'Take a new photo or choose one from your gallery to find similar products.'}</p>
+              
+              <input 
+                type="file" 
+                accept="image/*" 
+                ref={fileInputRef}
+                onChange={handleImageUpload}
+                style={{ display: 'none' }}
+              />
+              
+              <button 
+                className="vs-action-btn"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isModelLoading}
+              >
+                {isModelLoading 
+                  ? (lang === 'kh' ? 'កំពុងរៀបចំ AI...' : 'Loading AI...') 
+                  : (lang === 'kh' ? 'បើកកាមេរ៉ា / វិចិត្រសាល' : 'Open Camera / Gallery')}
+              </button>
             </div>
           )}
 
-          {/* Messages Overlays */}
           {error && (
             <div className="vs-message error">
               {error}
+              <button className="vs-retry-btn" onClick={() => fileInputRef.current?.click()}>
+                {lang === 'kh' ? 'សាកល្បងម្តងទៀត' : 'Try Again'}
+              </button>
             </div>
           )}
-          
-
-
-          {isAnalyzing && (
-            <div className="vs-message analyzing">
-              <div className="vs-pulse-ring"></div>
-              {lang === 'kh' ? 'AI កំពុងវិភាគរូបភាព...' : 'Analyzing Image...'}
-            </div>
-          )}
-        </div>
-
-        {/* Controls */}
-        <div className="vs-controls">
-          <button 
-            className="vs-capture-btn" 
-            onClick={handleCapture}
-            disabled={isModelLoading || isAnalyzing || error}
-          >
-            <div className="vs-capture-inner"></div>
-          </button>
-          <p className="vs-instruction">
-            {lang === 'kh' ? 'ដាក់ទំនិញចំកណ្តាលប្រអប់ រួចចុចថត' : 'Center item in frame and tap to scan'}
-          </p>
         </div>
       </div>
     </div>

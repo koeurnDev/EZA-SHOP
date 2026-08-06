@@ -2,13 +2,14 @@ import React, { useState, memo } from 'react';
 import { getDiscountedPrice } from '../utils/discountUtils';
 import { useUser } from '../context/UserContext';
 import { useTelegram } from '../context/TelegramContext';
+import { formatCategory } from '../utils/langUtils';
 import { useShopDispatch } from '../context/ShopContext';
 
 const ProductCard = memo(({ 
   product, onAdd, onViewProduct, discountLookup = {}, 
   variant = 'grid'
 }) => {
-  const { t } = useUser();
+  const { t, lang } = useUser();
   const { tg } = useTelegram();
   const [isAdded, setIsAdded] = useState(false);
   const [isFavorited, setIsFavorited] = useState(false);
@@ -43,7 +44,7 @@ const ProductCard = memo(({
   const isDiscounted = hasFlashSale || bestDiscount !== null || finalPrice < product.price;
 
   // Short badge text for the top left (e.g. New, Special, Category)
-  let badgeText = product.category || 'ពិសេស';
+  let badgeText = formatCategory(product.category, lang) || 'ពិសេស';
   if (badgeText.length > 12) {
       badgeText = badgeText.substring(0, 12) + '...';
   }

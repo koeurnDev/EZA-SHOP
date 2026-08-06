@@ -30,7 +30,7 @@ const ShopHeader = ({ searchTerm, setSearchTerm, user, setView, view, lang, them
               )}
            </div>
            <div className="profile-info-lux ml-2">
-              <span className="user-name-lux text-[12px] font-bold">{user?.first_name || 'Guest User'}</span>
+              <span className="user-name-lux text-[12px] font-bold">{user?.first_name || (lang === 'kh' ? 'ភ្ញៀវ' : 'Guest User')}</span>
            </div>
         </div>
 
@@ -50,7 +50,7 @@ const ShopHeader = ({ searchTerm, setSearchTerm, user, setView, view, lang, them
            {/* 🔔 Notifications */}
            <div className="theme-toggle-pill flex items-center justify-center w-9 h-9 text-sm cursor-pointer relative" onClick={() => setIsNotificationsOpen(true)} style={{ marginLeft: '6px' }}>
               🔔
-              <span style={{ position: 'absolute', top: '0px', right: '0px', background: '#ff3b30', width: '8px', height: '8px', borderRadius: '50%', border: '2px solid var(--bg-card)' }}></span>
+              <span style={{ position: 'absolute', top: '0px', right: '0px', background: '#ff3b30', width: '8px', height: '8px', borderRadius: '50%', border: '2px solid var(--bg-surface)' }}></span>
            </div>
         </div>
       </div>
@@ -68,7 +68,7 @@ const ShopHeader = ({ searchTerm, setSearchTerm, user, setView, view, lang, them
           </div>
           <input 
             type="text" 
-            placeholder="Search products..." 
+            placeholder={lang === 'kh' ? 'ស្វែងរកទំនិញ...' : 'Search products...'} 
             className="shop-search-input"
             value={searchTerm || ''}
             onChange={(e) => setSearchTerm && setSearchTerm(e.target.value)}
@@ -77,14 +77,7 @@ const ShopHeader = ({ searchTerm, setSearchTerm, user, setView, view, lang, them
         </div>
 
         <div className="shop-action-icons">
-          {/* Camera Icon */}
-          <button className="shop-action-btn" aria-label="Visual Search" onClick={() => setShowScanner(true)}>
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
-              <circle cx="12" cy="13" r="4"></circle>
-            </svg>
-          </button>
-          
+
           {/* Filter Sliders Icon */}
           <button className="shop-action-btn" aria-label="Filter Results" onClick={() => setShowFilterModal(true)}>
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">

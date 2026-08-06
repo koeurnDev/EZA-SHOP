@@ -1,10 +1,13 @@
 import React from 'react';
+import { useUser } from '../../context/UserContext';
 
-const AdminFaqsTab = React.memo(({ faqsLoading, faqsList, setEditingFaq, setIsFaqModalOpen, handleDeleteFaq }) => (
+const AdminFaqsTab = React.memo(({ faqsLoading, faqsList, setEditingFaq, setIsFaqModalOpen, handleDeleteFaq }) => {
+  const { t } = useUser();
+  return (
   <div className="tab-pane-animate">
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
-        <h3 style={{ fontSize: 18, fontWeight: 900 }}>គ្រប់គ្រងសំណួរ-ចម្លើយ</h3>
+        <h3 style={{ fontSize: 18, fontWeight: 900 }}>{t('admin_faq_title')}</h3>
         <button
           className="ticket-btn-primary"
           style={{ flex: 'none', width: 'auto', padding: '10px 20px', height: 'auto' }}
@@ -13,14 +16,14 @@ const AdminFaqsTab = React.memo(({ faqsLoading, faqsList, setEditingFaq, setIsFa
             setIsFaqModalOpen(true);
           }}
         >
-          ➕ បន្ថែមថ្មី
+          ➕ {t('admin_add_faq')}
         </button>
       </div>
 
       {faqsLoading ? (
-        <div style={{ padding: 40, textAlign: 'center', opacity: 0.5 }}>កំពុងទាញទិន្នន័យ...</div>
+        <div style={{ padding: 40, textAlign: 'center', opacity: 0.5 }}>{t('admin_fetching')}</div>
       ) : faqsList.length === 0 ? (
-        <div className="glass-card-luxury" style={{ padding: 40, textAlign: 'center', opacity: 0.5 }}>មិនមានទិន្នន័យទេ</div>
+        <div className="glass-card-luxury" style={{ padding: 40, textAlign: 'center', opacity: 0.5 }}>{t('admin_no_data')}</div>
       ) : (
         faqsList.map(faq => (
           <div key={faq.id} className="glass-card-luxury" style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -36,14 +39,14 @@ const AdminFaqsTab = React.memo(({ faqsLoading, faqsList, setEditingFaq, setIsFa
                 style={{ padding: '8px 24px', background: 'var(--bg-surface)', color: 'var(--text-main)', flex: 'none', minWidth: 'auto' }}
                 onClick={() => { setEditingFaq(faq); setIsFaqModalOpen(true); }}
               >
-                កែប្រែ
+                {t('admin_edit')}
               </button>
               <button
                 className="nav-pill-btn btn-destructive"
                 style={{ padding: '8px 24px', flex: 'none', minWidth: 'auto' }}
                 onClick={() => handleDeleteFaq(faq.id)}
               >
-                លុប
+                {t('admin_delete')}
               </button>
             </div>
           </div>
@@ -51,6 +54,7 @@ const AdminFaqsTab = React.memo(({ faqsLoading, faqsList, setEditingFaq, setIsFa
       )}
     </div>
   </div>
-));
+);
+});
 
 export default AdminFaqsTab;

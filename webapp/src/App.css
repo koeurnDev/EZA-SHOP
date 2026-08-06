@@ -1,7 +1,7 @@
 :root {
   /* 🎨 Primary Brand Colors */
   --primary-accent: #ffffff;
-  --primary-gradient: linear-gradient(135deg, #242424 0%, #121212 100%);
+  --primary-gradient: linear-gradient(135deg, #ff72a0 0%, #ec4899 100%);
   /* 🌗 Theme Tokens (Light Mode - Default) */
   --bg-app: #FDFBF0;
   --bg-surface: #ffffff;
@@ -1137,7 +1137,7 @@ h3,
 .cat-pill {
   padding: 8px 18px;
   background: var(--bg-surface);
-  border: 1.5px solid var(--border-subtle);
+  border: 1.5px solid transparent;
   border-radius: 99px;
   font-size: 13.5px;
   font-weight: 700;
@@ -1151,10 +1151,10 @@ h3,
   transform: scale(0.94);
 }
 .cat-pill.active {
-  background: var(--primary-gradient);
-  color: white;
-  border-color: transparent;
-  box-shadow: 0 10px 25px rgba(47, 72, 58, 0.3);
+  background: transparent;
+  color: var(--text-bold);
+  border: 1.5px solid var(--text-bold);
+  box-shadow: none;
   transform: translateY(-2px);
 }
 /* ðŸ›’ Cart & Checkout Overhaul */
@@ -5940,7 +5940,7 @@ input:checked+.toggle-slider:before {
   input {
     display: none !important;
   }
-  body {
+  html, body, #root, .app-container {
     background: white !important;
     color: black !important;
     padding: 0 !important;
@@ -5950,10 +5950,11 @@ input:checked+.toggle-slider:before {
   }
   .printable-order {
     display: block !important;
+    background: white !important;
     width: 100% !important;
-    max-width: 76mm !important;
-    margin: 0;
-    padding: 2mm 4mm;
+    max-width: 58mm !important;
+    margin: 0 auto !important;
+    padding: 1mm 2mm;
     font-family: 'Kantumruy Pro', 'Inter', sans-serif !important;
     color: #000 !important;
     text-shadow: none !important;
@@ -5963,11 +5964,11 @@ input:checked+.toggle-slider:before {
     overflow: hidden;
   }
   .print-header h2 {
-    font-size: 18px !important;
+    font-size: 16px !important;
     margin-bottom: 2px !important;
   }
   .print-header p {
-    font-size: 11px !important;
+    font-size: 10px !important;
     margin: 1px 0 !important;
   }
   .print-header h2,
@@ -5987,7 +5988,7 @@ input:checked+.toggle-slider:before {
   .print-row {
     display: flex;
     justify-content: space-between;
-    font-size: 10px;
+    font-size: 9px;
     margin-bottom: 3px;
     line-height: 1.3;
     word-break: break-word;
@@ -6001,7 +6002,7 @@ input:checked+.toggle-slider:before {
     padding: 4px 0;
     border-bottom: 1px solid #000;
     background: transparent !important;
-    font-size: 11px;
+    font-size: 10px;
   }
   .print-table td {
     padding: 4px 0;
@@ -6011,7 +6012,7 @@ input:checked+.toggle-slider:before {
     display: flex;
     justify-content: space-between;
     margin-top: 10px;
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 900;
     border-top: 2px solid #000;
     padding-top: 6px;
@@ -6282,7 +6283,8 @@ input:checked+.toggle-slider:before {
 }
 .add-gallery-slot span {
   font-size: 18px;
-  opacity: 0.6;
+  color: var(--text-main);
+  opacity: 0.8;
 }
 .add-gallery-slot label {
   font-size: 9px;
@@ -6946,12 +6948,11 @@ body { overscroll-behavior-y: none; }
 :root { --tg-safe-area-inset-top: env(safe-area-inset-top); --tg-safe-area-inset-bottom: env(safe-area-inset-bottom); }
 
 .input-glass-admin option {
-  background: #1a1a1a;
-  color: #f8fafc;
+  background-color: var(--bg-surface);
+  color: var(--text-main);
 }
 
-select,
 select option {
-  background-color: #1a1a1a;
-  color: #f8fafc;
+  background-color: var(--bg-surface);
+  color: var(--text-main);
 }

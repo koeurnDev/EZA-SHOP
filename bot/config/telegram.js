@@ -1,12 +1,21 @@
 const { Telegraf, Markup } = require('telegraf');
 const pool = require('./database');
+const { HttpsProxyAgent } = require('https-proxy-agent');
 
 if (!process.env.BOT_TOKEN) {
   console.error('🔴 BOT_TOKEN is missing. Bot cannot start.');
   process.exit(1);
 }
 
-const bot = new Telegraf(process.env.BOT_TOKEN);
+const telegrafOptions = {};
+if (process.env.PROXY_URL) {
+  telegrafOptions.telegram = {
+    agent: new HttpsProxyAgent(process.env.PROXY_URL)
+  };
+  console.log(`🔌 Using Proxy for Telegram Bot: ${process.env.PROXY_URL}`);
+}
+
+const bot = new Telegraf(process.env.BOT_TOKEN, telegrafOptions);
 
 // --- Core Bot logic (formerly in bot.js) ---
 

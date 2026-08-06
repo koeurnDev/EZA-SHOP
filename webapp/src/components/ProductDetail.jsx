@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { calculateBestDiscount, getDiscountedPrice } from '../utils/discountUtils';
+import { formatCategory } from '../utils/langUtils';
 
 /**
  * 💎 ProductDetail — Matches reference screenshot (COSRX style)
@@ -231,7 +232,7 @@ const ProductDetail = ({ product, allProducts = [], onAdd, onClose, onBuyNow, ac
           <div className="pd-content">
 
             {/* Brand */}
-            <p className="pd-brand">{product.category || 'MO MO Boutique'}</p>
+            <p className="pd-brand">{formatCategory(product.category, lang) || 'MO MO Boutique'}</p>
 
             {/* Product Name */}
             <h1 className="pd-name">{product.name}</h1>
@@ -267,9 +268,9 @@ const ProductDetail = ({ product, allProducts = [], onAdd, onClose, onBuyNow, ac
                  <span style={{ fontSize: '17px', fontWeight: '800', color: 'var(--text-main)', minWidth: '20px', textAlign: 'center' }}>{quantity}</span>
                  <button 
                    onClick={() => setQuantity(prev => prev + 1)} 
-                   style={{ width: '32px', height: '32px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: 'var(--primary-accent)', color: 'white', cursor: 'pointer' }}
+                   style={{ width: '32px', height: '32px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--border-subtle)', background: 'var(--bg-surface)', color: 'var(--text-main)', cursor: 'pointer' }}
                  >
-                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                  </button>
               </div>
             </div>
@@ -340,7 +341,7 @@ const ProductDetail = ({ product, allProducts = [], onAdd, onClose, onBuyNow, ac
                 {!showReviewForm && (
                   <button 
                     onClick={() => setShowReviewForm(true)}
-                    style={{ background: 'var(--primary-gradient)', color: 'white', padding: '6px 16px', borderRadius: '100px', fontWeight: '800', border: 'none', fontSize: '13px' }}
+                    style={{ background: 'transparent', color: 'var(--text-muted)', padding: '5px 14px', borderRadius: '100px', fontWeight: '700', border: '1.5px solid var(--border-subtle)', fontSize: '12px' }}
                   >
                     {lang === 'kh' ? 'សរសេរការវាយតម្លៃ' : 'Write Review'}
                   </button>

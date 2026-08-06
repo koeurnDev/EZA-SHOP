@@ -98,7 +98,7 @@ export const CartProvider = ({ children }) => {
 
     // 🍞 Luxury Toast Feedback
     if (showToast) {
-       showToast(lang === 'kh' ? `បានដាក់ ${product.name} ទៅក្នុងកន្ត្រក` : `Added ${product.name} to cart`);
+       showToast(lang === 'kh' ? `បានបន្ថែម ${product.name} ចូលកន្ត្រក` : `Added ${product.name} to cart`);
     }
 
     setCart(prev => {

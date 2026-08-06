@@ -5,6 +5,7 @@ import { useUserState } from '../context/UserContext';
 import { useTelegram } from '../context/TelegramContext';
 import { calculateBestDiscount, getDiscountedPrice } from '../utils/discountUtils';
 import DeliveryForm from './DeliveryForm';
+import { formatCategory } from '../utils/langUtils';
 import './ui/ModernCart.css';
 
 const CartPage = ({
@@ -168,7 +169,7 @@ const CartPage = ({
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                       </button>
                       <h3 className="cart-item-title line-clamp-1">{item.name}</h3>
-                      <p className="cart-item-variant">{item.category}</p>
+                      <p className="cart-item-variant">{formatCategory(item.category, lang)}</p>
                       <div className="cart-item-bottom">
                         <span className={`cart-item-price ${isDiscounted ? 'text-red-500' : ''}`}>
                           ${(finalPrice * item.quantity).toFixed(2)}
@@ -206,7 +207,7 @@ const CartPage = ({
 
         <div className="lg:w-80">
           <div className="sticky top-5 p-6 bg-[#fcfbf7] rounded-[32px] shadow-sm mb-20" style={{ border: '1px solid rgba(0,0,0,0.03)' }}>
-            <h3 className="text-lg font-black text-bold mb-6">Summary</h3>
+            <h3 className="text-lg font-black text-bold mb-6">{lang === 'kh' ? 'សង្ខេប' : 'Summary'}</h3>
             <div className="flex flex-col gap-4 mb-6 pb-6 border-b border-dashed border-gray-200">
               {cart.map(item => {
                 const best = calculateBestDiscount(item, activeDiscounts);
@@ -221,12 +222,12 @@ const CartPage = ({
             );
           })}
           <div className="flex justify-between items-center text-[15px] font-bold mt-2">
-            <div className="uppercase tracking-tight">DELIVERY</div>
+            <div className="uppercase tracking-tight">{lang === 'kh' ? 'សេវាដឹកជញ្ជូន' : 'DELIVERY'}</div>
             <div className="font-black tabular-nums">${appliedFee.toFixed(2)}</div>
           </div>
         </div>
         <div className="flex justify-between items-center mb-6">
-          <span className="text-lg font-black uppercase text-bold">TOTAL:</span>
+          <span className="text-lg font-black uppercase text-bold">{lang === 'kh' ? 'សរុប៖' : 'TOTAL:'}</span>
           <span className="text-2xl font-black text-[#059669] tabular-nums">${finalTotal.toFixed(2)}</span>
         </div>
         <button

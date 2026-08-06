@@ -333,10 +333,12 @@ const orderService = {
   },
 
   async getUserOrders(userId, limit, offset, tgUser) {
-    if (String(tgUser.id) !== String(userId)) throw new Error('Access Denied');
+    // Security: only allow user to fetch their own orders
+    if (userId && String(tgUser?.id) !== String(userId)) throw new Error('Access Denied');
+    const effectiveId = userId || tgUser?.id;
     return {
-      orders: await orderRepository.findByUserPaginated(userId, limit, offset),
-      total: await orderRepository.countByUser(userId)
+      orders: await orderRepository.findByUserPaginated(effectiveId, limit, offset),
+      total: await orderRepository.countByUser(effectiveId)
     };
   },
 

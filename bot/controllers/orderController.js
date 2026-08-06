@@ -14,12 +14,13 @@ const orderController = {
   }),
 
   getUserOrders: asyncHandler(async (req, res) => {
-    const { userId } = req.query;
-    const targetId = userId || req.params.userId;
     const limit = Math.min(parseInt(req.query.limit) || 20, 100);
     const offset = parseInt(req.query.offset) || 0;
     
-    const { orders, total } = await orderService.getUserOrders(targetId, limit, offset, req.tgUser);
+    // Use tgUser.id as the canonical userId (from auth middleware)
+    const effectiveUserId = req.query.userId || req.tgUser?.id || req.user?.user_id;
+    
+    const { orders, total } = await orderService.getUserOrders(effectiveUserId, limit, offset, req.tgUser);
     
     res.json({ 
       success: true, 

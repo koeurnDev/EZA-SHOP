@@ -1,13 +1,36 @@
-import React from 'react';
+import React, { useMemo } from 'react';
+import { useShopState } from '../context/ShopContext';
+import { useUserState } from '../context/UserContext';
 
 const CategoryNavigator = ({ searchTerm, setSearchTerm, selectedCategory, setSelectedCategory, t }) => {
+  const { lang } = useUserState();
   const [localSearch, setLocalSearch] = React.useState(searchTerm);
   const timeoutRef = React.useRef(null);
+  const { products } = useShopState();
+
+  const dynamicCategories = useMemo(() => {
+    const cats = new Set();
+    (products || []).forEach(p => {
+      const c = p.category;
+      if (c && c !== 'all' && c !== 'new' && c !== 'flash_sale') {
+        cats.add(c);
+      }
+    });
+    return Array.from(cats).map(c => {
+      let label = c;
+      if (lang === 'kh') {
+        label = c.replace(/\s*\(.*?\)/g, '');
+      } else {
+        const match = c.match(/\((.*?)\)/);
+        label = match ? match[1] : c.replace(/\s*\(.*?\)/g, '');
+      }
+      return { id: c, label };
+    });
+  }, [products, lang]);
 
   const categories = [
     { id: 'all', label: t('all') },
-    { id: 'perfume', label: t('perfume') },
-    { id: 'bodycare', label: t('bodycare') },
+    ...dynamicCategories,
     { id: 'new', label: t('new') },
     { id: 'flash_sale', label: '⚡ Flash Sale' }
   ];
