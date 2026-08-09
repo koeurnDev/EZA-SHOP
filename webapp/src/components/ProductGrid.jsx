@@ -40,7 +40,10 @@ const ProductGrid = () => {
   const filtered = useMemo(() => {
     return (products || [])
       .filter(p => {
-        const matchesSearch = (p.name || '').toLowerCase().includes((debouncedSearchTerm || '').toLowerCase());
+        const searchLower = (debouncedSearchTerm || '').toLowerCase().trim();
+        const matchesSearch = searchLower === '' || 
+                              (p.name || '').toLowerCase().includes(searchLower) ||
+                              (p.id && p.id.toString().includes(searchLower));
         const matchesCategory = selectedCategory === 'all' || 
                                 (selectedCategory === 'flash_sale' ? p.flash_sale_price : p.category === selectedCategory);
         

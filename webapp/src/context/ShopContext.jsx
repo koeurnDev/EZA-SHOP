@@ -48,6 +48,11 @@ export const ShopProvider = ({ children }) => {
   const [promoText, setPromoText] = useState('');
   const [promoBannerUrl, setPromoBannerUrl] = useState('');
   const [shopLogoUrl, setShopLogoUrl] = useState('');
+  const [socialFb, setSocialFb] = useState('');
+  const [socialTg, setSocialTg] = useState('');
+  const [socialIg, setSocialIg] = useState('');
+  const [socialTt, setSocialTt] = useState('');
+  const [socialEmail, setSocialEmail] = useState('');
 
   const showToast = useCallback((message) => {
     setToast(message);
@@ -97,6 +102,11 @@ export const ShopProvider = ({ children }) => {
       if (s.promo_text) setPromoText(s.promo_text);
       if (s.promo_banner_url) setPromoBannerUrl(s.promo_banner_url);
       if (s.shop_logo_url) setShopLogoUrl(s.shop_logo_url);
+      if (s.social_fb) setSocialFb(s.social_fb);
+      if (s.social_tg) setSocialTg(s.social_tg);
+      if (s.social_ig) setSocialIg(s.social_ig);
+      if (s.social_tt) setSocialTt(s.social_tt);
+      if (s.social_email) setSocialEmail(s.social_email);
     }
   }, [initData]);
 
@@ -121,12 +131,17 @@ export const ShopProvider = ({ children }) => {
       paymentInfo: settings.payment_info || '',
       promoBannerUrl,
       shopLogoUrl,
+      socialFb,
+      socialTg,
+      socialIg,
+      socialTt,
+      socialEmail,
       activeDiscounts: initData?.discounts || [],
       showFilterModal,
       showScanner,
       filters
     };
-  }, [initData, isInitLoading, selectedCategory, searchTerm, debouncedSearchTerm, view, selectedProduct, toast, shopStatus, deliveryThreshold, deliveryFee, promoText, promoBannerUrl, shopLogoUrl, showFilterModal, showScanner, filters]);
+  }, [initData, isInitLoading, selectedCategory, searchTerm, debouncedSearchTerm, view, selectedProduct, toast, shopStatus, deliveryThreshold, deliveryFee, promoText, promoBannerUrl, shopLogoUrl, socialFb, socialTg, socialIg, socialTt, socialEmail, showFilterModal, showScanner, filters]);
 
   const dispatch = useMemo(() => ({
     setSelectedCategory,
@@ -140,13 +155,18 @@ export const ShopProvider = ({ children }) => {
     setPromoText,
     setPromoBannerUrl,
     setShopLogoUrl,
+    setSocialFb,
+    setSocialTg,
+    setSocialIg,
+    setSocialTt,
+    setSocialEmail,
     setShowFilterModal,
     setShowScanner,
     setFilters,
     refetchData: () => {
       refetchInit();
     }
-  }), [refetchInit, showToast, setShopStatus, setDeliveryThreshold, setDeliveryFee, setPromoText, setPromoBannerUrl, setShopLogoUrl, setShowFilterModal, setShowScanner, setFilters]);
+  }), [refetchInit, showToast, setShopStatus, setDeliveryThreshold, setDeliveryFee, setPromoText, setPromoBannerUrl, setShopLogoUrl, setSocialFb, setSocialTg, setSocialIg, setSocialTt, setSocialEmail, setShowFilterModal, setShowScanner, setFilters]);
 
   return (
     <ShopStateContext.Provider value={state}>

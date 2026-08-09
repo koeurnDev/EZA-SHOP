@@ -1,6 +1,7 @@
 import React from 'react';
 import DarkSelect from '../DarkSelect';
 import { useUser } from '../../../context/UserContext';
+import AdminVariationsEditor from './AdminVariationsEditor';
 
 const AdminEditProductModal = React.memo(({
   editingProduct, isUploading, editFormData, setEditFormData, compressImage, setIsUploading,
@@ -97,6 +98,11 @@ const AdminEditProductModal = React.memo(({
             </div>
           </div>
 
+          <AdminVariationsEditor 
+            variants={editFormData.variants || []} 
+            setVariants={(v) => setEditFormData({ ...editFormData, variants: v })} 
+          />
+
           <div style={{ marginBottom: 14 }}>
             <label style={{ display: 'block', fontSize: 11, fontWeight: 800, marginBottom: 8, opacity: 0.6 }}>{t('admin_product_desc')}</label>
             <textarea className="input-glass-admin" rows="3" value={editFormData.description} onChange={e => setEditFormData({ ...editFormData, description: e.target.value })} placeholder={t('admin_product_desc')}></textarea>
@@ -137,7 +143,7 @@ const AdminEditProductModal = React.memo(({
 
         <div style={{ display: 'flex', gap: 8, marginTop: 15, flexShrink: 0 }}>
           <button className="nav-pill-btn btn-destructive" style={{ flex: 1, minHeight: 48, padding: '0 5px' }} disabled={isSaving} onClick={() => setEditingProduct(null)}>{t('cancel')}</button>
-          <button className="nav-pill-btn" style={{ flex: 1, minHeight: 48, padding: '0 5px', background: 'var(--bg-surface)', color: 'var(--text-main)', border: '1px solid #e2e8f0' }} onClick={() => handlePreview(editFormData)}>👁️ {t('admin_preview')}</button>
+          <button className="nav-pill-btn btn-preview" style={{ flex: 1, minHeight: 48, padding: '0 5px' }} onClick={() => handlePreview(editFormData)}>👁️ {t('admin_preview')}</button>
           <button className="ticket-btn-primary" style={{ flex: 1.2, minHeight: 48, padding: '0 5px' }} disabled={isSaving} onClick={submitEditProduct}>
             {isSaving ? `⌛ ${t('admin_saving')}` : t('admin_save')}
           </button>

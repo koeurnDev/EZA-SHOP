@@ -45,6 +45,17 @@ const orderController = {
     if (!orderCode || !receiptUrl) throw new Error('Missing parameters');
     const order = await orderService.uploadReceipt(orderCode, receiptUrl, req.tgUser);
     res.json({ success: true, order });
+  }),
+
+  validateCoupon: asyncHandler(async (req, res) => {
+    const { code } = req.body;
+    if (!code) throw new Error('Missing coupon code');
+    const couponRepository = require('../repositories/couponRepository');
+    const coupon = await couponRepository.findByCode(code);
+    if (!coupon) {
+      throw new NotFoundError('Coupon code is invalid or expired.');
+    }
+    res.json({ success: true, coupon });
   })
 };
 

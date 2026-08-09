@@ -38,6 +38,7 @@ const schemas = {
     body('category').notEmpty().trim().escape().withMessage('Category is required'),
     body('description').optional().trim().escape(),
     body('stock').optional().isInt({ min: 0 }),
+    body('variants').optional().isArray(),
     validate
   ],
   setting: [

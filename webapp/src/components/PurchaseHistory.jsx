@@ -17,7 +17,7 @@ const PurchaseHistory = ({ setView, BACKEND_URL }) => {
   }, []);
 
   const fetchOrders = () => {
-    const tgData = window.Telegram.WebApp.initData;
+    const tgData = window.Telegram?.WebApp?.initData || '';
     fetch(`${BACKEND_URL}/api/user/orders`, {
       headers: { 'X-TG-Data': tgData }
     })
@@ -121,8 +121,8 @@ const PurchaseHistory = ({ setView, BACKEND_URL }) => {
                              onClick={(e) => {
                                 e.stopPropagation();
                                 navigator.clipboard.writeText(order.tracking_number);
-                                const tg = window.Telegram.WebApp;
-                                if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+                                const tg = window.Telegram?.WebApp;
+                                if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
                                 const btn = e.currentTarget;
                                 const oldHtml = btn.innerHTML;
                                 btn.innerHTML = '✓';
@@ -135,7 +135,15 @@ const PurchaseHistory = ({ setView, BACKEND_URL }) => {
                        </div>
                     </div>
                     <button 
-                       onClick={() => window.Telegram.WebApp.openLink(`https://www.google.com/search?q=${order.tracking_number}`)}
+                       onClick={() => {
+                          const tg = window.Telegram?.WebApp;
+                          const url = `https://www.google.com/search?q=${order.tracking_number}`;
+                          if (tg?.openLink) {
+                            tg.openLink(url);
+                          } else {
+                            window.open(url, '_blank');
+                          }
+                       }}
                        style={{ background: '#3b82f6', color: 'white', border: 'none', padding: '5px 10px', borderRadius: 8, fontSize: 10, fontWeight: 800 }}
                     >
                        Track
@@ -149,7 +157,14 @@ const PurchaseHistory = ({ setView, BACKEND_URL }) => {
                        <span>🧾</span> វិក្កយបត្រដែលបានបញ្ជូន
                     </div>
                     <div style={{ width: '100%', borderRadius: 8, overflow: 'hidden' }}>
-                       <img src={order.receipt_url} alt="Receipt" style={{ width: '100%', maxHeight: '150px', objectFit: 'contain', cursor: 'pointer' }} onClick={() => window.Telegram?.WebApp?.openLink ? window.Telegram.WebApp.openLink(order.receipt_url) : window.open(order.receipt_url, '_blank')} />
+                       <img src={order.receipt_url} alt="Receipt" style={{ width: '100%', maxHeight: '150px', objectFit: 'contain', cursor: 'pointer' }} onClick={() => {
+                          const tg = window.Telegram?.WebApp;
+                          if (tg?.openLink) {
+                            tg.openLink(order.receipt_url);
+                          } else {
+                            window.open(order.receipt_url, '_blank');
+                          }
+                       }} />
                     </div>
                  </div>
                )}

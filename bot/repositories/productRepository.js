@@ -112,9 +112,10 @@ const productRepository = {
   },
 
   create: async (p) => {
+    const variantsJson = p.variants ? JSON.stringify(p.variants) : '[]';
     const res = await pool.query(
-      'INSERT INTO products (name, category, price, image, stock, description, additional_images, flash_sale_price, flash_sale_end, video_url) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *',
-      [p.name, p.category, p.price, p.image, p.stock || 0, p.description || '', p.additional_images || '[]', p.flash_sale_price || null, p.flash_sale_end || null, p.video_url || null]
+      'INSERT INTO products (name, category, price, image, stock, description, additional_images, flash_sale_price, flash_sale_end, video_url, variants) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *',
+      [p.name, p.category, p.price, p.image, p.stock || 0, p.description || '', p.additional_images || '[]', p.flash_sale_price || null, p.flash_sale_end || null, p.video_url || null, variantsJson]
     );
     // 🚀 Invalidate cache on create
     await cacheService.clearPattern('products:*');
@@ -123,9 +124,10 @@ const productRepository = {
   },
 
   update: async (id, p) => {
+    const variantsJson = p.variants ? JSON.stringify(p.variants) : '[]';
     const res = await pool.query(
-      'UPDATE products SET name = $1, category = $2, price = $3, image = $4, stock = $5, description = $6, additional_images = $7, flash_sale_price = $8, flash_sale_end = $9, video_url = $10 WHERE id = $11 RETURNING *',
-      [p.name, p.category, p.price, p.image, p.stock, p.description, p.additional_images, p.flash_sale_price, p.flash_sale_end, p.video_url, id]
+      'UPDATE products SET name = $1, category = $2, price = $3, image = $4, stock = $5, description = $6, additional_images = $7, flash_sale_price = $8, flash_sale_end = $9, video_url = $10, variants = $11 WHERE id = $12 RETURNING *',
+      [p.name, p.category, p.price, p.image, p.stock, p.description, p.additional_images, p.flash_sale_price, p.flash_sale_end, p.video_url, variantsJson, id]
     );
     // 🚀 Invalidate cache on update
     await cacheService.clearPattern('products:*');
@@ -142,36 +144,53 @@ const productRepository = {
   },
 
   deductStockBatch: async (items, client = pool) => {
-    // 🛡️ Principal 20-Year Exp: Atomic Batch Stock Deduction
-    // Uses CASE statement for single-query performance (O(1) round-trip)
-    const updateParams = items.flatMap(item => [item.id, item.quantity]);
-    const casePhrases = items.map((item, idx) => 
-      `WHEN id = $${idx * 2 + 1}::integer THEN $${idx * 2 + 2}::integer`
-    ).join(' ');
-    
-    const idsParamIdx = items.length * 2 + 1;
-    const query = `
-      UPDATE products 
-      SET stock = stock - (CASE ${casePhrases} END)::integer 
-      WHERE id = ANY($${idsParamIdx}::integer[])
-        AND stock >= (CASE ${casePhrases} END)::integer
-      RETURNING *
-    `;
+    // Lock the required products
+    const ids = [...new Set(items.map(i => i.id))];
+    const { rows: products } = await client.query(
+      `SELECT * FROM products WHERE id = ANY($1::integer[]) FOR UPDATE`,
+      [ids]
+    );
 
-    const res = await client.query(query, [...updateParams, items.map(i => i.id)]);
-    
-    // Verify all items were updated (if count mismatches, some item was missing or out of stock)
-    if (res.rowCount < items.length) {
-      const updatedIds = res.rows.map(r => r.id);
-      const failedItems = items.filter(i => !updatedIds.includes(parseInt(i.id)));
-      throw new Error(`Out of stock or invalid items: ${failedItems.map(i => i.name || i.id).join(', ')}`);
+    if (products.length < ids.length) {
+      throw new Error('Some products were not found during stock deduction.');
+    }
+
+    const productsById = {};
+    for (const p of products) {
+      productsById[p.id] = { ...p, variants: typeof p.variants === 'string' ? JSON.parse(p.variants) : (p.variants || []) };
+    }
+
+    // Process deductions
+    for (const item of items) {
+      const p = productsById[item.id];
+      if (item.variant) {
+        // Find variant and deduct
+        const v = p.variants.find(v => v.color === item.variant.color && v.size === item.variant.size);
+        if (!v || v.stock < item.quantity) {
+          throw new Error(`Out of stock for variant ${item.variant.color || ''} ${item.variant.size || ''} of ${p.name}`);
+        }
+        v.stock -= item.quantity;
+      } else {
+        if (p.stock < item.quantity) {
+          throw new Error(`Out of stock for ${p.name}`);
+        }
+        p.stock -= item.quantity;
+      }
+    }
+
+    // Save updates
+    for (const p of Object.values(productsById)) {
+      await client.query(
+        `UPDATE products SET stock = $1, variants = $2::jsonb WHERE id = $3`,
+        [p.stock, JSON.stringify(p.variants), p.id]
+      );
     }
     
     // 🚀 Invalidate all relevant caches on stock change (Non-blocking)
     cacheService.clearPattern('products:*').catch(() => {});
     cacheService.delete('system:init:data').catch(() => {});
     
-    return res.rows;
+    return Object.values(productsById);
   },
 
   addStock: async (id, qty) => {

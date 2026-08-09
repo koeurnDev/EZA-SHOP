@@ -20,7 +20,7 @@ const orderService = {
   async createOrder(payload, tgUser) {
     const client = await pool.connect();
     try {
-      const { userId, userName, items, total, deliveryInfo, idempotencyKey } = payload;
+      const { userId, userName, items, total, deliveryInfo, idempotencyKey, couponCode } = payload;
       
       // 🛡️ Pre-Flight Health Check: Ensure Bakong is reachable and Token is valid 
       // before we even bother creating the order and showing the QR code.
@@ -67,6 +67,11 @@ const orderService = {
 
       // 2. Data Retrieval (Parallelized)
       const itemIds = items.map(i => i.id);
+      let manualCoupon = null;
+      if (couponCode) {
+        manualCoupon = await couponRepository.findByCode(couponCode);
+      }
+
       const [dbProducts, activeDiscounts, dbSettings] = await Promise.all([
         productRepository.findByIds(itemIds),
         couponRepository.findActiveAuto(),
@@ -88,7 +93,17 @@ const orderService = {
         totalItemDiscount += (realProduct.price - discountedPrice) * cartItem.quantity;
       }
 
-      const subtotal = Math.max(0, grossTotal - totalItemDiscount);
+      let subtotal = Math.max(0, grossTotal - totalItemDiscount);
+      
+      // Apply Manual Coupon Discount (Order Level)
+      if (manualCoupon) {
+         const manualDiscount = manualCoupon.discount_type === 'percent' 
+            ? subtotal * (manualCoupon.value / 100) 
+            : manualCoupon.value;
+         subtotal = Math.max(0, subtotal - manualDiscount);
+         totalItemDiscount += manualDiscount;
+      }
+
       const deliveryFee = subtotal >= threshold ? 0 : fee;
       const calculatedTotal = parseFloat((subtotal + deliveryFee).toFixed(2));
 
@@ -136,7 +151,7 @@ const orderService = {
       await client.query('BEGIN');
       
       const updatedProducts = await productRepository.deductStockBatch(
-        items.map(i => ({ id: i.id, quantity: parseInt(i.quantity) })), 
+        items.map(i => ({ id: i.id, quantity: parseInt(i.quantity), variant: i.variant })), 
         client
       );
 
@@ -185,9 +200,10 @@ const orderService = {
     if (!order) throw new Error('Order not found');
     
     const isAdmin = String(tgUser.id) === String(process.env.SUPERADMIN_ID);
+    const isSystem = String(tgUser.id) === 'SYSTEM';
 
-    // 🛡️ Principal: Admin-Bypass or Identity Verification
-    if (tgUser.id !== 'SYSTEM' && String(tgUser.id) !== String(order.user_id) && !isAdmin) {
+    // 🛡️ Principal: Admin or owner may confirm; system is the internal worker.
+    if (!isSystem && String(tgUser.id) !== String(order.user_id) && !isAdmin) {
        throw new Error('Access Denied');
     }
     
@@ -197,9 +213,9 @@ const orderService = {
       return order;
     }
 
-    // 🛡️ SECURITY FIX: If the user manually triggered this, force real-time Bakong verification!
-    if (tgUser.id !== 'SYSTEM' && !isAdmin) {
-      console.log(`🔒 Verifying user-claimed payment for ${orderCode} via Bakong API...`);
+    // 🛡️ SECURITY FIX: If a non-system caller triggered this, force real-time Bakong verification!
+    if (!isSystem) {
+      console.log(`🔒 Verifying payment for ${orderCode} via Bakong API...`);
       const result = await bakongService.checkTransaction(order.qr_string);
       if (!result.success) {
         throw new Error('Payment not yet received or verified by Bakong. Please wait a moment and try again.');
@@ -273,7 +289,7 @@ const orderService = {
   },
 
   async getOrderStatus(orderCode, tgUser) {
-    const order = await orderRepository.findByCode(orderCode);
+    let order = await orderRepository.findByCode(orderCode);
     if (!order) throw new Error('Order not found');
     
     // 🛡️ Access Control

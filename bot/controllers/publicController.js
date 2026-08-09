@@ -10,13 +10,6 @@ const publicController = {
     res.json({ success: true, ...data });
   }),
 
-  bootstrap: asyncHandler(async (req, res) => {
-    const { initData } = req.body;
-    const data = await adminService.bootstrap(initData);
-    res.set('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=600');
-    res.json({ success: true, ...data });
-  }),
-
   getSettings: asyncHandler(async (req, res) => {
     const keys = req.query.keys ? req.query.keys.split(',') : null;
     const settings = keys 

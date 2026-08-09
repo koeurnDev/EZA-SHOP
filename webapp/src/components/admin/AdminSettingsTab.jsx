@@ -11,6 +11,11 @@ const AdminSettingsTab = React.memo(({
   receiptShopName, setReceiptShopName,
   receiptSubtitle, setReceiptSubtitle,
   receiptNote, setReceiptNote,
+  socialFb, setSocialFb,
+  socialTg, setSocialTg,
+  socialIg, setSocialIg,
+  socialTt, setSocialTt,
+  socialEmail, setSocialEmail,
 }) => {
   const { t } = useUser();
 
@@ -23,12 +28,12 @@ const AdminSettingsTab = React.memo(({
   <div className="tab-pane-animate">
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       {/* Shop Status */}
-      <div className="glass-card-luxury" style={{ display: 'flex', gap: 20, alignItems: 'center', padding: '20px 28px', zIndex: 10 }}>
-        <div style={{ flex: 1 }}>
+      <div className="glass-card-luxury" style={{ display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'center', padding: '20px', zIndex: 10 }}>
+        <div style={{ flex: '1 1 200px' }}>
           <div style={{ fontWeight: 950, fontSize: 16 }}>🏪 {t('admin_shop_status')}</div>
           <div style={{ fontSize: 13, opacity: 0.6, marginTop: 4 }}>{t('admin_shop_status_desc')}</div>
         </div>
-        <div style={{ width: 150 }}>
+        <div style={{ width: '100%', maxWidth: 180, flex: '1 1 120px' }}>
           <DarkSelect
             value={shopStatus}
             onChange={async val => {
@@ -79,11 +84,17 @@ const AdminSettingsTab = React.memo(({
               </div>
             ))}
             <label className="upload-zone-luxury" style={{ flexShrink: 0, width: 140, height: 80 }}>
-              <div className="upload-label-content">
+              <div className="upload-label-content" style={{ minHeight: 'auto', padding: 10 }}>
                 <div style={{ fontSize: 22 }}>🌄</div>
                 <div style={{ fontSize: 11, fontWeight: 900 }}>{t('admin_add_banner')}</div>
               </div>
-              <input type="file" accept="image/*" onChange={async e => { const file = e.target.files?.[0]; if (file) handleBannerUpload(file); }} />
+              <input type="file" accept="image/*" onChange={async e => { 
+                const file = e.target.files?.[0]; 
+                if (file) {
+                  await handleBannerUpload(file); 
+                }
+                e.target.value = ''; 
+              }} />
             </label>
           </div>
         </div>
@@ -164,6 +175,40 @@ const AdminSettingsTab = React.memo(({
           💾 រក្សាទុកវិក្កយបត្រ
         </button>
       </div>
+      {/* Social Media & Contact Links */}
+      <div className="glass-card-luxury">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
+          <div style={{ fontSize: 24 }}>📱</div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontWeight: 950, fontSize: 16 }}>បណ្ដាញសង្គម / ទំនាក់ទំនង</div>
+            <div style={{ fontSize: 13, opacity: 0.6, marginTop: 4 }}>ភ្ជាប់បណ្ដាញសង្គមដើម្បីអោយអតិថិជនងាយស្រួលទាក់ទង</div>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 800, marginBottom: 6, opacity: 0.8 }}>Facebook URL</label>
+            <input className="input-glass-admin" placeholder="https://facebook.com/..." value={socialFb} onChange={e => setSocialFb(e.target.value)} onBlur={e => updateSettingValue('social_fb', e.target.value)} />
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 800, marginBottom: 6, opacity: 0.8 }}>Telegram Username / Link</label>
+            <input className="input-glass-admin" placeholder="https://t.me/..." value={socialTg} onChange={e => setSocialTg(e.target.value)} onBlur={e => updateSettingValue('social_tg', e.target.value)} />
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 800, marginBottom: 6, opacity: 0.8 }}>Instagram URL</label>
+            <input className="input-glass-admin" placeholder="https://instagram.com/..." value={socialIg} onChange={e => setSocialIg(e.target.value)} onBlur={e => updateSettingValue('social_ig', e.target.value)} />
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 800, marginBottom: 6, opacity: 0.8 }}>TikTok URL</label>
+            <input className="input-glass-admin" placeholder="https://tiktok.com/..." value={socialTt} onChange={e => setSocialTt(e.target.value)} onBlur={e => updateSettingValue('social_tt', e.target.value)} />
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 800, marginBottom: 6, opacity: 0.8 }}>Email Address</label>
+            <input className="input-glass-admin" placeholder="contact@example.com" value={socialEmail} onChange={e => setSocialEmail(e.target.value)} onBlur={e => updateSettingValue('social_email', e.target.value)} />
+          </div>
+        </div>
+      </div>
+
     </div>
   </div>
 );

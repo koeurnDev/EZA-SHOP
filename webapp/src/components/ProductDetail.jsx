@@ -9,6 +9,8 @@ import { formatCategory } from '../utils/langUtils';
 const ProductDetail = ({ product, allProducts = [], onAdd, onClose, onBuyNow, activeDiscounts = [], t, lang, shopLogoUrl, isFavorited = false, onToggleWishlist, onSelectRelated }) => {
   const [quantity, setQuantity] = useState(1);
   const [activeImg, setActiveImg] = useState(0);
+  const [selectedColor, setSelectedColor] = useState(null);
+  const [selectedSize, setSelectedSize] = useState(null);
   
   // Reviews State
   const [reviews, setReviews] = useState([]);
@@ -35,7 +37,7 @@ const ProductDetail = ({ product, allProducts = [], onAdd, onClose, onBuyNow, ac
     
     // Fetch Reviews & Full Product
     if (product?.id) {
-      const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3005';
+      const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || '';
       
       setLoadingReviews(true);
       fetch(`${BACKEND_URL}/api/products/${product.id}/reviews`)
@@ -44,7 +46,7 @@ const ProductDetail = ({ product, allProducts = [], onAdd, onClose, onBuyNow, ac
         .catch(console.error)
         .finally(() => setLoadingReviews(false));
         
-      setLoadingFullProduct(true);
+        setLoadingFullProduct(true);
       fetch(`${BACKEND_URL}/api/products/${product.id}`)
         .then(res => res.json())
         .then(data => { if (data.success) setFullProduct({ ...product, ...data.product }); })
@@ -57,12 +59,12 @@ const ProductDetail = ({ product, allProducts = [], onAdd, onClose, onBuyNow, ac
     if (!newReviewText.trim()) return;
     setSubmittingReview(true);
     try {
-      const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3005';
+      const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || '';
       const initData = window.Telegram?.WebApp?.initData || '';
       
       const res = await fetch(`${BACKEND_URL}/api/reviews`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `tma ${initData}` },
+        headers: { 'Content-Type': 'application/json', 'X-TG-Data': initData },
         body: JSON.stringify({
           product_id: product.id,
           rating: newReviewRating,
@@ -71,13 +73,23 @@ const ProductDetail = ({ product, allProducts = [], onAdd, onClose, onBuyNow, ac
       });
       const data = await res.json();
       if (data.success) {
-        setReviews([data.review, ...reviews]);
+        setReviews(prev => [data.review, ...prev]);
+        setFullProduct(prev => prev ? {
+          ...prev,
+          review_count: data.stats?.review_count ?? prev.review_count,
+          avg_rating: data.stats?.avg_rating ?? prev.avg_rating
+        } : prev);
         setNewReviewText('');
+        setNewReviewRating(5);
+        setShowReviewForm(false);
         const tg = window.Telegram?.WebApp;
         if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+      } else {
+        alert(data.error || 'Failed to submit review');
       }
     } catch (err) {
       console.error(err);
+      alert('Failed to submit review. Please try again.');
     } finally {
       setSubmittingReview(false);
     }
@@ -95,31 +107,60 @@ const ProductDetail = ({ product, allProducts = [], onAdd, onClose, onBuyNow, ac
   const bestDiscount = calculateBestDiscount(product, activeDiscounts);
   const discountedPriceValue = getDiscountedPrice(product, bestDiscount);
   const isDiscounted = bestDiscount !== null;
-  const isOutOfStock = product.stock <= 0;
-
-  const hasReviews = product.review_count && product.review_count > 0;
-
+  const displayProduct = fullProduct || product;
+  const hasReviews = displayProduct.review_count && displayProduct.review_count > 0;
   const relatedProducts = allProducts.filter(p => p.category === product.category && p.id !== product.id).slice(0, 8);
+
+  const variants = React.useMemo(() => {
+    try {
+      return (typeof displayProduct.variants === 'string' ? JSON.parse(displayProduct.variants) : displayProduct.variants) || [];
+    } catch (e) { return []; }
+  }, [displayProduct.variants]);
+
+  const hasVariants = variants.length > 0;
+  const uniqueColors = React.useMemo(() => [...new Set(variants.map(v => v.color).filter(Boolean))], [variants]);
+  const uniqueSizes = React.useMemo(() => [...new Set(variants.map(v => v.size).filter(Boolean))], [variants]);
+
+  const selectedVariant = React.useMemo(() => {
+    if (!hasVariants) return null;
+    return variants.find(v => 
+      (v.color === selectedColor || (!uniqueColors.length)) && 
+      (v.size === selectedSize || (!uniqueSizes.length))
+    );
+  }, [variants, selectedColor, selectedSize, hasVariants, uniqueColors, uniqueSizes]);
+
+  const actualStock = hasVariants 
+    ? (selectedVariant ? selectedVariant.stock : variants.reduce((sum, v) => sum + (parseInt(v.stock)||0), 0)) 
+    : displayProduct.stock;
+  
+  const isOutOfStock = actualStock <= 0;
+  const isSelectionIncomplete = hasVariants && ((uniqueColors.length > 0 && !selectedColor) || (uniqueSizes.length > 0 && !selectedSize));
 
   const handleBuyNow = (e) => {
     e.stopPropagation();
-    if (product.stock > 0 && quantity > product.stock) {
-      alert(lang === 'kh' ? `សុំទោស! ទំនិញនេះមានក្នុងស្តុកតែ ${product.stock} ប៉ុណ្ណោះ` : `Sorry, only ${product.stock} in stock`);
+    if (isSelectionIncomplete) {
+      alert(lang === 'kh' ? 'សូមជ្រើសរើសទំហំ និង ពណ៌សិន' : 'Please select Size and Color');
+      return;
+    }
+    if (actualStock > 0 && quantity > actualStock) {
+      alert(lang === 'kh' ? `សុំទោស! ទំនិញនេះមានក្នុងស្តុកតែ ${actualStock} ប៉ុណ្ណោះ` : `Sorry, only ${actualStock} in stock`);
       return;
     }
     
-    // Add to cart with correct quantity by reusing handleAdd logic
     if (!isOutOfStock) {
-      for (let i = 0; i < quantity; i++) { onAdd(product, e); }
+      for (let i = 0; i < quantity; i++) { onAdd(product, e, selectedVariant); }
     }
     
-    // Trigger navigation to cart
     if (typeof onBuyNow === 'function') onBuyNow(e);
   };
 
   const handleAdd = (e) => {
     if (isOutOfStock) return;
-    for (let i = 0; i < quantity; i++) { onAdd(product, e); }
+    if (isSelectionIncomplete) {
+      alert(lang === 'kh' ? 'សូមជ្រើសរើសទំហំ និង ពណ៌សិន' : 'Please select Size and Color');
+      return;
+    }
+    for (let i = 0; i < quantity; i++) { onAdd(product, e, selectedVariant); }
     const tg = window.Telegram?.WebApp;
     if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
   };
@@ -144,8 +185,8 @@ const ProductDetail = ({ product, allProducts = [], onAdd, onClose, onBuyNow, ac
                 </svg>
               </button>
               
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <button className="pd-floating-btn" onClick={(e) => {
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <button className="pd-floating-btn" style={{ flexShrink: 0 }} onClick={(e) => {
                   e.stopPropagation();
                   const tg = window.Telegram?.WebApp;
                   const shareText = `🔥 មើលនេះសិន! ${product.name} លក់ត្រឹមតែ $${product.price} នៅ MO MO Boutique! 👗`;
@@ -161,7 +202,7 @@ const ProductDetail = ({ product, allProducts = [], onAdd, onClose, onBuyNow, ac
                     <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
                   </svg>
                 </button>
-                <button className="pd-floating-btn" onClick={(e) => { e.stopPropagation(); if (typeof onBuyNow === 'function') onBuyNow(e); }} aria-label="Cart">
+                <button className="pd-floating-btn" style={{ flexShrink: 0 }} onClick={(e) => { e.stopPropagation(); if (typeof onBuyNow === 'function') onBuyNow(e); }} aria-label="Cart">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
                   <line x1="3" y1="6" x2="21" y2="6"/>
@@ -188,7 +229,7 @@ const ProductDetail = ({ product, allProducts = [], onAdd, onClose, onBuyNow, ac
                   <div key={i} className="pd-slide">
                     <img
                       src={(img && img.includes('cloudinary'))
-                        ? img.replace('upload/', 'upload/f_auto,q_auto,w_800,c_pad,b_white/')
+                        ? img.replace('upload/', 'upload/f_auto,q_auto,w_800,h_800,c_pad,b_white/')
                         : img}
                       alt={`${product.name} ${i + 1}`}
                       className="pd-slide-img"
@@ -241,8 +282,8 @@ const ProductDetail = ({ product, allProducts = [], onAdd, onClose, onBuyNow, ac
             {hasReviews && (
               <div className="pd-rating-row">
                 <span className="pd-star">★</span>
-                <span className="pd-rating-val">{parseFloat(product.avg_rating).toFixed(1)}</span>
-                <span className="pd-rating-count">({product.review_count.toLocaleString()} Reviews)</span>
+                <span className="pd-rating-val">{parseFloat(displayProduct.avg_rating).toFixed(1)}</span>
+                <span className="pd-rating-count">({displayProduct.review_count.toLocaleString()} Reviews)</span>
               </div>
             )}
 
@@ -275,6 +316,60 @@ const ProductDetail = ({ product, allProducts = [], onAdd, onClose, onBuyNow, ac
               </div>
             </div>
 
+            {/* Variants Selection */}
+            {hasVariants && (
+              <div style={{ marginBottom: '20px', padding: '12px', background: 'var(--bg-surface)', borderRadius: '12px', border: '1px solid var(--border-subtle)' }}>
+                {uniqueColors.length > 0 && (
+                  <div style={{ marginBottom: uniqueSizes.length > 0 ? '12px' : '0' }}>
+                    <div style={{ fontSize: '13px', fontWeight: '800', marginBottom: '8px' }}>{lang === 'kh' ? 'ពណ៌' : 'Color'}: <span style={{ color: 'var(--text-muted)' }}>{selectedColor || ''}</span></div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                      {uniqueColors.map(c => {
+                        const isSelected = selectedColor === c;
+                        return (
+                          <button 
+                            key={c}
+                            onClick={() => setSelectedColor(isSelected ? null : c)}
+                            style={{ 
+                              padding: '6px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: 'bold', 
+                              border: isSelected ? '2px solid var(--primary-accent)' : '1px solid var(--border-subtle)',
+                              background: isSelected ? 'rgba(0,0,0,0.03)' : '#fff',
+                              color: isSelected ? 'var(--primary-accent)' : 'var(--text-main)'
+                            }}
+                          >
+                            {c}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+                {uniqueSizes.length > 0 && (
+                  <div>
+                    <div style={{ fontSize: '13px', fontWeight: '800', marginBottom: '8px' }}>{lang === 'kh' ? 'ទំហំ' : 'Size'}: <span style={{ color: 'var(--text-muted)' }}>{selectedSize || ''}</span></div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                      {uniqueSizes.map(s => {
+                        const isSelected = selectedSize === s;
+                        return (
+                          <button 
+                            key={s}
+                            onClick={() => setSelectedSize(isSelected ? null : s)}
+                            style={{ 
+                              padding: '6px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: 'bold', 
+                              border: isSelected ? '2px solid var(--primary-accent)' : '1px solid var(--border-subtle)',
+                              background: isSelected ? 'rgba(0,0,0,0.03)' : '#fff',
+                              color: isSelected ? 'var(--primary-accent)' : 'var(--text-main)'
+                            }}
+                          >
+                            {s}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Info rows */}
             <div className="pd-info-rows">
               <div className="pd-info-row">
@@ -282,7 +377,7 @@ const ProductDetail = ({ product, allProducts = [], onAdd, onClose, onBuyNow, ac
                 <span className={`pd-info-text ${isOutOfStock ? '' : 'green'}`}>
                   {isOutOfStock
                     ? (lang === 'kh' ? 'អស់ស្តុក' : 'Out of stock')
-                    : (lang === 'kh' ? `មានស្តុក (${product.stock})` : `In stock (${product.stock})`)}
+                    : (lang === 'kh' ? `មានស្តុក (${actualStock})` : `In stock (${actualStock})`)}
                 </span>
               </div>
             </div>
@@ -383,10 +478,7 @@ const ProductDetail = ({ product, allProducts = [], onAdd, onClose, onBuyNow, ac
                       {lang === 'kh' ? 'បោះបង់' : 'Cancel'}
                     </button>
                     <button 
-                      onClick={() => {
-                        handleSubmitReview();
-                        if (newReviewText.trim()) setShowReviewForm(false);
-                      }}
+                      onClick={() => handleSubmitReview()}
                       disabled={submittingReview || !newReviewText.trim()}
                       style={{ background: 'var(--primary-gradient)', color: 'white', padding: '10px 16px', borderRadius: '100px', fontWeight: '800', border: 'none', opacity: (submittingReview || !newReviewText.trim()) ? 0.5 : 1, flex: 2, boxShadow: '0 4px 15px rgba(0,0,0,0.1)' }}
                     >
@@ -451,7 +543,7 @@ const ProductDetail = ({ product, allProducts = [], onAdd, onClose, onBuyNow, ac
             className={`pd-cart-btn ${isOutOfStock ? 'disabled' : ''}`}
             onClick={handleBuyNow}
             disabled={isOutOfStock}
-            style={{ flex: 1, padding: '0 8px', background: 'var(--primary-accent)', color: 'white' }}
+            style={{ flex: 1, padding: '0 8px', background: '#16a34a', color: 'white' }}
           >
             {isOutOfStock
               ? (lang === 'kh' ? 'អស់ស្តុក' : 'Out of Stock')

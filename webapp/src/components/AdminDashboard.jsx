@@ -4,6 +4,7 @@ import { useTelegram } from '../context/TelegramContext';
 import { useUser } from '../context/UserContext';
 import { useQuery } from '../hooks/useQuery';
 import { useApi } from '../hooks/useApi';
+import { useShopDispatch } from '../context/ShopContext';
 import ProductDetail from './ProductDetail';
 import { compressImage } from '../utils/imageUtils';
 import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -37,6 +38,7 @@ const AdminDashboard = ({
   const { tg, initData, showAlert: tgShowAlert } = useTelegram();
   const { t } = useUser();
   const { fetchWithRetry } = useApi();
+  const { refetchData: refetchShopData } = useShopDispatch();
   const headers = useMemo(() => ({ 'X-TG-Data': initData || '' }), [initData]);
 
 
@@ -104,6 +106,11 @@ const AdminDashboard = ({
   const [receiptShopName, setReceiptShopName] = useState('MO-MO Boutique');
   const [receiptSubtitle, setReceiptSubtitle] = useState('អីវ៉ាន់បោះដុំ និងរាយ');
   const [receiptNote, setReceiptNote] = useState('សូមអរគុណសម្រាប់ការគាំទ្រ!');
+  const [socialFb, setSocialFb] = useState('');
+  const [socialTg, setSocialTg] = useState('');
+  const [socialIg, setSocialIg] = useState('');
+  const [socialTt, setSocialTt] = useState('');
+  const [socialEmail, setSocialEmail] = useState('');
 
   // Debounce search terms for performance
   useEffect(() => {
@@ -130,6 +137,11 @@ const AdminDashboard = ({
       setReceiptShopName(s.receipt_shop_name || 'MO-MO Boutique');
       setReceiptSubtitle(s.receipt_subtitle || 'អីវ៉ាន់បោះដុំ និងរាយ');
       setReceiptNote(s.receipt_note || 'សូមអរគុណសម្រាប់ការគាំទ្រ!');
+      setSocialFb(s.social_fb || '');
+      setSocialTg(s.social_tg || '');
+      setSocialIg(s.social_ig || '');
+      setSocialTt(s.social_tt || '');
+      setSocialEmail(s.social_email || '');
     }
   }, [settingsData]);
 
@@ -282,6 +294,7 @@ const AdminDashboard = ({
         setIsAddingProduct(false);
         setNewProductData({ name: '', price: '', stock: '', category: 'ទឹកអប់ (Perfume)', image: '', description: '', additional_images: [] });
         refetchData(true);
+        refetchShopData();
         setToastMessage('បន្ថែមទំនិញបានជោគជ័យ!');
         setShowSuccessToast(true);
         setTimeout(() => setShowSuccessToast(false), 2500);
@@ -310,12 +323,35 @@ const AdminDashboard = ({
       if (res.success) {
         setEditingProduct(null);
         refetchData(true);
+        refetchShopData();
         setToastMessage('កែប្រែទំនិញជោគជ័យ!');
         setShowSuccessToast(true);
         setTimeout(() => setShowSuccessToast(false), 2000);
       }
     } catch (err) { showAlert('Error: ' + err.message); }
     finally { setIsSaving(false); }
+  };
+
+  const handleDeleteProduct = (productId, productName) => {
+    showConfirm(`តើអ្នកពិតជាចង់លុបទំនិញ "${productName}" មែនទេ?`, async () => {
+      try {
+        const res = await fetchWithRetry(`${BACKEND_URL}/api/admin/products/${productId}`, {
+          method: 'DELETE',
+          headers
+        });
+        if (res.success) {
+          refetchData(true);
+          refetchShopData();
+          setToastMessage('លុបទំនិញជោគជ័យ!');
+          setShowSuccessToast(true);
+          setTimeout(() => setShowSuccessToast(false), 2000);
+        } else {
+          showAlert('បរាជ័យ: ' + (res.error || 'មានបញ្ហាប្រព័ន្ធ'));
+        }
+      } catch (err) {
+        showAlert('បរាជ័យ: ' + err.message);
+      }
+    }, '🗑️');
   };
 
   const handleBroadcastUpload = async (file) => {
@@ -368,6 +404,7 @@ const AdminDashboard = ({
         setToastMessage('រក្សាទុកជោគជ័យ!');
         setShowSuccessToast(true);
         setTimeout(() => setShowSuccessToast(false), 2500);
+        refetchShopData();
         if (key === 'shop_status') setGlobalShopStatus(value);
         if (key === 'promo_text') setGlobalPromoText(value);
         if (key === 'delivery_fee') setGlobalDeliveryFee(value);
@@ -385,15 +422,22 @@ const AdminDashboard = ({
     formData.append('image', compressed);
     try {
       const res = await fetchWithRetry(`${BACKEND_URL}/api/admin/upload`, { method: 'POST', headers: headers, body: formData });
-      if (res.success && res.data?.url) {
+      if (res.success && (res.url || res.data?.url)) {
+        const url = res.url || res.data.url;
         const currentBanners = promoBannerUrl ? promoBannerUrl.split(',').map(u => u.trim()).filter(Boolean) : [];
-        currentBanners.push(res.data.url);
+        currentBanners.push(url);
         const newBanners = currentBanners.join(',');
         await updateSettingValue('promo_banner_url', newBanners);
         setPromoBannerUrl(newBanners);
         setGlobalPromoBannerUrl(newBanners);
+      } else {
+        setToastMessage('បរាជ័យ: ' + (res.error || 'មានបញ្ហាក្នុងការបញ្ចូលរូបភាព'));
+        setShowSuccessToast(true);
       }
-    } finally { }
+    } catch (e) {
+      setToastMessage('បរាជ័យ: ' + e.message);
+      setShowSuccessToast(true);
+    }
   };
 
   const removeBanner = async (indexToRemove) => {
@@ -412,10 +456,11 @@ const AdminDashboard = ({
     setIsUploading(true);
     try {
       const res = await fetchWithRetry(`${BACKEND_URL}/api/admin/upload`, { method: 'POST', headers, body: formData });
-      if (res.success && res.data?.url) {
-        await updateSettingValue('shop_logo_url', res.data.url);
-        setShopLogoUrl(res.data.url);
-        setGlobalShopLogoUrl(res.data.url);
+      if (res.success && (res.url || res.data?.url)) {
+        const url = res.url || res.data.url;
+        await updateSettingValue('shop_logo_url', url);
+        setShopLogoUrl(url);
+        setGlobalShopLogoUrl(url);
       }
     } finally {
       setIsUploading(false);
@@ -508,6 +553,7 @@ const AdminDashboard = ({
           {activeTab === 'products' && (
             <AdminProductsTab
               products={products}
+              categories={categories}
               productSearchTerm={productSearchTerm}
               localProductSearchTerm={localProductSearchTerm}
               setLocalProductSearchTerm={setLocalProductSearchTerm}
@@ -516,6 +562,7 @@ const AdminDashboard = ({
               setEditFormData={setEditFormData}
               visibleProductLimit={visibleProductLimit}
               setVisibleProductLimit={setVisibleProductLimit}
+              handleDeleteProduct={handleDeleteProduct}
             />
           )}
 
@@ -565,6 +612,16 @@ const AdminDashboard = ({
               setReceiptSubtitle={setReceiptSubtitle}
               receiptNote={receiptNote}
               setReceiptNote={setReceiptNote}
+              socialFb={socialFb}
+              setSocialFb={setSocialFb}
+              socialTg={socialTg}
+              setSocialTg={setSocialTg}
+              socialIg={socialIg}
+              setSocialIg={setSocialIg}
+              socialTt={socialTt}
+              setSocialTt={setSocialTt}
+              socialEmail={socialEmail}
+              setSocialEmail={setSocialEmail}
             />
           )}
 
@@ -646,7 +703,7 @@ const AdminDashboard = ({
 };
 
 const BeautyModal = ({ text, icon, isAlert, onConfirm, onCancel }) => (
-  <div className="admin-dashboard-overhaul modal-overlay">
+  <div className="modal-overlay" style={{ zIndex: 9999 }}>
     <div className="beauty-modal-card">
       <div style={{ fontSize: 50, marginBottom: 20 }}>{icon || '✨'}</div>
       <div style={{ fontSize: 18, fontWeight: 900, marginBottom: 30, lineHeight: 1.6, color: 'var(--text-luxury)' }}>{text}</div>

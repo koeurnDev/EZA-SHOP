@@ -130,7 +130,7 @@ function App() {
     );
   }
 
-  const handleCheckout = async (finalTotal) => {
+  const handleCheckout = async (finalTotal, couponCode = null) => {
     if (cart.length === 0) return;
     
     const phoneClean = formData.phone.replace(/\s/g, '');
@@ -153,7 +153,8 @@ function App() {
       items: cart,
       total: finalTotal,
       deliveryInfo: { ...formData, paymentMethod: 'Bakong KHQR' },
-      idempotencyKey: currentKey
+      idempotencyKey: currentKey,
+      couponCode: couponCode
     };
 
     const requestOptions = {

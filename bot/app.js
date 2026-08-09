@@ -120,7 +120,9 @@ app.post('/api/reviews', verifyUser, reviewController.createReview);
 
 // Order Routes
 app.post('/api/orders', orderCreationLimiter, verifyUser, validator.order, orderController.createOrder);
+app.post('/api/orders/confirm', verifyUser, orderController.confirmOrder); // ✅ Fix: was missing, frontend calls this
 app.get('/api/orders/status/:orderCode', verifyUser, orderController.getStatus);
+app.post('/api/orders/validate-coupon', verifyUser, orderController.validateCoupon);
 app.get('/api/user/orders', verifyUser, orderController.getUserOrders);
 app.post('/api/orders/receipt', verifyUser, orderController.uploadReceipt);
 
@@ -167,6 +169,7 @@ app.get('/api/admin/customers', isAdmin, adminController.getCustomers);
 app.post('/api/admin/users/points', isAdmin, adminController.addLoyaltyPoints);
 app.get('/api/admin/orders', isAdmin, adminController.getOrders);
 app.post('/api/admin/orders/status', isAdmin, adminController.updateOrderStatus);
+app.post('/api/admin/broadcast', isAdmin, adminController.broadcast);
 
 // --- Global Error Handler (Safety Net) ---
 app.use((err, req, res, next) => {

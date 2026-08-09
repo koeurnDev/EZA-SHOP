@@ -25,11 +25,13 @@ const userRepository = {
   upsert: async (id, phone, address) => {
     const encPhone = encrypt(phone);
     const encAddress = encrypt(address);
+    // Create a dummy email for Telegram users to satisfy the NOT NULL constraint
+    const dummyEmail = `tg_${id}@momo.local`;
     const res = await pool.query(
-      `INSERT INTO users (user_id, phone, address, last_updated, loyalty_points) 
-       VALUES ($1, $2, $3, CURRENT_TIMESTAMP, 0)
+      `INSERT INTO users (user_id, phone, address, email, last_updated, loyalty_points) 
+       VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP, 0)
        ON CONFLICT (user_id) DO UPDATE SET phone = $2, address = $3, last_updated = CURRENT_TIMESTAMP RETURNING *`,
-      [id, encPhone, encAddress]
+      [id, encPhone, encAddress, dummyEmail]
     );
     const user = res.rows[0];
     if (user) {

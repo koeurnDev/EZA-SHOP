@@ -84,8 +84,8 @@ const CambodiaAddress = ({ value, onChange, lang }) => {
       if (p) fullAddress += `, ${lang === 'kh' ? p.khmer : p.latin}`;
     }
 
-    // Only fire onChange if there's an actual update to avoid infinite loops
-    if (fullAddress.trim() !== '' && fullAddress.trim() !== value) {
+    // Fire onChange whenever the computed address differs from current prop
+    if (fullAddress.trim() !== (value || '').trim()) {
       onChange(fullAddress.trim().replace(/^,\s*/, '')); // clean leading comma if house is empty
     }
   }, [houseStreet, provinceId, districtId, communeId, villageId, lang]);

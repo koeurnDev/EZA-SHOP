@@ -16,8 +16,9 @@ const fakeProductNames = [
 
 async function deleteFakeData() {
   console.log('🚀 Deleting fake data...');
+  let client;
   try {
-    const client = await pool.connect();
+    client = await pool.connect();
     for (const name of fakeProductNames) {
       const res = await client.query('DELETE FROM products WHERE name = $1 RETURNING *', [name]);
       if (res.rowCount > 0) {
@@ -25,10 +26,10 @@ async function deleteFakeData() {
       }
     }
     console.log('✨ Fake data deleted successfully!');
-    client.release();
   } catch (error) {
     console.error('❌ Failed to delete fake data:', error);
   } finally {
+    if (client) client.release();
     await pool.end();
     process.exit(0);
   }

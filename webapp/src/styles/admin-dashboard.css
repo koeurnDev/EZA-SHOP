@@ -143,6 +143,11 @@
   outline: none; 
   transition: all 0.3s ease; 
 }
+textarea.input-glass-admin {
+  resize: vertical;
+  min-height: 120px;
+  line-height: 1.5;
+}
 .input-glass-admin:focus { 
   border-color: var(--primary-accent); 
   background: rgba(255, 255, 255, 0.07); 
@@ -270,13 +275,12 @@
 .glass-card-luxury:hover { border-color: rgba(255,255,255,0.25); }
 
 .beauty-modal-card {
-  background: var(--glass-card);
+  background: #1a1a1a;
   border: 1px solid rgba(255,255,255,0.15);
   border-radius: 36px;
   padding: 35px;
   width: 90%;
   max-width: 380px;
-  backdrop-filter: blur(50px);
   box-shadow: 0 40px 100px -20px rgba(0,0,0,0.9);
   animation: modal-pop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
   text-align: center;

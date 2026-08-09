@@ -32,7 +32,7 @@ const VisualSearchModal = ({ onClose }) => {
       }
     };
     loadModel();
-  }, [lang]);
+  }, []);
 
   // Handle Image Selection
   const handleImageUpload = (e) => {

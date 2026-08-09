@@ -6,51 +6,58 @@ import { useShopDispatch, useShopState } from '../../context/ShopContext';
 
 const ShopHeader = ({ searchTerm, setSearchTerm, user, setView, view, lang, theme, toggleLang, toggleTheme }) => {
   const { setShowFilterModal, setShowScanner } = useShopDispatch();
+  const { shopLogoUrl } = useShopState();
   const [isNotificationsOpen, setIsNotificationsOpen] = React.useState(false);
 
   return (
     <div className="shop-header-container">
       {/* Top Row: Back button & Profile/Toggles */}
-      <div className="shop-header-top" style={{ padding: '0 16px', display: 'flex', justifyContent: 'space-between', width: '100%' }}>
-        {view !== 'home' ? (
-          <button className="shop-back-btn" onClick={() => setView('home')} aria-label="Go back" style={{ marginRight: '10px' }}>
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M15 18l-6-6 6-6"/>
-            </svg>
-          </button>
-        ) : null}
+      <div className="shop-header-top" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', gap: '8px' }}>
+        
+        {/* Left Side Group (Back + Profile) */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          {view !== 'home' ? (
+            <button className="shop-back-btn" onClick={() => setView('home')} aria-label="Go back" style={{ flexShrink: 0 }}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M15 18l-6-6 6-6"/>
+              </svg>
+            </button>
+          ) : null}
 
-        {/* 👤 Ultra-Compact Profile (Left) */}
-        <div className="profile-badge-luxury flex-shrink-0 cursor-pointer" onClick={() => setView('profile')} style={{ display: 'flex', alignItems: 'center' }}>
-           <div className="avatar-mini-lux">
-              {user?.photo_url ? (
-                 <img src={user.photo_url} alt="" className="w-full h-full object-cover" />
-              ) : (
-                 <div className="avatar-placeholder-lux flex items-center justify-center text-xs">{user?.first_name?.charAt(0) || '👤'}</div>
-              )}
-           </div>
-           <div className="profile-info-lux ml-2">
-              <span className="user-name-lux text-[12px] font-bold">{user?.first_name || (lang === 'kh' ? 'ភ្ញៀវ' : 'Guest User')}</span>
-           </div>
+          {/* 👤 Ultra-Compact Profile */}
+          <div className="profile-badge-luxury flex-shrink-0 cursor-pointer" onClick={() => setView('profile')} style={{ display: 'flex', alignItems: 'center', margin: 0 }}>
+             <div className="avatar-mini-lux">
+                {user?.photo_url ? (
+                   <img src={user.photo_url} alt="" className="w-full h-full object-cover" />
+                ) : (
+                   <div className="avatar-placeholder-lux flex items-center justify-center text-xs">{user?.first_name?.charAt(0) || '👤'}</div>
+                )}
+             </div>
+             <div className="profile-info-lux ml-2">
+                <span className="user-name-lux text-[12px] font-bold">{user?.first_name || (lang === 'kh' ? 'ភ្ញៀវ' : 'Guest User')}</span>
+             </div>
+          </div>
         </div>
 
-        {/* 📱 Single Actions Row (Right) */}
-        <div className="hero-actions-right flex flex-1 justify-end gap-1.5" style={{ display: 'flex', alignItems: 'center', marginLeft: 'auto' }}>
+
+
+        {/* Right Side Group (Actions) */}
+        <div className="hero-actions-right" style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
            {/* 🌐 Lang */}
-           <div className="lang-switcher-pill flex items-center px-2 h-9 gap-1 cursor-pointer" onClick={toggleLang}>
-              <img src={lang === 'kh' ? 'https://flagcdn.com/w40/kh.png' : 'https://flagcdn.com/w40/gb.png'} alt="" className="w-4 h-4" />
-              <span className="text-[10px] font-black" style={{ marginLeft: '4px' }}>{lang === 'kh' ? 'KH' : 'EN'}</span>
+           <div className="lang-switcher-pill flex items-center justify-center cursor-pointer" onClick={toggleLang} style={{ height: '36px', padding: '0 8px', gap: '4px', margin: 0 }}>
+              <img src={lang === 'kh' ? 'https://flagcdn.com/w40/kh.png' : 'https://flagcdn.com/w40/gb.png'} alt="" style={{ width: '16px', height: '16px' }} />
+              <span className="text-[10px] font-black">{lang === 'kh' ? 'KH' : 'EN'}</span>
            </div>
 
-           {/* 🌓 Theme Toggle (Compact) */}
-           <div className="theme-toggle-pill flex items-center justify-center w-9 h-9 text-sm cursor-pointer" onClick={toggleTheme} style={{ marginLeft: '6px' }}>
-              {theme === 'dark' ? '☀️' : '🌙'}
+           {/* 🌓 Theme Toggle */}
+           <div className="theme-toggle-pill flex items-center justify-center cursor-pointer" onClick={toggleTheme} style={{ width: '36px', height: '36px', padding: 0, margin: 0 }}>
+              <span style={{ fontSize: '14px' }}>{theme === 'dark' ? '☀️' : '🌙'}</span>
            </div>
 
            {/* 🔔 Notifications */}
-           <div className="theme-toggle-pill flex items-center justify-center w-9 h-9 text-sm cursor-pointer relative" onClick={() => setIsNotificationsOpen(true)} style={{ marginLeft: '6px' }}>
-              🔔
-              <span style={{ position: 'absolute', top: '0px', right: '0px', background: '#ff3b30', width: '8px', height: '8px', borderRadius: '50%', border: '2px solid var(--bg-surface)' }}></span>
+           <div className="theme-toggle-pill flex items-center justify-center cursor-pointer relative" onClick={() => setIsNotificationsOpen(true)} style={{ width: '36px', height: '36px', padding: 0, margin: 0 }}>
+              <span style={{ fontSize: '14px' }}>🔔</span>
+              <span style={{ position: 'absolute', top: '2px', right: '2px', background: '#ff3b30', width: '8px', height: '8px', borderRadius: '50%', border: '2px solid var(--bg-surface)' }}></span>
            </div>
         </div>
       </div>
@@ -95,7 +102,7 @@ const ShopHeader = ({ searchTerm, setSearchTerm, user, setView, view, lang, them
         </div>
       </div>
 
-      <NotificationsModal isOpen={isNotificationsOpen} onClose={() => setIsNotificationsOpen(false)} />
+      <NotificationsModal isOpen={isNotificationsOpen} onClose={() => setIsNotificationsOpen(false)} lang={lang} />
     </div>
   );
 };

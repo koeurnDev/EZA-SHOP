@@ -20,6 +20,10 @@ const CartPage = ({
   const { tg } = useTelegram();
 
   const [step, setStep] = useState(1); // 1: Review, 2: Info/Payment
+  const [promoInput, setPromoInput] = useState('');
+  const [validatedPromo, setValidatedPromo] = useState(null);
+  const [promoLoading, setPromoLoading] = useState(false);
+  const [promoError, setPromoError] = useState('');
   const threshold = parseFloat(deliveryThreshold) || 50;
   const fee = parseFloat(deliveryFee) || 0;
 
@@ -43,9 +47,48 @@ const CartPage = ({
   }, [cart, activeDiscounts]);
 
   const subTotal = Math.max(0, totalPrice - totalDiscount);
-  const isFreeDelivery = subTotal >= threshold;
+  
+  let manualDiscount = 0;
+  if (validatedPromo) {
+    if (validatedPromo.discount_type === 'percent') {
+      manualDiscount = subTotal * (validatedPromo.value / 100);
+    } else {
+      manualDiscount = validatedPromo.value;
+    }
+  }
+  
+  const subTotalAfterPromo = Math.max(0, subTotal - manualDiscount);
+  const isFreeDelivery = subTotalAfterPromo >= threshold;
   const appliedFee = isFreeDelivery ? 0 : fee;
-  const finalTotal = subTotal + appliedFee;
+  const finalTotal = subTotalAfterPromo + appliedFee;
+
+  const handleApplyPromo = async () => {
+    if (!promoInput.trim()) return;
+    setPromoLoading(true);
+    setPromoError('');
+    try {
+      const tgInitData = window.Telegram?.WebApp?.initData || '';
+      const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/orders/validate-coupon`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-TG-Data': tgInitData },
+        body: JSON.stringify({ code: promoInput })
+      });
+      const data = await res.json();
+      if (data.success && data.coupon) {
+        setValidatedPromo(data.coupon);
+        setPromoError('');
+        if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+      } else {
+        setValidatedPromo(null);
+        setPromoError(data.error || (lang === 'kh' ? 'កូដមិនត្រឹមត្រូវ' : 'Invalid code'));
+        if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
+      }
+    } catch (err) {
+      setPromoError(lang === 'kh' ? 'មានបញ្ហា' : 'Error validation');
+    } finally {
+      setPromoLoading(false);
+    }
+  };
 
   const handleBack = () => {
     if (step === 2) setStep(1);
@@ -58,7 +101,7 @@ const CartPage = ({
       window.scrollTo(0, 0);
     } else {
       if (!isPlacingOrder && isPhoneValid && isAddressValid) {
-        onCheckout(finalTotal);
+        onCheckout(finalTotal, validatedPromo ? validatedPromo.code : null);
       } else if (!isPhoneValid || !isAddressValid) {
         if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
       }
@@ -156,7 +199,7 @@ const CartPage = ({
                   const isDiscounted = dPrice !== null && dPrice < item.price;
                   
                   return (
-                  <div key={item.id} className="cart-item">
+                  <div key={item.cartKey || item.id} className="cart-item">
                     <div className="cart-item-image">
                       <img
                         src={item.image.includes('cloudinary') ? item.image.replace('upload/', 'upload/f_auto,q_auto,w_100/') : item.image}
@@ -165,22 +208,30 @@ const CartPage = ({
                       />
                     </div>
                     <div className="cart-item-details">
-                      <button className="cart-item-remove" aria-label="Remove item" onClick={() => updateQty(item.id, -item.quantity)}>
+                      <button className="cart-item-remove" aria-label="Remove item" onClick={() => updateQty(item.cartKey || item.id, -item.quantity)}>
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                       </button>
                       <h3 className="cart-item-title line-clamp-1">{item.name}</h3>
-                      <p className="cart-item-variant">{formatCategory(item.category, lang)}</p>
+                      <p className="cart-item-variant">
+                        {formatCategory(item.category, lang)}
+                        {item.variant && (
+                          <span style={{ display: 'inline-block', marginLeft: '6px', padding: '2px 6px', background: 'rgba(0,0,0,0.05)', borderRadius: '4px', fontSize: '11px', fontWeight: 'bold' }}>
+                            {item.variant.color && `🎨 ${item.variant.color} `}
+                            {item.variant.size && `📏 ${item.variant.size}`}
+                          </span>
+                        )}
+                      </p>
                       <div className="cart-item-bottom">
                         <span className={`cart-item-price ${isDiscounted ? 'text-red-500' : ''}`}>
                           ${(finalPrice * item.quantity).toFixed(2)}
                           {isDiscounted && <span style={{display: 'block', fontSize: '10px', color: 'var(--text-muted)', textDecoration: 'line-through'}}>${(item.price * item.quantity).toFixed(2)}</span>}
                         </span>
                         <div className="cart-item-controls">
-                          <button className="cart-qty-btn minus" aria-label="Decrease quantity" onClick={() => updateQty(item.id, -1)}>
+                          <button className="cart-qty-btn minus" aria-label="Decrease quantity" onClick={() => updateQty(item.cartKey || item.id, -1)}>
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                           </button>
                           <span className="cart-qty-value">{item.quantity}</span>
-                          <button className="cart-qty-btn plus" aria-label="Increase quantity" onClick={() => updateQty(item.id, 1)}>
+                          <button className="cart-qty-btn plus" aria-label="Increase quantity" onClick={() => updateQty(item.cartKey || item.id, 1)}>
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                           </button>
                         </div>
@@ -206,9 +257,43 @@ const CartPage = ({
         </div>
 
         <div className="lg:w-80">
-          <div className="sticky top-5 p-6 bg-[#fcfbf7] rounded-[32px] shadow-sm mb-20" style={{ border: '1px solid rgba(0,0,0,0.03)' }}>
+          <div className="sticky top-5 p-6 rounded-[32px] shadow-sm mb-20" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}>
             <h3 className="text-lg font-black text-bold mb-6">{lang === 'kh' ? 'សង្ខេប' : 'Summary'}</h3>
-            <div className="flex flex-col gap-4 mb-6 pb-6 border-b border-dashed border-gray-200">
+            
+            {/* Promo Code Section */}
+            <div className="mb-6 pb-6 border-b border-dashed" style={{ borderColor: 'var(--border-subtle)' }}>
+              <div className="flex gap-2">
+                <input 
+                  type="text" 
+                  className="flex-1 px-4 py-2 rounded-xl border text-sm font-bold uppercase focus:outline-none"
+                  style={{ background: 'var(--bg-soft)', borderColor: 'var(--border-subtle)', color: 'var(--text-main)' }}
+                  placeholder={lang === 'kh' ? 'លេខកូដបញ្ចុះតម្លៃ' : 'PROMO CODE'}
+                  value={promoInput}
+                  onChange={(e) => setPromoInput(e.target.value.toUpperCase())}
+                  disabled={promoLoading || validatedPromo}
+                />
+                {!validatedPromo ? (
+                  <button 
+                    className="px-4 py-2 bg-[#ec4899] text-white rounded-xl font-bold text-sm disabled:opacity-50 flex items-center justify-center min-w-[70px]"
+                    onClick={handleApplyPromo}
+                    disabled={promoLoading || !promoInput.trim()}
+                  >
+                    {promoLoading ? '...' : (lang === 'kh' ? 'ប្រើ' : 'Apply')}
+                  </button>
+                ) : (
+                  <button 
+                    className="px-4 py-2 bg-gray-200 text-gray-600 rounded-xl font-bold text-sm"
+                    onClick={() => { setValidatedPromo(null); setPromoInput(''); }}
+                  >
+                    {lang === 'kh' ? 'លុប' : 'Remove'}
+                  </button>
+                )}
+              </div>
+              {promoError && <div className="text-red-500 text-xs font-bold mt-2 ml-1">{promoError}</div>}
+              {validatedPromo && <div className="text-[#059669] text-xs font-bold mt-2 ml-1 flex items-center gap-1">✅ {lang === 'kh' ? 'បានប្រើប្រាស់ជោគជ័យ' : 'Coupon applied!'}</div>}
+            </div>
+
+            <div className="flex flex-col gap-4 mb-6 pb-6 border-b border-dashed" style={{ borderColor: 'var(--border-subtle)' }}>
               {cart.map(item => {
                 const best = calculateBestDiscount(item, activeDiscounts);
                 const dPrice = best ? getDiscountedPrice(item, best) : null;
@@ -221,6 +306,14 @@ const CartPage = ({
               </div>
             );
           })}
+          
+          {validatedPromo && (
+            <div className="flex justify-between items-center text-[15px] font-bold mt-2 text-[#ec4899]">
+              <div className="uppercase tracking-tight flex items-center gap-1">🎟️ {validatedPromo.code}</div>
+              <div className="font-black tabular-nums">-${manualDiscount.toFixed(2)}</div>
+            </div>
+          )}
+
           <div className="flex justify-between items-center text-[15px] font-bold mt-2">
             <div className="uppercase tracking-tight">{lang === 'kh' ? 'សេវាដឹកជញ្ជូន' : 'DELIVERY'}</div>
             <div className="font-black tabular-nums">${appliedFee.toFixed(2)}</div>

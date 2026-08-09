@@ -41,18 +41,12 @@ export const CartProvider = ({ children }) => {
       }
     }
     
-    // 🛡️ Principal: If cart changes, the previous idempotency key is no longer valid for this "attempt".
-    // This prevents price mismatches if the user adds items after a failed/pending checkout.
-    if (idempotencyKey) {
-      localStorage.removeItem('momo_idemp_key');
-      setIdempotencyKey(null);
-    }
-
-    if (cart.length === 0) {
-      localStorage.removeItem('momo_idemp_key');
-      setIdempotencyKey(null);
-    }
-  }, [cart, tg, idempotencyKey]);
+    // 🛡️ Fix: idempotencyKey removed from deps — it was causing an infinite loop
+    // (effect reads key → mutates key → triggers re-run). Cart change alone is
+    // sufficient to invalidate the key for a new checkout attempt.
+    localStorage.removeItem('momo_idemp_key');
+    setIdempotencyKey(null);
+  }, [cart, tg]); // ✅ idempotencyKey intentionally excluded from deps
 
   // ☁️ Initial Sync from Telegram Cloud Storage on Mount
   useEffect(() => {
@@ -77,7 +71,7 @@ export const CartProvider = ({ children }) => {
     else localStorage.removeItem('momo_idemp_key');
   }, [idempotencyKey]);
 
-  const addToCart = useCallback((product, e) => {
+  const addToCart = useCallback((product, e, variant = null) => {
     if (shopStatus === 'closed') return;
 
     if (e && cartIconRef.current) {
@@ -96,23 +90,30 @@ export const CartProvider = ({ children }) => {
 
     if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
 
-    // 🍞 Luxury Toast Feedback
     if (showToast) {
        showToast(lang === 'kh' ? `បានបន្ថែម ${product.name} ចូលកន្ត្រក` : `Added ${product.name} to cart`);
     }
 
     setCart(prev => {
-      const existing = prev.find(item => item.id === product.id);
+      const cartKey = variant ? `${product.id}_${variant.color||''}_${variant.size||''}` : product.id;
+      const existing = prev.find(item => item.cartKey === cartKey || (!item.cartKey && item.id === product.id && !variant));
+      
       if (existing) {
-        return prev.map(item => item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item);
+        return prev.map(item => (item.cartKey === cartKey || (!item.cartKey && item.id === product.id && !variant)) 
+          ? { ...item, quantity: item.quantity + 1 } 
+          : item
+        );
       }
-      return [...prev, { ...product, quantity: 1 }];
+      return [...prev, { ...product, cartKey, variant, quantity: 1 }];
     });
-  }, [shopStatus, tg, lang]);
+  }, [shopStatus, tg, lang, showToast]);
 
-  const updateQty = useCallback((id, delta) => {
+  const updateQty = useCallback((cartKeyOrId, delta) => {
     setCart(prev => {
-      const updated = prev.map(item => item.id === id ? { ...item, quantity: item.quantity + delta } : item);
+      const updated = prev.map(item => {
+        const isMatch = item.cartKey ? item.cartKey === cartKeyOrId : item.id === cartKeyOrId;
+        return isMatch ? { ...item, quantity: item.quantity + delta } : item;
+      });
       return updated.filter(item => item.quantity > 0);
     });
   }, []);

@@ -64,8 +64,9 @@ bot.action(/^approve_order_(.+)$/, async (ctx) => {
   try {
     const orderCode = ctx.match[1];
     const orderService = require('../services/orderService');
+    const telegramUserId = ctx.from.id.toString();
     
-    await orderService.confirmOrderPayment(orderCode, { id: 'SYSTEM' }, false);
+    await orderService.confirmOrderPayment(orderCode, { id: telegramUserId }, false);
     
     const msg = ctx.update.callback_query.message;
     const appendText = `\n\n✅ អនុម័តដោយ: ${ctx.from.first_name}`;
@@ -94,7 +95,9 @@ bot.action(/^reject_order_(.+)$/, async (ctx) => {
       const userMsg = `❌ *វិក្កយបត្ររបស់អ្នកត្រូវបានបដិសេធ*\n` +
                       `🆔 លេខសម្គាល់: \`${orderCode}\`\n` +
                       `សូមពិនិត្យមើលវាឡើងវិញ ឬទាក់ទងមកកាន់យើងខ្ញុំ។`;
-      await ctx.telegram.sendMessage(userId, userMsg, { parse_mode: 'Markdown' }).catch(console.error);
+      if (userId) {
+        await ctx.telegram.sendMessage(String(userId), userMsg, { parse_mode: 'Markdown' }).catch(console.error);
+      }
     }
     
     const msg = ctx.update.callback_query.message;

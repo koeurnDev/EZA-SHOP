@@ -51,6 +51,9 @@ const adminController = {
 
   createProduct: async (req, res) => {
     try {
+      if (req.body.category) {
+        await require('../services/adminService').addCategory(req.body.category);
+      }
       const product = await productRepository.create(req.body);
       res.json({ success: true, product });
     } catch (err) {
@@ -60,6 +63,9 @@ const adminController = {
 
   updateProduct: async (req, res) => {
     try {
+      if (req.body.category) {
+        await require('../services/adminService').addCategory(req.body.category);
+      }
       const updated = await productRepository.update(req.params.id, req.body);
       if (!updated) return res.status(404).json({ success: false, error: 'Product not found' });
       res.json({ success: true, product: updated });
@@ -201,11 +207,15 @@ const adminController = {
         if (req.body.trackingNumber) {
           msg += `\nលេខ Tracking របស់បងគឺ៖ \`${req.body.trackingNumber}\``;
         }
-        await bot.telegram.sendMessage(updated.user_id, msg, { parse_mode: 'Markdown' });
+        try {
+          await bot.telegram.sendMessage(String(updated.user_id), msg, { parse_mode: 'Markdown' });
+          console.log(`✅ Telegram order status sent to user ${updated.user_id} for order ${updated.order_code}`);
+        } catch (tgErr) {
+          console.warn(`⚠️ Telegram order status failed for user ${updated.user_id} order ${updated.order_code}:`, tgErr.message);
+        }
       } catch (tgErr) {
         console.warn('⚠️ Could not send telegram notification:', tgErr.message);
       }
-
       res.json({ success: true, order: updated });
     } catch (err) {
       res.status(500).json({ success: false, error: err.message });
@@ -219,6 +229,44 @@ const adminController = {
       res.json({ success: true, url });
     } catch (err) {
       res.status(500).json({ success: false, error: err.message });
+    }
+  },
+
+  // --- Broadcast ---
+  broadcast: async (req, res) => {
+    try {
+      const { message, photoUrl } = req.body;
+      if (!message && !photoUrl) return res.status(400).json({ success: false, message: 'Content missing' });
+
+      const userRepository = require('../repositories/userRepository');
+      const userIds = await userRepository.getAllIds();
+      
+      // Return response immediately for non-blocking UI
+      res.json({ success: true, count: userIds.length });
+
+      // Run in background
+      (async () => {
+        const bot = require('../config/telegram');
+        console.log(`📣 [Broadcast] Starting for ${userIds.length} users...`);
+        for (const uid of userIds) {
+          if (!uid) continue;
+          try {
+            if (photoUrl) {
+              await bot.telegram.sendPhoto(uid, photoUrl, { caption: message, parse_mode: 'Markdown' });
+            } else {
+              await bot.telegram.sendMessage(uid, message, { parse_mode: 'Markdown' });
+            }
+          } catch (e) {
+            console.warn(`⚠️ [Broadcast] Skip ${uid}: ${e.message}`);
+          }
+          await new Promise(r => setTimeout(r, 100)); // Rate limit 10/sec
+        }
+        console.log(`✅ [Broadcast] Finished.`);
+      })();
+
+    } catch (err) {
+      console.error('Broadcast Fail:', err);
+      if (!res.headersSent) res.status(500).json({ success: false });
     }
   }
 };

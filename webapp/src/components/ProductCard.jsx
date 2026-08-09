@@ -35,7 +35,7 @@ const ProductCard = memo(({
 
   const getOptimizedImage = (url) => {
     if (!url || !url.includes('cloudinary')) return url || '';
-    return url.replace('/upload/', '/upload/f_auto,q_auto:eco,w_400,c_fill,g_auto/');
+    return url.replace('/upload/', '/upload/f_auto,q_auto:eco,w_400,h_400,c_fill,g_auto/');
   };
 
   const bestDiscount = discountLookup[product.id] || discountLookup['all'] || null;
@@ -49,12 +49,28 @@ const ProductCard = memo(({
       badgeText = badgeText.substring(0, 12) + '...';
   }
 
+  let hasMultipleImages = false;
+  try {
+    if (product.additional_images) {
+      const parsed = typeof product.additional_images === 'string' ? JSON.parse(product.additional_images) : product.additional_images;
+      if (Array.isArray(parsed) && parsed.length > 0) hasMultipleImages = true;
+    }
+  } catch(e) {}
+
   return (
     <div
       className={`product-card-standard-green ${isOutOfStock ? 'pc-out-of-stock' : ''}`}
       onClick={handleClick}
     >
-      {/* Top Small Badge Removed */}
+      {/* Multiple Images Indicator (Instagram style) */}
+      {hasMultipleImages && (
+        <div style={{ position: 'absolute', top: 12, left: 12, background: 'rgba(0,0,0,0.4)', padding: '6px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10, backdropFilter: 'blur(4px)', color: 'white' }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="3" width="14" height="14" rx="2" ry="2"></rect>
+            <path d="M7 21h12a2 2 0 0 0 2-2V7"></path>
+          </svg>
+        </div>
+      )}
       
       {/* Flash Sale Tag */}
       {hasFlashSale && (

@@ -32,6 +32,7 @@ const CheckoutStepper = ({
             r={radius}
             cx="30"
             cy="30"
+            transform="rotate(-90 30 30)" /* ✅ Fix: start arc from 12 o'clock, not 3 o'clock */
             style={{
               strokeDasharray: circumference,
               strokeDashoffset: strokeDashoffset,

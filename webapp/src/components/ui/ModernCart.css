@@ -55,7 +55,8 @@
   display: flex;
   gap: 16px;
   position: relative;
-  background-color: #f5f4e8; /* slightly darker cream for item */
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
   border-radius: 24px;
   padding: 16px;
 }
@@ -63,7 +64,7 @@
 .cart-item-image {
   width: 90px;
   height: 90px;
-  background-color: #fff;
+  background-color: var(--bg-soft);
   border-radius: 16px;
   display: flex;
   align-items: center;
@@ -90,12 +91,12 @@
   font-weight: 800;
   margin: 0 0 2px 0;
   padding-right: 24px;
-  color: #000;
+  color: var(--text-main);
 }
 
 .cart-item-variant {
   font-size: 13px;
-  color: #888;
+  color: var(--text-muted);
   margin: 0 0 12px 0;
 }
 
@@ -111,7 +112,7 @@
 .cart-item-price {
   font-size: 18px;
   font-weight: 800;
-  color: #000;
+  color: var(--text-main);
 }
 
 .cart-item-controls {
@@ -125,24 +126,24 @@
   width: 32px;
   height: 32px;
   border-radius: 10px;
-  background: #fff;
+  background: var(--bg-soft);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  color: #000;
+  color: var(--text-main);
   transition: all 0.2s ease;
-  border: 1px solid #e0e0e0;
+  border: 1px solid var(--border-subtle);
 }
 
 .cart-qty-btn.minus {
-  background: #fff;
-  border: 1px solid #e0e0e0;
+  background: var(--bg-soft);
+  border: 1px solid var(--border-subtle);
 }
 
 .cart-qty-btn.plus {
   border: none;
-  background-color: #d1fae5; /* green-100 */
+  background-color: rgba(16, 185, 129, 0.15); /* green-500 with opacity */
   color: #10b981; /* green-500 */
 }
 
@@ -159,17 +160,21 @@
   right: 16px;
   background: none;
   border: none;
-  color: #999;
-  cursor: pointer;
   padding: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  cursor: pointer;
+  color: var(--text-muted);
+  opacity: 0.6;
+  transition: all 0.2s ease;
+  z-index: 2;
 }
+
 .cart-item-remove:hover {
-  color: #ef4444;
+  opacity: 1;
+  color: #ff4d4f;
 }
+
 .cart-item-remove svg {
+  stroke: currentColor;
   width: 16px;
   height: 16px;
 }

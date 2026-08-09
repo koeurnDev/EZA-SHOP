@@ -1,4 +1,4 @@
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || '';
 
 const apiRequest = async (endpoint, options = {}) => {
   const tg = window.Telegram?.WebApp;

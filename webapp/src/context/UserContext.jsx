@@ -29,12 +29,11 @@ export const UserProvider = ({ children }) => {
 
   // 🛡️ RBAC Monitoring: Automatic Role Detection
   useEffect(() => {
-    if (user?.id === 7817470099) {
-      console.log('👑 Admin Access Granted to:', user.first_name);
-      setIsSuperAdmin(true);
-    } else {
-      setIsSuperAdmin(false);
-    }
+    // When window.Telegram is available, the backend authenticates the user,
+    // and determines admin status securely. For local dev mode, we can securely
+    // mock admin access if the mocked guest admin ID matches the super admin ID config.
+    const isGuestAdmin = user?.id === 7817470099;
+    setIsSuperAdmin(isGuestAdmin);
   }, [user]);
 
   // Translation helper (Memoized to prevent unnecessary downstream re-renders)

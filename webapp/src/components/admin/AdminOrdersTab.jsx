@@ -71,7 +71,14 @@ const AdminOrdersTab = React.memo(({
                   src={o.receipt_url}
                   alt="Receipt"
                   style={{ width: '100%', maxHeight: '200px', objectFit: 'contain', background: 'var(--bg-soft)', cursor: 'pointer' }}
-                  onClick={() => window.Telegram?.WebApp?.openLink ? window.Telegram.WebApp.openLink(o.receipt_url) : window.open(o.receipt_url, '_blank')}
+                  onClick={() => {
+                    const tg = window.Telegram?.WebApp;
+                    if (tg?.openLink) {
+                      tg.openLink(o.receipt_url);
+                    } else {
+                      window.open(o.receipt_url, '_blank');
+                    }
+                  }}
                 />
               </div>
             )}

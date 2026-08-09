@@ -13,6 +13,19 @@ const couponRepository = {
     return res.rows;
   },
 
+  findByCode: async (code) => {
+    const res = await pool.query(`
+      SELECT c.*, array_agg(cp.product_id) FILTER (WHERE cp.product_id IS NOT NULL) as product_ids
+      FROM coupons c
+      LEFT JOIN coupon_products cp ON c.id = cp.coupon_id
+      WHERE UPPER(c.code) = UPPER($1) AND c.active = true
+      AND (c.start_date IS NULL OR c.start_date <= CURRENT_TIMESTAMP)
+      AND (c.end_date IS NULL OR c.end_date >= CURRENT_TIMESTAMP)
+      GROUP BY c.id
+    `, [code]);
+    return res.rows[0];
+  },
+
   findActiveAuto: async () => {
     return await cacheService.getOrFetch(
       'coupons:active:auto',

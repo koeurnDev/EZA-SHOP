@@ -28,21 +28,23 @@ const PromoBanner = ({ threshold, promoText, promoBannerUrl, t, lang }) => {
 
   if (banners.length > 0) {
     return (
-      <div className="ads-hero-container !px-0" style={{ position: 'relative', overflow: 'hidden' }}>
-        <div className={`ads-hero-wrapper !rounded-none`} style={{ display: 'flex', transition: 'transform 0.5s ease-in-out', transform: `translateX(-${currentIndex * 100}%)` }}>
-           {banners.map((url, idx) => (
-              <div key={idx} style={{ flex: '0 0 100%', minWidth: '100%', position: 'relative' }}>
-                <img 
-                  src={url.includes('upload/') ? url.replace('upload/', 'upload/f_auto,q_auto:best,w_800/') : url} 
-                  alt={`Banner ${idx + 1}`} 
-                  className="ads-hero-img"
-                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                  crossOrigin="anonymous"
-                  fetchpriority={idx === 0 ? "high" : "low"}
-                  loading={idx === 0 ? "eager" : "lazy"}
-                />
-              </div>
-           ))}
+      <div className="ads-hero-container !px-0" style={{ position: 'relative' }}>
+        <div className={`ads-hero-wrapper !rounded-none`} style={{ overflow: 'hidden', position: 'relative' }}>
+          <div style={{ display: 'flex', height: '100%', transition: 'transform 0.5s ease-in-out', transform: `translateX(-${currentIndex * 100}%)` }}>
+             {banners.map((url, idx) => (
+                <div key={idx} style={{ flex: '0 0 100%', minWidth: '100%', height: '100%', position: 'relative' }}>
+                  <img 
+                    src={url.includes('upload/') ? url.replace('upload/', 'upload/f_auto,q_auto:best,w_800/') : url} 
+                    alt={`Banner ${idx + 1}`} 
+                    className="ads-hero-img"
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    crossOrigin="anonymous"
+                    fetchpriority={idx === 0 ? "high" : "low"}
+                    loading={idx === 0 ? "eager" : "lazy"}
+                  />
+                </div>
+             ))}
+          </div>
         </div>
         
         {/* Slider Dots */}

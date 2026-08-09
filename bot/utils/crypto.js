@@ -1,5 +1,5 @@
 const crypto = require('crypto');
-require('dotenv').config();
+require('dotenv').config({ path: require('path').join(__dirname, '..', '.env') });
 
 const ALGORITHM = 'aes-256-gcm';
 const IV_LENGTH = 16;
@@ -13,6 +13,7 @@ const TAG_LENGTH = 16;
  */
 function encrypt(text) {
   if (!text) return text;
+  text = String(text);
   
   const pepper = process.env.SECURITY_PEPPER;
   if (!pepper) throw new Error('🛑 SECURITY_PEPPER is MISSING. Encryption aborted.');
@@ -43,7 +44,9 @@ function decrypt(cipherText) {
   try {
     const pepper = process.env.SECURITY_PEPPER;
     if (!pepper) throw new Error('🛑 SECURITY_PEPPER is MISSING. Decryption aborted.');
-    const [ivHex, tagHex, saltHex, encryptedHex] = cipherText.split(':');
+    const parts = cipherText.split(':');
+    const [ivHex, tagHex, saltHex] = parts;
+    const encryptedHex = parts.slice(3).join(':'); // re-join in case encrypted portion has colons
     
     const iv = Buffer.from(ivHex, 'hex');
     const tag = Buffer.from(tagHex, 'hex');

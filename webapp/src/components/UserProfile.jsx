@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import ProfileCard from './ui/ProfileCard';
 import CambodiaAddress from './ui/CambodiaAddress';
+import { useShopState } from '../context/ShopContext';
 
 /**
  * 💎 High-Fidelity User Profile & Order History
  * Implements the "Timeline of Excellence" design system.
  */
 const UserProfile = ({ user, setView, BACKEND_URL, onViewInvoice, t, lang, toggleLang, theme, toggleTheme }) => {
+  const { socialFb, socialTg, socialIg, socialTt, socialEmail } = useShopState();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [ratingOrder, setRatingOrder] = useState(null);
@@ -30,8 +32,9 @@ const UserProfile = ({ user, setView, BACKEND_URL, onViewInvoice, t, lang, toggl
 
   const fetchProfile = () => {
     if (!user?.id) return;
+    const tgInitData = window.Telegram?.WebApp?.initData || '';
     fetch(`${BACKEND_URL}/api/user/profile`, {
-       headers: { 'Authorization': `tma ${window.Telegram.WebApp.initData}` }
+       headers: { 'X-TG-Data': tgInitData }
     })
     .then(res => res.json())
     .then(data => {
@@ -48,11 +51,12 @@ const UserProfile = ({ user, setView, BACKEND_URL, onViewInvoice, t, lang, toggl
     if (!user?.id) return;
     setIsSavingProfile(true);
     try {
+      const tgInitData = window.Telegram?.WebApp?.initData || '';
       const res = await fetch(`${BACKEND_URL}/api/user/profile`, {
         method: 'PUT',
         headers: { 
           'Content-Type': 'application/json',
-          'Authorization': `tma ${window.Telegram.WebApp.initData}` 
+          'X-TG-Data': tgInitData 
         },
         body: JSON.stringify({ phone: editPhone, address: editAddress })
       });
@@ -60,8 +64,9 @@ const UserProfile = ({ user, setView, BACKEND_URL, onViewInvoice, t, lang, toggl
       if (data.success && data.profile) {
         setDbProfile(data.profile);
         setIsEditingProfile(false);
-        if (window.Telegram?.WebApp?.HapticFeedback) {
-          window.Telegram.WebApp.HapticFeedback.notificationOccurred('success');
+        const tg = window.Telegram?.WebApp;
+        if (tg?.HapticFeedback) {
+          tg.HapticFeedback.notificationOccurred('success');
         }
       }
     } catch (err) {
@@ -84,8 +89,9 @@ const UserProfile = ({ user, setView, BACKEND_URL, onViewInvoice, t, lang, toggl
 
   const fetchOrders = () => {
     if (!user?.id) return;
+    const tgInitData = window.Telegram?.WebApp?.initData || '';
     fetch(`${BACKEND_URL}/api/user/orders`, {
-       headers: { 'X-TG-Data': window.Telegram.WebApp.initData }
+       headers: { 'X-TG-Data': tgInitData }
     })
     .then(res => res.json())
     .then(data => {
@@ -98,16 +104,17 @@ const UserProfile = ({ user, setView, BACKEND_URL, onViewInvoice, t, lang, toggl
   };
 
   const submitReview = async (productId) => {
-    const data = ratingData[productId];
-    if (!data || !data.rating) return;
+    const data = ratingData[productId] || { rating: 5, comment: '' };
+    if (!data.rating) return;
 
     setIsSubmitting(true);
     try {
+      const tgInitData = window.Telegram?.WebApp?.initData || '';
       const res = await fetch(`${BACKEND_URL}/api/reviews`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'Authorization': `tma ${window.Telegram.WebApp.initData}`
+          'X-TG-Data': tgInitData
         },
         body: JSON.stringify({
           product_id: productId,
@@ -117,24 +124,25 @@ const UserProfile = ({ user, setView, BACKEND_URL, onViewInvoice, t, lang, toggl
       });
       const result = await res.json();
       if (result.success) {
-        setRatingData(prev => {
-          const next = { ...prev };
-          next[productId].submitted = true;
-          return next;
-        });
-        const tg = window.Telegram.WebApp;
-        if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+        setRatingData(prev => ({
+          ...prev,
+          [productId]: { ...data, submitted: true }
+        }));
+        const tg = window.Telegram?.WebApp;
+        if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+      } else {
+        alert(result.error || 'Failed to submit review');
       }
     } finally { setIsSubmitting(false); }
   };
 
   const orderStatuses = {
-    'pending': { label: t('pending_payment'), color: '#94a3b8', icon: '⏳', step: 1 },
-    'paid': { label: lang === 'kh' ? 'បង់រួច' : 'Paid', color: '#10b981', icon: '💰', step: 1 },
-    'processing': { label: lang === 'kh' ? 'រៀបចំ' : 'Packing', color: '#f59e0b', icon: '📦', step: 2 },
-    'shipped': { label: lang === 'kh' ? 'ចេញហាង' : 'Shipped', color: '#a855f7', icon: '✨', step: 3 },
-    'delivering': { label: lang === 'kh' ? 'ប្រគល់ឱ្យដឹក' : 'Delivering', color: '#3b82f6', icon: '🚚', step: 4 },
-    'delivered': { label: lang === 'kh' ? 'បានទទួល' : 'Delivered', color: '#10b981', icon: '🏠', step: 4 }
+    'pending':    { label: t('pending_payment'),                         color: '#94a3b8', icon: '⏳', step: 1 },
+    'paid':       { label: lang === 'kh' ? 'បង់រួច' : 'Paid',       color: '#10b981', icon: '💰', step: 1 },
+    'processing': { label: lang === 'kh' ? 'រៀបចំ'     : 'Packing',    color: '#f59e0b', icon: '📦', step: 2 },
+    'shipped':    { label: lang === 'kh' ? 'ប្រគល់ឲ្យអ្នកដឹក' : 'Courier',   color: '#a855f7', icon: '🚚', step: 3 },
+    'delivering': { label: lang === 'kh' ? 'ប្រគល់ឲ្យអ្នកដឹក' : 'Courier',   color: '#3b82f6', icon: '🚚', step: 3 },
+    'delivered':  { label: lang === 'kh' ? 'បានតតុល'   : 'Delivered',  color: '#10b981', icon: '🏠', step: 3 }
   };
 
   if (!user) return <div className="loading-screen"><div className="loader"></div></div>;
@@ -187,20 +195,20 @@ const UserProfile = ({ user, setView, BACKEND_URL, onViewInvoice, t, lang, toggl
               🎁
             </div>
             <div>
-              <div style={{ fontSize: 11, fontWeight: 800, opacity: 0.6 }}>{lang === 'kh' ? 'ពិន្ទុសន្សំ (Loyalty Points)' : 'Loyalty Points'}</div>
+              <div style={{ fontSize: 11, fontWeight: 800, opacity: 0.6 }}>{lang === 'kh' ? 'ពិន្ទុសន្សំ' : 'Loyalty Points'}</div>
               <div style={{ fontSize: 18, fontWeight: 950, color: '#f59e0b' }}>{dbProfile.loyalty_points || 0} pts</div>
             </div>
           </div>
 
           {!isEditingProfile ? (
-            <div style={{ display: 'grid', gap: 10 }}>
-              <div style={{ fontSize: 13 }}>
-                <span style={{ opacity: 0.6, marginRight: 8 }}>📞</span> 
-                <span style={{ fontWeight: 800 }}>{dbProfile.phone || (lang === 'kh' ? 'មិនទាន់មាន' : 'Not set')}</span>
+            <div style={{ display: 'grid', gap: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: 14, lineHeight: '1.5' }}>
+                <span style={{ opacity: 0.6, marginTop: 2 }}>📞</span> 
+                <span style={{ fontWeight: 700, color: 'var(--text-main)' }}>{dbProfile.phone || (lang === 'kh' ? 'មិនទាន់មាន' : 'Not set')}</span>
               </div>
-              <div style={{ fontSize: 13 }}>
-                <span style={{ opacity: 0.6, marginRight: 8 }}>📍</span> 
-                <span style={{ fontWeight: 800 }}>{dbProfile.address || (lang === 'kh' ? 'មិនទាន់មាន' : 'Not set')}</span>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: 14, lineHeight: '1.5' }}>
+                <span style={{ opacity: 0.6, marginTop: 2 }}>📍</span> 
+                <span style={{ fontWeight: 700, color: 'var(--text-main)' }}>{dbProfile.address || (lang === 'kh' ? 'មិនទាន់មាន' : 'Not set')}</span>
               </div>
             </div>
           ) : (
@@ -285,13 +293,12 @@ const UserProfile = ({ user, setView, BACKEND_URL, onViewInvoice, t, lang, toggl
                  {!isDelivered && (
                     <div className="premium-timeline-lux" style={{ margin: '25px 0' }}>
                        <div className="timeline-track-bg"></div>
-                       <div className="timeline-track-fill" style={{ width: `${Math.max(0, (status.step - 1) * 33.33)}%`, background: status.color }}></div>
+                       <div className="timeline-track-fill" style={{ width: `${Math.max(0, (status.step - 1) * 50)}%`, background: status.color }}></div>
                        <div className="timeline-steps-lux">
                           {[
                             { step: 1, icon: '💰', kh: 'បង់រួច', en: 'Paid' },
                             { step: 2, icon: '📦', kh: 'រៀបចំ', en: 'Packing' },
-                            { step: 3, icon: '✨', kh: 'ចេញហាង', en: 'Shipped' },
-                            { step: 4, icon: '🚚', kh: 'ដឹកជញ្ជូន', en: 'Moving' }
+                            { step: 3, icon: '🚚', kh: 'ប្រគល់ឲ្យអ្នកដឹក', en: 'Courier' }
                           ].map((s, i) => {
                              const isActive = s.step <= status.step;
                              const isCurrent = s.step === status.step;
@@ -320,16 +327,16 @@ const UserProfile = ({ user, setView, BACKEND_URL, onViewInvoice, t, lang, toggl
                        </div>
                        <div className="copy-btn-lux" onClick={() => {
                          navigator.clipboard.writeText(order.tracking_number);
-                         const tg = window.Telegram.WebApp;
-                         if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+                         const tg = window.Telegram?.WebApp;
+                         if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
                        }}>📋</div>
                     </div>
                  )}
 
                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 10 }}>
                     <div>
-                       <div style={{ fontSize: 11, fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 4 }}>{t('total')}</div>
-                       <div className="mega-price-primary" style={{ fontSize: 24 }}>${parseFloat(order.total_amount || 0).toFixed(2)}</div>
+                       <div style={{ fontSize: 11, fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 4 }}>{lang === 'kh' ? 'សរុប' : 'TOTAL'}</div>
+                       <div className="mega-price-primary" style={{ fontSize: 24 }}>${parseFloat(order.total || order.total_amount || 0).toFixed(2)}</div>
                     </div>
                     
                     <div style={{ display: 'flex', gap: 8 }}>
@@ -341,9 +348,18 @@ const UserProfile = ({ user, setView, BACKEND_URL, onViewInvoice, t, lang, toggl
                              ⭐️ {lang === 'kh' ? 'វាយតម្លៃ' : 'Rate'}
                           </button>
                        )}
-                       <button className="icon-btn-glass primary-fill" style={{ width: 'auto', padding: '0 20px', borderRadius: 16, height: 48, fontSize: 13, fontWeight: 900, gap: 10 }}>
-                          <span>🧾</span> {t('view_receipt')}
-                       </button>
+                        <button 
+                           onClick={(e) => { e.stopPropagation(); onViewInvoice(order); }}
+                           style={{ 
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              padding: '0 20px', borderRadius: 14, height: 44, 
+                              background: 'var(--bg-soft)', 
+                              color: 'var(--text-main)', 
+                              border: '1.5px solid var(--border-subtle)', 
+                              fontWeight: 800, gap: 8, fontSize: 14
+                           }}>
+                           <span style={{ fontSize: 16 }}>🧾</span> {lang === 'kh' ? 'វិក័យប័ត្រ' : 'Receipt'}
+                        </button>
                     </div>
                  </div>
               </div>
@@ -418,6 +434,42 @@ const UserProfile = ({ user, setView, BACKEND_URL, onViewInvoice, t, lang, toggl
                   </div>
                </div>
             ))}
+         </div>
+      )}
+
+      {/* 📱 Contact Us Section */}
+      {(socialFb || socialTg || socialIg || socialTt || socialEmail) && (
+         <div className="contact-section-lux" style={{ marginTop: 30, paddingBottom: 40 }}>
+            <div className="section-header" style={{ padding: '0 0 20px' }}>
+               <h2 style={{ fontSize: 20, fontWeight: 950, color: 'var(--text-bold)' }}>{lang === 'kh' ? 'ទំនាក់ទំនងយើងខ្ញុំ' : 'Contact Us'}</h2>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 12 }}>
+               {socialFb && (
+                  <a href={socialFb} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', background: 'var(--glass-card)', border: '1.5px solid var(--glass-border)', borderRadius: 16, textDecoration: 'none', color: 'var(--text-luxury)' }}>
+                     <span style={{ fontSize: 22, color: '#1877F2' }}>Facebook</span>
+                  </a>
+               )}
+               {socialTg && (
+                  <a href={socialTg} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', background: 'var(--glass-card)', border: '1.5px solid var(--glass-border)', borderRadius: 16, textDecoration: 'none', color: 'var(--text-luxury)' }}>
+                     <span style={{ fontSize: 22, color: '#2AABEE' }}>Telegram</span>
+                  </a>
+               )}
+               {socialIg && (
+                  <a href={socialIg} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', background: 'var(--glass-card)', border: '1.5px solid var(--glass-border)', borderRadius: 16, textDecoration: 'none', color: 'var(--text-luxury)' }}>
+                     <span style={{ fontSize: 22, color: '#E4405F' }}>Instagram</span>
+                  </a>
+               )}
+               {socialTt && (
+                  <a href={socialTt} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', background: 'var(--glass-card)', border: '1.5px solid var(--glass-border)', borderRadius: 16, textDecoration: 'none', color: 'var(--text-luxury)' }}>
+                     <span style={{ fontSize: 22, color: 'var(--text-bold)' }}>TikTok</span>
+                  </a>
+               )}
+               {socialEmail && (
+                  <a href={`mailto:${socialEmail}`} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', background: 'var(--glass-card)', border: '1.5px solid var(--glass-border)', borderRadius: 16, textDecoration: 'none', color: 'var(--text-luxury)' }}>
+                     <span style={{ fontSize: 22, color: '#EA4335' }}>Email</span>
+                  </a>
+               )}
+            </div>
          </div>
       )}
 

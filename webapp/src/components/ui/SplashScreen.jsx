@@ -14,6 +14,7 @@ const SplashScreen = ({ onComplete }) => {
     }, 1800);
 
     const completeTimer = setTimeout(() => {
+      setStage('complete'); // ✅ Fix: set stage before calling onComplete so the guard below works
       onComplete();
     }, 2500);
 

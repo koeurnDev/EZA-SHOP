@@ -10,7 +10,7 @@ export default defineConfig({
     host: true, // Needed for exposing via ngrok
     allowedHosts: ['nonstandard-ashli-pachydermatous.ngrok-free.dev'],
     proxy: {
-      '/api': 'http://127.0.0.1:3005'
+      '/api': 'http://127.0.0.1:5000'
     }
   },
   build: {

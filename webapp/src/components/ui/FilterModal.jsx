@@ -47,7 +47,7 @@ const FilterModal = () => {
               onChange={e => setLocalFilters({...localFilters, sort: e.target.value})}
               style={{ padding: '12px 16px', background: 'var(--bg-surface)', cursor: 'pointer', color: 'var(--text-main)' }}
             >
-              <option value="newest">{lang === 'kh' ? 'ថ្មីៗបំផុត (Newest First)' : 'Newest First'}</option>
+              <option value="newest">{lang === 'kh' ? 'ថ្មីៗបំផុត' : 'Newest First'}</option>
               <option value="price_asc">{lang === 'kh' ? 'តម្លៃ (ទាបទៅខ្ពស់)' : 'Price: Low to High'}</option>
               <option value="price_desc">{lang === 'kh' ? 'តម្លៃ (ខ្ពស់ទៅទាប)' : 'Price: High to Low'}</option>
             </select>

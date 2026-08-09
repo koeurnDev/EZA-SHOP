@@ -38,7 +38,12 @@ const verifyUser = (req, res, next) => {
     }
 
     const params = new URLSearchParams(initData || '');
-    const user = JSON.parse(params.get('user') || '{}');
+    let user = {};
+    try {
+      user = JSON.parse(params.get('user') || '{}');
+    } catch (err) {
+      console.warn('⚠️ Auth: Failed to parse user from initData');
+    }
     
     // 🛡 Sync: If it's first-time or refresh, generate a transient session token
     const token = jwt.sign({ id: user.id, username: user.username }, SESSION_SECRET, { expiresIn: SESSION_EXPIRY });
@@ -55,6 +60,7 @@ const verifyUser = (req, res, next) => {
     try {
       const decoded = jwt.verify(token, SESSION_SECRET);
       req.user = { user_id: decoded.id, username: decoded.username };
+      req.tgUser = { id: decoded.id, username: decoded.username };
       return next();
     } catch (e) {
       return res.status(401).json({ success: false, error: 'Session Expired', code: 'TOKEN_EXPIRED' });

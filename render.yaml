@@ -25,9 +25,9 @@ services:
       - key: CLOUDINARY_API_SECRET
         sync: false
       - key: DB_POOL_MAX
-        value: "50"
+        value: "12"
       - key: DB_POOL_MIN
-        value: "10"
+        value: "2"
       - key: REDIS_URL
         fromService:
           type: redis

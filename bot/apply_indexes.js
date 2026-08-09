@@ -14,6 +14,8 @@ const applyIndexes = async () => {
     await pool.query('CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);');
     await pool.query('CREATE INDEX IF NOT EXISTS idx_orders_created_at ON orders(created_at);');
     await pool.query('CREATE INDEX IF NOT EXISTS idx_orders_user_id ON orders(user_id);');
+    // ✅ Fix: Composite index for the most common admin query (filter by status, sort by date)
+    await pool.query('CREATE INDEX IF NOT EXISTS idx_orders_status_created ON orders(status, created_at DESC);');
     
     // 2. Products table indexes
     await pool.query('CREATE INDEX IF NOT EXISTS idx_products_category ON products(category);');

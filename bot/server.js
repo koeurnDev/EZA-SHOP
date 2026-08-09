@@ -1,4 +1,4 @@
-require('dotenv').config();
+require('dotenv').config({ path: require('path').join(__dirname, '.env') });
 const app = require('./app');
 const pool = require('./config/database');
 const { connectRedis } = require('./config/redis');
