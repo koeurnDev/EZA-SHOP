@@ -82,7 +82,8 @@ const ProductCard = memo(({
       {/* Image Wrapper */}
       <div className="standard-image-wrapper">
         <img
-          src={getOptimizedImage(product.image)}
+          src={getOptimizedImage(product.image) || '/favicon.png'}
+          onError={(e) => { e.target.onerror = null; e.target.src = '/favicon.png'; }}
           alt={product.name}
           className="standard-card-img"
           loading="lazy"

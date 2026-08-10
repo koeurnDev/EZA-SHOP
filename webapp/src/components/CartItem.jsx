@@ -13,7 +13,8 @@ const CartItem = ({ item, updateQty, t, lang }) => {
     <div className="cart-item-slot-luxury animate-in">
       <div className="slot-image-box">
         <img 
-          src={getOptimizedImg(item.image, 150)} 
+          src={getOptimizedImg(item.image, 150) || '/favicon.png'} 
+          onError={(e) => { e.target.onerror = null; e.target.src = '/favicon.png'; }}
           alt={item.name} 
           crossOrigin="anonymous" 
           decoding="async"

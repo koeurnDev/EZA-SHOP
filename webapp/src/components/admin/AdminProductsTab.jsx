@@ -74,7 +74,7 @@ const AdminProductsTab = React.memo(({
       <div style={{ display: 'grid', gap: 12, marginBottom: 30 }}>
         {filtered.slice(0, visibleProductLimit).map(p => (
           <div key={p.id} className="glass-card-luxury" style={{ padding: 12, display: 'flex', gap: 12, alignItems: 'center', position: 'relative', zIndex: openMenu === p.id ? 50 : 1 }}>
-            <img src={p.image} style={{ width: 50, height: 50, borderRadius: 12, objectFit: 'cover' }} alt={p.name} crossOrigin="anonymous" />
+            <img src={p.image || '/favicon.png'} onError={(e) => { e.target.onerror = null; e.target.src = '/favicon.png'; }} style={{ width: 50, height: 50, borderRadius: 12, objectFit: 'cover' }} alt={p.name} crossOrigin="anonymous" />
             <div style={{ flex: 1 }}>
               <div style={{ fontWeight: 800, fontSize: 14 }}>{p.name}</div>
               <div style={{ fontSize: 11, color: 'var(--text-main)', fontWeight: 800, marginTop: 4 }}>
