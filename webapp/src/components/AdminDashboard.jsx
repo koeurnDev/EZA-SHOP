@@ -23,6 +23,7 @@ import DarkSelect from './admin/DarkSelect';
 
 // 🗂️ Modular modals
 import AdminEditProductModal from './admin/modals/AdminEditProductModal';
+import InvoiceModal from './InvoiceModal';
 import AdminAddProductModal from './admin/modals/AdminAddProductModal';
 import AdminFaqModal from './admin/modals/AdminFaqModal';
 
@@ -631,7 +632,16 @@ const AdminDashboard = ({
 
   return (
     <>
-      {printingOrder && <PrintableOrder order={printingOrder} shopName={receiptShopName} subtitle={receiptSubtitle} shopNote={receiptNote} />}
+      {printingOrder && <InvoiceModal 
+        order={printingOrder} 
+        onClose={() => setPrintingOrder(null)} 
+        paymentQrUrl={null} 
+        paymentInfo={''} 
+        BACKEND_URL={BACKEND_URL} 
+        onPaymentSuccess={() => {}} 
+        t={t} 
+        lang={tg?.language_code === 'en' ? 'en' : 'kh'} 
+      />}
       <div className="admin-dashboard-overhaul animate-in no-print" style={{ paddingBottom: 100 }}>
         
         <div className="admin-header-luxury">
