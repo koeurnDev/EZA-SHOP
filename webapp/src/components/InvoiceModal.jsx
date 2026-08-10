@@ -347,6 +347,8 @@ const InvoiceModal = ({ order, onClose, paymentQrUrl, paymentInfo, BACKEND_URL, 
             setIsSaving(true);
             try {
               const canvas = await html2canvas(receiptRef.current, { scale: 3, backgroundColor: '#ffffff', useCORS: true });
+              
+              // 1. Direct local download (Works on Desktop / standard browsers)
               const image = canvas.toDataURL('image/png');
               const link = document.createElement('a');
               link.href = image;
@@ -354,6 +356,32 @@ const InvoiceModal = ({ order, onClose, paymentQrUrl, paymentInfo, BACKEND_URL, 
               document.body.appendChild(link);
               link.click();
               document.body.removeChild(link);
+
+              // 2. Upload & Open Link (Allows Telegram Mobile App users to save to Phone Gallery)
+              canvas.toBlob(async (blob) => {
+                if (!blob) return;
+                try {
+                  const formData = new FormData();
+                  formData.append('image', blob, `receipt_${displayId}.png`);
+                  const tgData = window.Telegram?.WebApp?.initData || '';
+                  const res = await fetch(`${BACKEND_URL}/api/upload`, {
+                    method: 'POST',
+                    headers: { 'X-TG-Data': tgData },
+                    body: formData
+                  });
+                  const data = await res.json();
+                  if (data.success && data.url) {
+                    if (window.Telegram?.WebApp?.openLink) {
+                      window.Telegram.WebApp.openLink(data.url);
+                    } else {
+                      window.open(data.url, '_blank');
+                    }
+                  }
+                } catch (e) {
+                  console.error("Upload fallback failed:", e);
+                }
+              }, 'image/png');
+
               if (window.Telegram?.WebApp?.HapticFeedback) window.Telegram.WebApp.HapticFeedback.notificationOccurred('success');
             } catch (err) {
               console.error("Failed to save receipt", err);
