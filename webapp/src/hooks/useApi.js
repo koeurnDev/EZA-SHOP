@@ -33,7 +33,11 @@ export const useApi = (customConfig = {}) => {
           const contentType = response.headers.get('content-type');
           if (contentType && contentType.includes('application/json')) {
             const errorData = await response.json();
-            throw new Error(errorData.error || errorData.message || `HTTP Error: ${response.status}`);
+            let errMsg = errorData.error || errorData.message || `HTTP Error: ${response.status}`;
+            if (errorData.details && Array.isArray(errorData.details)) {
+              errMsg += '\\n' + errorData.details.map(d => `• ${d.field}: ${d.message}`).join('\\n');
+            }
+            throw new Error(errMsg);
           }
           throw new Error(`HTTP Error: ${response.status}`);
         }

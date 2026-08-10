@@ -45,6 +45,18 @@ const publicController = {
       SEARCH_DEBOUNCE: true
     };
     res.json({ success: true, data: { flags } });
+  }),
+
+  getNotifications: asyncHandler(async (req, res) => {
+    const broadcastRepository = require('../repositories/broadcastRepository');
+    const notifications = await broadcastRepository.getAll(20);
+    res.json({ success: true, notifications });
+  }),
+
+  deleteNotification: asyncHandler(async (req, res) => {
+    const broadcastRepository = require('../repositories/broadcastRepository');
+    await broadcastRepository.delete(req.params.id);
+    res.json({ success: true });
   })
 };
 

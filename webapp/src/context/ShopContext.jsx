@@ -18,7 +18,7 @@ export const ShopProvider = ({ children }) => {
   }), [tg?.initData]);
 
   // 🚀 CONSOLIDATED INITIAL DATA FETCHING (v6 Performance Pack)
-  const { data: initData, loading: isInitLoading, refetch: refetchInit } = useQuery(
+  const { data: initData, loading: isInitLoading, refetch: refetchInit, mutate: mutateInit } = useQuery(
     'init', 
     `${BACKEND_URL}/api/init`, 
     queryOptions
@@ -99,9 +99,9 @@ export const ShopProvider = ({ children }) => {
       if (s.shop_status) setShopStatus(s.shop_status);
       if (s.delivery_threshold) setDeliveryThreshold(s.delivery_threshold);
       if (s.delivery_fee) setDeliveryFee(s.delivery_fee);
-      if (s.promo_text) setPromoText(s.promo_text);
-      if (s.promo_banner_url) setPromoBannerUrl(s.promo_banner_url);
-      if (s.shop_logo_url) setShopLogoUrl(s.shop_logo_url);
+      if (s.promo_text !== undefined) setPromoText(s.promo_text);
+      if (s.promo_banner_url !== undefined) setPromoBannerUrl(s.promo_banner_url); // fix: allow empty string to clear banners
+      if (s.shop_logo_url !== undefined) setShopLogoUrl(s.shop_logo_url);
       if (s.social_fb) setSocialFb(s.social_fb);
       if (s.social_tg) setSocialTg(s.social_tg);
       if (s.social_ig) setSocialIg(s.social_ig);
@@ -117,7 +117,7 @@ export const ShopProvider = ({ children }) => {
     return {
       products,
       shopStatus,
-      isSettingsLoaded: !isInitLoading,
+      isSettingsLoaded: Boolean(initData) || !isInitLoading,
       selectedCategory,
       searchTerm,
       debouncedSearchTerm, // 🚀 Use this for filtering
@@ -163,9 +163,10 @@ export const ShopProvider = ({ children }) => {
     setShowFilterModal,
     setShowScanner,
     setFilters,
-    refetchData: () => {
-      refetchInit();
-    }
+    refetchData: (isBackground = false) => {
+      refetchInit(isBackground);
+    },
+    mutateShopData: mutateInit
   }), [refetchInit, showToast, setShopStatus, setDeliveryThreshold, setDeliveryFee, setPromoText, setPromoBannerUrl, setShopLogoUrl, setSocialFb, setSocialTg, setSocialIg, setSocialTt, setSocialEmail, setShowFilterModal, setShowScanner, setFilters]);
 
   return (

@@ -30,46 +30,54 @@ const AdminOverviewTab = React.memo(({ summary, paddedDailyAnalytics, advancedAn
         <span>📈</span> <span>ការវិភាគស៊ីជម្រៅ</span>
       </div>
 
-      <div style={{ marginBottom: 25, background: 'var(--bg-soft)', padding: 15, borderRadius: 16 }}>
-        <div style={{ fontSize: 11, fontWeight: 900, opacity: 0.6, marginBottom: 10 }}>{t('admin_revenue_growth')}</div>
-        <div style={{ width: '100%', height: 200 }}>
+      {/* Revenue Area Chart */}
+      <div style={{ marginBottom: 25, background: 'var(--bg-soft)', padding: 16, borderRadius: 20, border: '1px solid var(--border-subtle)' }}>
+        <div style={{ fontSize: 12, fontWeight: 900, color: 'var(--text-bold)', marginBottom: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+          <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>💰 កំណើនចំណូល (14 ថ្ងៃ)</span>
+          <span style={{ fontSize: 10, color: '#10b981', background: 'rgba(16, 185, 129, 0.12)', padding: '2px 8px', borderRadius: 10, fontWeight: 800, whiteSpace: 'nowrap', flexShrink: 0 }}>USD ($)</span>
+        </div>
+        <div style={{ width: '100%', height: 210 }}>
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={paddedDailyAnalytics}>
+            <AreaChart data={paddedDailyAnalytics} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
               <defs>
                 <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="var(--chart-primary)" stopOpacity={0.15} />
-                  <stop offset="95%" stopColor="var(--chart-primary)" stopOpacity={0} />
+                  <stop offset="5%" stopColor="#10b981" stopOpacity={0.35} />
+                  <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--glass-border)" />
-              <XAxis dataKey="dateShort" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: 'var(--text-dim)' }} />
-              <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: 'var(--text-dim)' }} />
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-subtle)" opacity={0.6} />
+              <XAxis dataKey="dateShort" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700, fill: 'var(--text-muted)' }} dy={5} />
+              <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700, fill: 'var(--text-muted)' }} tickFormatter={(val) => `$${val}`} />
               <Tooltip
-                contentStyle={{ background: 'var(--glass-card)', border: '1px solid var(--glass-border)', borderRadius: 12, color: 'var(--text-luxury)' }}
-                itemStyle={{ color: 'var(--text-main)', fontWeight: 900 }}
-                formatter={(value) => [`$${value}`, t('admin_tab_overview')]}
+                contentStyle={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 14, color: 'var(--text-bold)', boxShadow: '0 10px 30px rgba(0,0,0,0.3)' }}
+                itemStyle={{ color: '#10b981', fontWeight: 900 }}
+                formatter={(value) => [`$${parseFloat(value).toFixed(2)}`, 'ចំណូល']}
               />
-              <Area type="monotone" dataKey="revenue" name={t('admin_tab_overview')} stroke="var(--chart-primary)" fill="url(#colorRevenue)" strokeWidth={2} />
+              <Area type="monotone" dataKey="revenue" stroke="#10b981" fill="url(#colorRevenue)" strokeWidth={3} activeDot={{ r: 6, fill: '#10b981', stroke: '#fff', strokeWidth: 2 }} />
             </AreaChart>
           </ResponsiveContainer>
         </div>
       </div>
 
-      <div style={{ marginBottom: 25, background: 'var(--bg-soft)', padding: 15, borderRadius: 16 }}>
-        <div style={{ fontSize: 11, fontWeight: 900, opacity: 0.6, marginBottom: 10 }}>{t('admin_tab_orders')}</div>
-        <div style={{ width: '100%', height: 180 }}>
+      {/* Orders Bar Chart */}
+      <div style={{ marginBottom: 25, background: 'var(--bg-soft)', padding: 16, borderRadius: 20, border: '1px solid var(--border-subtle)' }}>
+        <div style={{ fontSize: 12, fontWeight: 900, color: 'var(--text-bold)', marginBottom: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+          <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>📦 ចំនួនការកម្ម៉ង់</span>
+          <span style={{ fontSize: 10, color: '#3b82f6', background: 'rgba(59, 130, 246, 0.12)', padding: '2px 8px', borderRadius: 10, fontWeight: 800, whiteSpace: 'nowrap', flexShrink: 0 }}>Orders</span>
+        </div>
+        <div style={{ width: '100%', height: 190 }}>
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={paddedDailyAnalytics}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--glass-border)" />
-              <XAxis dataKey="dateShort" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: 'var(--text-dim)' }} />
-              <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: 'var(--text-dim)' }} allowDecimals={false} />
+            <BarChart data={paddedDailyAnalytics} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-subtle)" opacity={0.6} />
+              <XAxis dataKey="dateShort" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700, fill: 'var(--text-muted)' }} dy={5} />
+              <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700, fill: 'var(--text-muted)' }} allowDecimals={false} />
               <Tooltip
-                contentStyle={{ background: 'var(--glass-card)', border: '1px solid var(--glass-border)', borderRadius: 12, color: 'var(--text-luxury)' }}
-                itemStyle={{ color: 'var(--text-main)', fontWeight: 900 }}
-                cursor={{ fill: 'var(--border-subtle)' }}
-                formatter={(value) => [value, t('admin_tab_orders')]}
+                contentStyle={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 14, color: 'var(--text-bold)', boxShadow: '0 10px 30px rgba(0,0,0,0.3)' }}
+                itemStyle={{ color: '#3b82f6', fontWeight: 900 }}
+                cursor={{ fill: 'rgba(255,255,255,0.04)' }}
+                formatter={(value) => [`${value} កម្ម៉ង់`, 'ចំនួនកម្ម៉ង់']}
               />
-              <Bar dataKey="orders" name={t('admin_tab_orders')} fill="var(--chart-primary)" radius={[4, 4, 0, 0]} barSize={20} isAnimationActive={true} />
+              <Bar dataKey="orders" name="Orders" fill="#3b82f6" radius={[6, 6, 0, 0]} barSize={18} isAnimationActive={true} />
             </BarChart>
           </ResponsiveContainer>
         </div>

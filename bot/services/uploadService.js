@@ -39,6 +39,23 @@ const uploadService = {
     });
     
     return res.secure_url;
+  },
+
+  deleteImageByUrl: async (url) => {
+    if (!url || typeof url !== 'string') return;
+    try {
+      // Extract public_id from Cloudinary URL
+      // e.g. https://res.cloudinary.com/dhabxzsx7/image/upload/v1785667246/products/sifiz1w9d59wfa2i0ltr.webp -> products/sifiz1w9d59wfa2i0ltr
+      const match = url.match(/\/upload\/(?:v\d+\/)?(.+?)\.[a-zA-Z0-9]+$/);
+      if (match && match[1]) {
+        const publicId = match[1];
+        const isVideo = url.includes('/products_videos/') || url.match(/\.(mp4|mov|avi|webm)$/i);
+        await cloudinary.uploader.destroy(publicId, { resource_type: isVideo ? 'video' : 'image' });
+        console.log(`🗑️ Cloudinary Asset Cleaned: ${publicId}`);
+      }
+    } catch (err) {
+      console.warn(`⚠️ Cloudinary Delete Fail (${url}):`, err.message);
+    }
   }
 };
 

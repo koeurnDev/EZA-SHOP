@@ -111,6 +111,8 @@ app.get('/api/settings', publicController.getSettings);
 app.get('/api/products', publicController.getProducts);
 app.get('/api/products/:id', publicController.getProductById);
 app.get('/api/flags', publicController.getFlags); // 🚀 Combined Feature Flags
+app.get('/api/notifications', publicController.getNotifications); // 🔔 In-App System Messages
+app.delete('/api/notifications/:id', publicController.deleteNotification); // 🗑️ Delete Notification
 app.get('/api/faqs', faqController.getFaqs);
 
 // Reviews Routes
@@ -151,6 +153,7 @@ app.delete('/api/admin/products/:id', isAdmin, adminController.deleteProduct);
 app.get('/api/admin/settings', isAdmin, adminController.getSettings);
 app.post('/api/admin/settings', isAdmin, validator.setting, adminController.updateSetting);
 app.post('/api/admin/upload', isAdmin, upload.single('image'), adminController.upload);
+app.post('/api/admin/delete-file', isAdmin, adminController.deleteFile);
 
 // Admin FAQs
 app.get('/api/admin/faqs', isAdmin, faqController.getAdminFaqs);

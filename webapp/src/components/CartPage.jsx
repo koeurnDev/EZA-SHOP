@@ -108,42 +108,11 @@ const CartPage = ({
     }
   };
 
-  // 🛡️ Advanced Telegram Native UX: MainButton
+  // 🛡️ Hide Telegram Native UX: MainButton
   React.useEffect(() => {
     if (!tg?.MainButton) return;
-    const mb = tg.MainButton;
-    
-    if (totalItemsCount > 0) {
-      if (step === 1) {
-        mb.text = lang === 'kh' ? `បន្តការបញ្ជាទិញ • $${finalTotal.toFixed(2)}` : `CONTINUE • $${finalTotal.toFixed(2)}`;
-      } else {
-        mb.text = isPlacingOrder 
-          ? (lang === 'kh' ? 'កំពុងដំណើរការ...' : 'PROCESSING...') 
-          : (lang === 'kh' ? `បញ្ជាក់ការកម្ម៉ង់ • $${finalTotal.toFixed(2)}` : `PLACE ORDER • $${finalTotal.toFixed(2)}`);
-      }
-      
-      mb.color = '#059669'; // Emerald-600
-      mb.textColor = '#ffffff';
-      
-      if (isPlacingOrder || (step === 2 && (!isPhoneValid || !isAddressValid))) {
-         mb.disable();
-         mb.color = '#94a3b8'; // disabled gray
-      } else {
-         mb.enable();
-         mb.color = '#059669';
-      }
-      
-      mb.show();
-      mb.onClick(handlePrimaryAction);
-    } else {
-      mb.hide();
-    }
-    
-    return () => {
-      mb.offClick(handlePrimaryAction);
-      mb.hide();
-    };
-  }, [tg, step, finalTotal, isPlacingOrder, isPhoneValid, isAddressValid, totalItemsCount, lang]);
+    tg.MainButton.hide();
+  }, [tg]);
 
   if (totalItemsCount === 0) {
     return (
@@ -262,11 +231,22 @@ const CartPage = ({
             
             {/* Promo Code Section */}
             <div className="mb-6 pb-6 border-b border-dashed" style={{ borderColor: 'var(--border-subtle)' }}>
-              <div className="flex gap-2">
+              <div style={{ position: 'relative', width: '100%', boxSizing: 'border-box' }}>
                 <input 
                   type="text" 
-                  className="flex-1 px-4 py-2 rounded-xl border text-sm font-bold uppercase focus:outline-none"
-                  style={{ background: 'var(--bg-soft)', borderColor: 'var(--border-subtle)', color: 'var(--text-main)' }}
+                  style={{
+                    width: '100%',
+                    padding: '12px 85px 12px 14px',
+                    borderRadius: '14px',
+                    border: '1px solid var(--border-subtle)',
+                    background: 'var(--bg-soft)',
+                    color: 'var(--text-main)',
+                    fontSize: '13px',
+                    fontWeight: '800',
+                    outline: 'none',
+                    textTransform: 'uppercase',
+                    boxSizing: 'border-box'
+                  }}
                   placeholder={lang === 'kh' ? 'លេខកូដបញ្ចុះតម្លៃ' : 'PROMO CODE'}
                   value={promoInput}
                   onChange={(e) => setPromoInput(e.target.value.toUpperCase())}
@@ -274,7 +254,25 @@ const CartPage = ({
                 />
                 {!validatedPromo ? (
                   <button 
-                    className="px-4 py-2 bg-[#ec4899] text-white rounded-xl font-bold text-sm disabled:opacity-50 flex items-center justify-center min-w-[70px]"
+                    style={{
+                      position: 'absolute',
+                      right: '4px',
+                      top: '4px',
+                      bottom: '4px',
+                      padding: '0 16px',
+                      background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                      color: '#ffffff',
+                      border: 'none',
+                      borderRadius: '10px',
+                      fontSize: '12px',
+                      fontWeight: '900',
+                      cursor: (promoLoading || !promoInput.trim()) ? 'not-allowed' : 'pointer',
+                      opacity: (promoLoading || !promoInput.trim()) ? 0.5 : 1,
+                      transition: 'all 0.2s ease',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justify: 'center'
+                    }}
                     onClick={handleApplyPromo}
                     disabled={promoLoading || !promoInput.trim()}
                   >
@@ -282,7 +280,23 @@ const CartPage = ({
                   </button>
                 ) : (
                   <button 
-                    className="px-4 py-2 bg-gray-200 text-gray-600 rounded-xl font-bold text-sm"
+                    style={{
+                      position: 'absolute',
+                      right: '4px',
+                      top: '4px',
+                      bottom: '4px',
+                      padding: '0 12px',
+                      background: '#ef4444',
+                      color: '#ffffff',
+                      border: 'none',
+                      borderRadius: '10px',
+                      fontSize: '12px',
+                      fontWeight: '900',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justify: 'center'
+                    }}
                     onClick={() => { setValidatedPromo(null); setPromoInput(''); }}
                   >
                     {lang === 'kh' ? 'លុប' : 'Remove'}

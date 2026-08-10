@@ -66,8 +66,33 @@ const adminController = {
       if (req.body.category) {
         await require('../services/adminService').addCategory(req.body.category);
       }
+
+      // Fetch old product for asset cleanup comparison
+      const oldProduct = await productRepository.findById(req.params.id);
+
       const updated = await productRepository.update(req.params.id, req.body);
       if (!updated) return res.status(404).json({ success: false, error: 'Product not found' });
+
+      // 🧹 Non-blocking Cloudinary Cleanup for replaced/removed assets
+      if (oldProduct) {
+        (async () => {
+          try {
+            if (oldProduct.image && oldProduct.image !== updated.image) {
+              uploadService.deleteImageByUrl(oldProduct.image);
+            }
+            if (oldProduct.video_url && oldProduct.video_url !== updated.video_url) {
+              uploadService.deleteImageByUrl(oldProduct.video_url);
+            }
+            const oldAdd = typeof oldProduct.additional_images === 'string' ? JSON.parse(oldProduct.additional_images) : (oldProduct.additional_images || []);
+            const newAdd = typeof updated.additional_images === 'string' ? JSON.parse(updated.additional_images) : (updated.additional_images || []);
+            const removedImages = oldAdd.filter(img => !newAdd.includes(img));
+            removedImages.forEach(imgUrl => uploadService.deleteImageByUrl(imgUrl));
+          } catch (cleanErr) {
+            console.warn('⚠️ Cloudinary Update Cleanup Warning:', cleanErr.message);
+          }
+        })();
+      }
+
       res.json({ success: true, product: updated });
     } catch (err) {
       res.status(400).json({ success: false, error: err.message });
@@ -78,6 +103,23 @@ const adminController = {
     try {
       const deleted = await productRepository.delete(req.params.id);
       if (!deleted) return res.status(404).json({ success: false, error: 'Product not found' });
+
+      // 🧹 Non-blocking Cloudinary Asset Cleanup to save storage
+      (async () => {
+        try {
+          if (deleted.image) uploadService.deleteImageByUrl(deleted.image);
+          if (deleted.video_url) uploadService.deleteImageByUrl(deleted.video_url);
+          if (deleted.additional_images) {
+            const addImages = typeof deleted.additional_images === 'string'
+              ? JSON.parse(deleted.additional_images)
+              : (deleted.additional_images || []);
+            addImages.forEach(imgUrl => uploadService.deleteImageByUrl(imgUrl));
+          }
+        } catch (cleanErr) {
+          console.warn('⚠️ Cloudinary Cleanup Background Warning:', cleanErr.message);
+        }
+      })();
+
       res.json({ success: true });
     } catch (err) {
       res.status(500).json({ success: false, error: err.message });
@@ -232,6 +274,16 @@ const adminController = {
     }
   },
 
+  deleteFile: async (req, res) => {
+    try {
+      const { url } = req.body;
+      if (url) await uploadService.deleteImageByUrl(url);
+      res.json({ success: true });
+    } catch (err) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  },
+
   // --- Broadcast ---
   broadcast: async (req, res) => {
     try {
@@ -239,8 +291,12 @@ const adminController = {
       if (!message && !photoUrl) return res.status(400).json({ success: false, message: 'Content missing' });
 
       const userRepository = require('../repositories/userRepository');
+      const broadcastRepository = require('../repositories/broadcastRepository');
       const userIds = await userRepository.getAllIds();
-      
+
+      // Save broadcast in database for in-app NotificationsModal
+      await broadcastRepository.create(message, photoUrl);
+
       // Return response immediately for non-blocking UI
       res.json({ success: true, count: userIds.length });
 

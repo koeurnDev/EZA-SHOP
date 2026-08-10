@@ -5,7 +5,7 @@ import { useUser } from '../../context/UserContext';
 const AdminSettingsTab = React.memo(({
   shopStatus, showConfirm, setShopStatus, updateSettingValue,
   deliveryFee, setDeliveryFee, deliveryThreshold, setDeliveryThreshold,
-  promoBannerUrl, removeBanner, handleBannerUpload,
+  promoBannerUrl, removeBanner, handleBannerUpload, updateBannerProduct, products, categories,
   shopLogoUrl, handleLogoUpload,
   paymentQrUrl, handleQrUpload, paymentInfo, setPaymentInfo,
   receiptShopName, setReceiptShopName,
@@ -48,27 +48,63 @@ const AdminSettingsTab = React.memo(({
         </div>
       </div>
 
-      {/* Delivery */}
-      <div className="glass-card-luxury">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
-          <div style={{ fontSize: 24 }}>🚚</div>
+      {/* Delivery Settings */}
+      <div className="glass-card-luxury" style={{ padding: 22 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+          <div style={{ width: 44, height: 44, borderRadius: 14, background: 'rgba(59, 130, 246, 0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, color: '#3b82f6' }}>🚚</div>
           <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 950, fontSize: 16 }}>{t('delivery_label')}</div>
-            <div style={{ fontSize: 12, opacity: 0.6 }}>{t('admin_delivery_desc')}</div>
+            <div style={{ fontWeight: 950, fontSize: 16, color: 'var(--text-bold)' }}>{t('delivery_label') || 'សេវាដឹកជញ្ជូន'}</div>
+            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{t('admin_delivery_desc') || 'កំណត់តម្លៃដឹក និងលក្ខខណ្ឌដឹកហ្វ្រី'}</div>
           </div>
         </div>
-        <div className="admin-responsive-grid" style={{ gap: 16, marginBottom: 20 }}>
+
+        <div className="admin-responsive-grid" style={{ gap: 16, marginBottom: 22 }}>
           <div>
-            <label style={{ display: 'block', fontSize: 11, fontWeight: 900, marginBottom: 8, opacity: 0.7 }}>{t('admin_delivery_fee')}</label>
-            <input className="input-glass-admin" placeholder="0.00" value={deliveryFee} onChange={e => setDeliveryFee(e.target.value)} />
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 900, marginBottom: 8, color: 'var(--text-bold)' }}>{t('admin_delivery_fee') || 'ថ្លៃសេវាដឹកជញ្ជូន'}</label>
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+              <span style={{ position: 'absolute', left: 14, fontSize: 15, fontWeight: 900, color: 'var(--text-muted)', zIndex: 2 }}>$</span>
+              <input 
+                className="input-glass-admin" 
+                type="number"
+                step="0.01"
+                style={{ paddingLeft: 38, width: '100%', fontSize: 14, fontWeight: 800 }} 
+                placeholder="1.50" 
+                value={deliveryFee} 
+                onChange={e => setDeliveryFee(e.target.value)} 
+              />
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6, opacity: 0.8 }}>ឧទាហរណ៍៖ 1.50 (ដាក់ 0 ប្រសិនបើដឹកហ្វ្រីគ្រប់ order)</div>
           </div>
+
           <div>
-            <label style={{ display: 'block', fontSize: 11, fontWeight: 900, marginBottom: 8, opacity: 0.7 }}>{t('admin_free_delivery_threshold')}</label>
-            <input className="input-glass-admin" placeholder="50.00" value={deliveryThreshold} onChange={e => setDeliveryThreshold(e.target.value)} />
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 900, marginBottom: 8, color: 'var(--text-bold)' }}>{t('admin_free_delivery_threshold') || 'ដឹកហ្វ្រីចាប់ពី'}</label>
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+              <span style={{ position: 'absolute', left: 14, fontSize: 15, fontWeight: 900, color: 'var(--text-muted)', zIndex: 2 }}>$</span>
+              <input 
+                className="input-glass-admin" 
+                type="number"
+                step="1"
+                style={{ paddingLeft: 38, width: '100%', fontSize: 14, fontWeight: 800 }} 
+                placeholder="50.00" 
+                value={deliveryThreshold} 
+                onChange={e => setDeliveryThreshold(e.target.value)} 
+              />
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6, opacity: 0.8 }}>ទិញអស់ចាប់ពី ${deliveryThreshold || '50'} ឡើងទៅ នឹងទទួលបានការដឹកហ្វ្រី</div>
           </div>
         </div>
-        <button className="ticket-btn-primary" onClick={() => { updateSettingValue('delivery_fee', deliveryFee); updateSettingValue('delivery_threshold', deliveryThreshold); }}>
-          💾 {t('admin_save_settings')}
+
+        <button 
+          style={{ 
+            width: '100%', padding: '13px 20px', borderRadius: 14, border: 'none',
+            background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+            color: '#ffffff', fontWeight: 900, fontSize: 14, cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+            boxShadow: '0 4px 14px rgba(16, 185, 129, 0.3)', transition: 'all 0.2s ease'
+          }}
+          onClick={() => { updateSettingValue('delivery_fee', deliveryFee); updateSettingValue('delivery_threshold', deliveryThreshold); }}
+        >
+          💾 {t('admin_save_settings') || 'រក្សាទុកការកំណត់'}
         </button>
       </div>
 
@@ -77,12 +113,70 @@ const AdminSettingsTab = React.memo(({
         <div className="glass-card-luxury" style={{ padding: 20, minWidth: 0 }}>
           <div style={{ fontWeight: 950, marginBottom: 15, fontSize: 14 }}>🖼️ {t('admin_shop_banner')}</div>
           <div style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 10 }}>
-            {(promoBannerUrl ? promoBannerUrl.split(',').map(u => u.trim()).filter(Boolean) : []).map((img, idx) => (
-              <div key={idx} style={{ position: 'relative', flexShrink: 0, width: 140, height: 80, borderRadius: 12, overflow: 'hidden', border: '1px solid var(--border-subtle)' }}>
-                <img src={img} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="" crossOrigin="anonymous" />
-                <button className="remove-thumb-btn" onClick={() => removeBanner(idx)}>✕</button>
+            {(promoBannerUrl ? promoBannerUrl.split(',').map(u => u.trim()).filter(Boolean) : []).map((img, idx) => {
+              const [url, targetStr] = img.split('|');
+              let linkType = '';
+              let linkValue = '';
+              if (targetStr) {
+                if (targetStr.startsWith('cat:')) { linkType = 'cat'; linkValue = targetStr.substring(4); }
+                else if (targetStr.startsWith('ext:')) { linkType = 'ext'; linkValue = targetStr.substring(4); }
+                else if (targetStr.startsWith('prod:')) { linkType = 'prod'; linkValue = targetStr.substring(5); }
+                else { linkType = 'prod'; linkValue = targetStr; }
+              }
+
+              return (
+              <div key={idx} style={{ position: 'relative', flexShrink: 0, width: 140, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <div style={{ position: 'relative', width: '100%', height: 80, borderRadius: 12, overflow: 'hidden', border: '1px solid var(--border-subtle)' }}>
+                  <img src={url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="" crossOrigin="anonymous" />
+                  <button className="remove-thumb-btn" onClick={() => removeBanner(idx)}>✕</button>
+                </div>
+                
+                <select
+                  value={linkType}
+                  onChange={(e) => {
+                    const newType = e.target.value;
+                    if (!newType) updateBannerProduct(idx, '');
+                    else if (newType === 'prod' && products?.length) updateBannerProduct(idx, `prod:${products[0].id}`);
+                    else if (newType === 'cat' && categories?.length) updateBannerProduct(idx, `cat:${categories[0].id}`);
+                    else if (newType === 'ext') updateBannerProduct(idx, `ext:https://`);
+                  }}
+                  style={{ width: '100%', padding: '4px', fontSize: '10px', background: 'var(--bg-soft)', color: 'var(--text-main)', border: '1px solid var(--border-subtle)', borderRadius: '6px' }}
+                >
+                  <option value="">- គ្មាន Link -</option>
+                  <option value="prod">ទំនិញ</option>
+                  <option value="cat">ប្រភេទទំនិញ</option>
+                  <option value="ext">Link ខាងក្រៅ</option>
+                </select>
+
+                {linkType === 'prod' && (
+                  <select
+                    value={linkValue}
+                    onChange={(e) => updateBannerProduct(idx, `prod:${e.target.value}`)}
+                    style={{ width: '100%', padding: '4px', fontSize: '10px', background: 'var(--bg-soft)', color: 'var(--text-main)', border: '1px solid var(--border-subtle)', borderRadius: '6px' }}
+                  >
+                    {products?.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                  </select>
+                )}
+                {linkType === 'cat' && (
+                  <select
+                    value={linkValue}
+                    onChange={(e) => updateBannerProduct(idx, `cat:${e.target.value}`)}
+                    style={{ width: '100%', padding: '4px', fontSize: '10px', background: 'var(--bg-soft)', color: 'var(--text-main)', border: '1px solid var(--border-subtle)', borderRadius: '6px' }}
+                  >
+                    {categories?.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                )}
+                {linkType === 'ext' && (
+                  <input
+                    type="text"
+                    value={linkValue}
+                    onChange={(e) => updateBannerProduct(idx, `ext:${e.target.value}`)}
+                    placeholder="https://..."
+                    style={{ width: '100%', padding: '4px', fontSize: '10px', background: 'var(--bg-soft)', color: 'var(--text-main)', border: '1px solid var(--border-subtle)', borderRadius: '6px', boxSizing: 'border-box' }}
+                  />
+                )}
               </div>
-            ))}
+            )})}
             <label className="upload-zone-luxury" style={{ flexShrink: 0, width: 140, height: 80 }}>
               <div className="upload-label-content" style={{ minHeight: 'auto', padding: 10 }}>
                 <div style={{ fontSize: 22 }}>🌄</div>

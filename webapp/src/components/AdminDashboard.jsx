@@ -38,7 +38,7 @@ const AdminDashboard = ({
   const { tg, initData, showAlert: tgShowAlert } = useTelegram();
   const { t } = useUser();
   const { fetchWithRetry } = useApi();
-  const { refetchData: refetchShopData } = useShopDispatch();
+  const { refetchData: refetchShopData, mutateShopData } = useShopDispatch();
   const headers = useMemo(() => ({ 'X-TG-Data': initData || '' }), [initData]);
 
 
@@ -62,7 +62,8 @@ const AdminDashboard = ({
   const {
     data: dashboardData,
     loading: dashboardLoading,
-    refetch: refetchDashboard
+    refetch: refetchDashboard,
+    mutate: mutateDashboard
   } = useQuery('admin-dashboard', `${BACKEND_URL}/api/admin/dashboard`, { headers });
 
   // Derived state from consolidated query
@@ -208,7 +209,7 @@ const AdminDashboard = ({
   };
 
   const refetchData = useCallback((isBackground = false) => {
-    refetchDashboard();
+    refetchDashboard(isBackground);
   }, [refetchDashboard]);
 
   // 🔒 Senior Review Fix: use stable ref to avoid interval reset on refetchData identity change
@@ -252,6 +253,9 @@ const AdminDashboard = ({
   };
 
   const showAlert = (msg) => {
+    if (tg?.showAlert) {
+      try { tg.showAlert(msg); } catch (e) {}
+    }
     setConfirmDialog({
       text: msg,
       onConfirm: () => setConfirmDialog(null),
@@ -290,15 +294,32 @@ const AdminDashboard = ({
           video_url: newProductData.video_url || null
         })
       });
-      if (res.success) {
+      if (res.success && res.data?.success !== false) {
         setIsAddingProduct(false);
+        const newProduct = res.data?.product || res.data;
+        if (newProduct) {
+          mutateDashboard(prev => ({
+            ...prev,
+            products: [newProduct, ...(prev?.products || [])]
+          }));
+          if (mutateShopData) {
+            mutateShopData(prev => ({
+              ...prev,
+              products: [newProduct, ...(prev?.products || [])]
+            }));
+          }
+        }
         setNewProductData({ name: '', price: '', stock: '', category: 'ទឹកអប់ (Perfume)', image: '', description: '', additional_images: [] });
         refetchData(true);
-        refetchShopData();
+        refetchShopData(true);
         setToastMessage('បន្ថែមទំនិញបានជោគជ័យ!');
         setShowSuccessToast(true);
-        setTimeout(() => setShowSuccessToast(false), 2500);
+        setTimeout(() => setShowSuccessToast(false), 3000);
+      } else {
+        showAlert('បរាជ័យក្នុងការបន្ថែម: ' + (res.error || res.data?.error || 'មានបញ្ហាប្រព័ន្ធ'));
       }
+    } catch (err) {
+      showAlert('បរាជ័យក្នុងការបន្ថែម: ' + (err.message || 'មានបញ្ហាប្រព័ន្ធ'));
     } finally { setIsSaving(false); }
   };
 
@@ -320,13 +341,28 @@ const AdminDashboard = ({
           video_url: editFormData.video_url || null
         })
       });
-      if (res.success) {
+      if (res.success && res.data?.success !== false) {
         setEditingProduct(null);
+        const updatedProduct = res.data?.product || res.data;
+        if (updatedProduct) {
+          mutateDashboard(prev => ({
+            ...prev,
+            products: (prev?.products || []).map(p => p.id === updatedProduct.id ? updatedProduct : p)
+          }));
+          if (mutateShopData) {
+            mutateShopData(prev => ({
+              ...prev,
+              products: (prev?.products || []).map(p => p.id === updatedProduct.id ? updatedProduct : p)
+            }));
+          }
+        }
         refetchData(true);
-        refetchShopData();
+        refetchShopData(true);
         setToastMessage('កែប្រែទំនិញជោគជ័យ!');
         setShowSuccessToast(true);
         setTimeout(() => setShowSuccessToast(false), 2000);
+      } else {
+        showAlert('បរាជ័យក្នុងការកែប្រែ: ' + (res.error || res.data?.error || 'មានបញ្ហាប្រព័ន្ធ'));
       }
     } catch (err) { showAlert('Error: ' + err.message); }
     finally { setIsSaving(false); }
@@ -340,8 +376,18 @@ const AdminDashboard = ({
           headers
         });
         if (res.success) {
+          mutateDashboard(prev => ({
+            ...prev,
+            products: (prev?.products || []).filter(p => p.id !== id)
+          }));
+          if (mutateShopData) {
+            mutateShopData(prev => ({
+              ...prev,
+              products: (prev?.products || []).filter(p => p.id !== id)
+            }));
+          }
           refetchData(true);
-          refetchShopData();
+          refetchShopData(true);
           setToastMessage('លុបទំនិញជោគជ័យ!');
           setShowSuccessToast(true);
           setTimeout(() => setShowSuccessToast(false), 2000);
@@ -395,25 +441,46 @@ const AdminDashboard = ({
   };
 
   const updateSettingValue = async (key, value) => {
-    fetchWithRetry(`${BACKEND_URL}/api/admin/settings`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...headers },
-      body: JSON.stringify({ key, value })
-    }).then(data => {
-      if (data.success) {
+    try {
+      const data = await fetchWithRetry(`${BACKEND_URL}/api/admin/settings`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...headers },
+        body: JSON.stringify({ key, value })
+      });
+
+      if (data && data.success) {
         setToastMessage('រក្សាទុកជោគជ័យ!');
         setShowSuccessToast(true);
         setTimeout(() => setShowSuccessToast(false), 2500);
-        refetchShopData();
+
+        if (mutateShopData) {
+          mutateShopData(prev => ({
+            ...prev,
+            settings: {
+              ...(prev?.settings || {}),
+              [key]: value
+            }
+          }));
+        }
+
         if (key === 'shop_status') setGlobalShopStatus(value);
         if (key === 'promo_text') setGlobalPromoText(value);
+        if (key === 'promo_banner_url') setGlobalPromoBannerUrl(value);
         if (key === 'delivery_fee') setGlobalDeliveryFee(value);
         if (key === 'delivery_threshold') setGlobalDeliveryThreshold(value);
         if (key === 'shop_logo_url') setGlobalShopLogoUrl(value);
         if (key === 'payment_qr_url') setPaymentQrUrl(value);
         if (key === 'payment_info') setPaymentInfo(value);
+        refetchShopData(true);
+        return true;
+      } else {
+        showAlert('បរាជ័យក្នុងការរក្សាទុក: ' + (data?.error || 'មានបញ្ហាប្រព័ន្ធ'));
+        return false;
       }
-    });
+    } catch (err) {
+      showAlert('បរាជ័យក្នុងការរក្សាទុក: ' + err.message);
+      return false;
+    }
   };
 
   const handleBannerUpload = async (file) => {
@@ -427,26 +494,62 @@ const AdminDashboard = ({
         const currentBanners = promoBannerUrl ? promoBannerUrl.split(',').map(u => u.trim()).filter(Boolean) : [];
         currentBanners.push(url);
         const newBanners = currentBanners.join(',');
-        await updateSettingValue('promo_banner_url', newBanners);
-        setPromoBannerUrl(newBanners);
-        setGlobalPromoBannerUrl(newBanners);
+        const saved = await updateSettingValue('promo_banner_url', newBanners);
+        if (saved) {
+          setPromoBannerUrl(newBanners);
+          setGlobalPromoBannerUrl(newBanners);
+        }
       } else {
-        setToastMessage('បរាជ័យ: ' + (res.error || 'មានបញ្ហាក្នុងការបញ្ចូលរូបភាព'));
-        setShowSuccessToast(true);
+        showAlert('បរាជ័យក្នុងការបញ្ចូលរូប Banner: ' + (res.error || 'មានបញ្ហាក្នុងការបញ្ចូលរូបភាព'));
       }
     } catch (e) {
-      setToastMessage('បរាជ័យ: ' + e.message);
-      setShowSuccessToast(true);
+      showAlert('បរាជ័យក្នុងការបញ្ចូលរូប Banner: ' + e.message);
     }
   };
 
   const removeBanner = async (indexToRemove) => {
     const currentBanners = promoBannerUrl ? promoBannerUrl.split(',').map(u => u.trim()).filter(Boolean) : [];
+    const removedBanner = currentBanners[indexToRemove];
     currentBanners.splice(indexToRemove, 1);
     const newBanners = currentBanners.join(',');
-    await updateSettingValue('promo_banner_url', newBanners);
+
+    // ✅ Optimistic update — update UI immediately before waiting for API
     setPromoBannerUrl(newBanners);
     setGlobalPromoBannerUrl(newBanners);
+    if (mutateShopData) {
+      mutateShopData(prev => ({
+        ...prev,
+        settings: { ...(prev?.settings || {}), promo_banner_url: newBanners }
+      }));
+    }
+
+    const saved = await updateSettingValue('promo_banner_url', newBanners);
+    if (!saved) {
+      // Rollback if save failed
+      setPromoBannerUrl(promoBannerUrl);
+      setGlobalPromoBannerUrl(promoBannerUrl);
+    } else if (removedBanner) {
+      const imageUrl = removedBanner.split('|')[0];
+      fetchWithRetry(`${BACKEND_URL}/api/admin/delete-file`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...headers },
+        body: JSON.stringify({ url: imageUrl })
+      }).catch(() => {});
+    }
+  };
+
+  const updateBannerProduct = async (index, productId) => {
+    const currentBanners = promoBannerUrl ? promoBannerUrl.split(',').map(u => u.trim()).filter(Boolean) : [];
+    if (index >= 0 && index < currentBanners.length) {
+      let urlPart = currentBanners[index].split('|')[0];
+      currentBanners[index] = productId ? `${urlPart}|${productId}` : urlPart;
+      const newBanners = currentBanners.join(',');
+      const saved = await updateSettingValue('promo_banner_url', newBanners);
+      if (saved) {
+        setPromoBannerUrl(newBanners);
+        setGlobalPromoBannerUrl(newBanners);
+      }
+    }
   };
 
   const handleLogoUpload = async (file) => {
@@ -458,10 +561,16 @@ const AdminDashboard = ({
       const res = await fetchWithRetry(`${BACKEND_URL}/api/admin/upload`, { method: 'POST', headers, body: formData });
       if (res.success && (res.url || res.data?.url)) {
         const url = res.url || res.data.url;
-        await updateSettingValue('shop_logo_url', url);
-        setShopLogoUrl(url);
-        setGlobalShopLogoUrl(url);
+        const saved = await updateSettingValue('shop_logo_url', url);
+        if (saved) {
+          setShopLogoUrl(url);
+          setGlobalShopLogoUrl(url);
+        }
+      } else {
+        showAlert('បរាជ័យក្នុងការបញ្ចូលរូប Logo: ' + (res.error || 'មានបញ្ហាប្រព័ន្ធ'));
       }
+    } catch (err) {
+      showAlert('បរាជ័យក្នុងការបញ្ចូលរូប Logo: ' + err.message);
     } finally {
       setIsUploading(false);
     }
@@ -474,9 +583,15 @@ const AdminDashboard = ({
     try {
       const res = await fetchWithRetry(`${BACKEND_URL}/api/admin/upload`, { method: 'POST', headers, body: formData });
       if (res.success && res.data?.url) {
-        await updateSettingValue('payment_qr_url', res.data.url);
-        setPaymentQrUrl(res.data.url);
+        const saved = await updateSettingValue('payment_qr_url', res.data.url);
+        if (saved) {
+          setPaymentQrUrl(res.data.url);
+        }
+      } else {
+        showAlert('បរាជ័យក្នុងការបញ្ចូលរូប QR: ' + (res.error || 'មានបញ្ហាប្រព័ន្ធ'));
       }
+    } catch (err) {
+      showAlert('បរាជ័យក្នុងការបញ្ចូលរូប QR: ' + err.message);
     } finally {
       setIsUploading(false);
     }
@@ -600,6 +715,9 @@ const AdminDashboard = ({
               promoBannerUrl={promoBannerUrl}
               removeBanner={removeBanner}
               handleBannerUpload={handleBannerUpload}
+              updateBannerProduct={updateBannerProduct}
+              products={products}
+              categories={categories}
               shopLogoUrl={shopLogoUrl}
               handleLogoUpload={handleLogoUpload}
               paymentQrUrl={paymentQrUrl}

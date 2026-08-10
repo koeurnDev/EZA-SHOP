@@ -1,40 +1,106 @@
 import React, { useState, useEffect } from 'react';
+import { useShopState, useShopDispatch } from '../context/ShopContext';
 
 const PromoBanner = ({ threshold, promoText, promoBannerUrl, t, lang }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [isPaused, setIsPaused] = useState(false); // Add pause state
 
-  // If we have a banner URL, we'll use it. We also add a couple of placeholder premium banners 
-  // to demonstrate the auto-slider if there's only one.
-  const banners = promoBannerUrl ? promoBannerUrl.split(',').map(url => url.trim()) : [];
-  
-  // Add some fallback banners if the user only has 1 or 0 banners to show the slider effect
-  if (banners.length === 1) {
-     banners.push('https://images.unsplash.com/photo-1612817288484-6f916006741a?auto=format&fit=crop&q=80&w=800'); // Cosmetic placeholder 1
-     banners.push('https://images.unsplash.com/photo-1596462502278-27bfdc403348?auto=format&fit=crop&q=80&w=800'); // Cosmetic placeholder 2
-  } else if (banners.length === 0) {
-     // No banners at all, maybe don't show the image slider, or show defaults.
-     // But original code showed text promo if no banner.
-  }
+  // Swipe State
+  const [touchStartX, setTouchStartX] = useState(null);
+  const [touchEndX, setTouchEndX] = useState(null);
+  const minSwipeDistance = 50;
+
+  const { products } = useShopState();
+  const { setSelectedProduct, setSelectedCategory, setView } = useShopDispatch();
+
+  // Parse banners, format is url|type:targetId or just url
+  const parsedBanners = promoBannerUrl ? promoBannerUrl.split(',').map(item => {
+    const parts = item.trim().split('|');
+    const url = parts[0];
+    const targetStr = parts[1] || null;
+    let linkType = null;
+    let targetId = null;
+    if (targetStr) {
+      if (targetStr.startsWith('cat:')) { linkType = 'cat'; targetId = targetStr.substring(4); }
+      else if (targetStr.startsWith('ext:')) { linkType = 'ext'; targetId = targetStr.substring(4); }
+      else if (targetStr.startsWith('prod:')) { linkType = 'prod'; targetId = targetStr.substring(5); }
+      else { linkType = 'prod'; targetId = targetStr; }
+    }
+    return { url, linkType, targetId };
+  }).filter(b => b.url) : [];
 
   useEffect(() => {
-    if (banners.length > 1) {
+    if (parsedBanners.length > 1 && !isPaused) {
       const interval = setInterval(() => {
-        setCurrentIndex((prev) => (prev + 1) % banners.length);
+        setCurrentIndex((prev) => (prev + 1) % parsedBanners.length);
       }, 3500); // Auto slide every 3.5 seconds
       return () => clearInterval(interval);
     }
-  }, [banners.length]);
+  }, [parsedBanners.length, isPaused]);
 
-  if (banners.length > 0) {
+  const handleTouchStart = (e) => {
+    setIsPaused(true);
+    setTouchEndX(null);
+    setTouchStartX(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchMove = (e) => {
+    setTouchEndX(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchEnd = () => {
+    setIsPaused(false);
+    if (!touchStartX || !touchEndX) return;
+    
+    const distance = touchStartX - touchEndX;
+    const isLeftSwipe = distance > minSwipeDistance;
+    const isRightSwipe = distance < -minSwipeDistance;
+
+    if (isLeftSwipe && parsedBanners.length > 1) {
+      setCurrentIndex((prev) => (prev + 1) % parsedBanners.length);
+    } else if (isRightSwipe && parsedBanners.length > 1) {
+      setCurrentIndex((prev) => (prev === 0 ? parsedBanners.length - 1 : prev - 1));
+    }
+  };
+
+  const handleBannerClick = (banner) => {
+    if (!banner.linkType || !banner.targetId) return;
+
+    if (banner.linkType === 'prod' && products?.length) {
+      const targetProduct = products.find(p => String(p.id) === String(banner.targetId));
+      if (targetProduct) {
+        setSelectedProduct(targetProduct);
+      }
+    } else if (banner.linkType === 'cat') {
+      setSelectedCategory(banner.targetId);
+      setView('browse');
+    } else if (banner.linkType === 'ext') {
+      window.open(banner.targetId, '_blank');
+    }
+  };
+
+  if (parsedBanners.length > 0) {
     return (
-      <div className="ads-hero-container !px-0" style={{ position: 'relative' }}>
+      <div 
+        className="ads-hero-container !px-0" 
+        style={{ position: 'relative' }}
+        onMouseEnter={() => setIsPaused(true)}
+        onMouseLeave={() => setIsPaused(false)}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
         <div className={`ads-hero-wrapper !rounded-none`} style={{ overflow: 'hidden', position: 'relative' }}>
           <div style={{ display: 'flex', height: '100%', transition: 'transform 0.5s ease-in-out', transform: `translateX(-${currentIndex * 100}%)` }}>
-             {banners.map((url, idx) => (
-                <div key={idx} style={{ flex: '0 0 100%', minWidth: '100%', height: '100%', position: 'relative' }}>
+             {parsedBanners.map((banner, idx) => (
+                <div 
+                  key={idx} 
+                  style={{ flex: '0 0 100%', minWidth: '100%', height: '100%', position: 'relative', cursor: banner.linkType ? 'pointer' : 'default' }}
+                  onClick={() => handleBannerClick(banner)}
+                >
                   <img 
-                    src={url.includes('upload/') ? url.replace('upload/', 'upload/f_auto,q_auto:best,w_800/') : url} 
+                    src={banner.url.includes('upload/') ? banner.url.replace('upload/', 'upload/f_auto,q_auto:best,c_limit,w_1920/') : banner.url} 
                     alt={`Banner ${idx + 1}`} 
                     className="ads-hero-img"
                     style={{ width: '100%', height: '100%', objectFit: 'cover' }}
@@ -48,9 +114,9 @@ const PromoBanner = ({ threshold, promoText, promoBannerUrl, t, lang }) => {
         </div>
         
         {/* Slider Dots */}
-        {banners.length > 1 && (
+        {parsedBanners.length > 1 && (
            <div style={{ position: 'absolute', bottom: '10px', left: '0', right: '0', display: 'flex', justifyContent: 'center', gap: '6px' }}>
-              {banners.map((_, idx) => (
+              {parsedBanners.map((_, idx) => (
                  <div 
                     key={idx} 
                     style={{ 

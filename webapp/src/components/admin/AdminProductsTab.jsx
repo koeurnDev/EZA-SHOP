@@ -21,41 +21,54 @@ const AdminProductsTab = React.memo(({
 
   return (
     <div className="tab-pane-animate">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, gap: 10 }}>
-        <div style={{ display: 'flex', flex: 1, gap: 10, maxWidth: 500 }}>
-          <input
-            className="input-glass-admin"
-            style={{ flex: 1 }}
-            placeholder={t('admin_search_product')}
-            value={localProductSearchTerm}
-            onChange={e => setLocalProductSearchTerm(e.target.value)}
-          />
-          <select 
-            className="input-glass-admin"
-            style={{ flex: 1 }}
-            value={selectedCategory}
-            onChange={e => setSelectedCategory(e.target.value)}
-          >
-            <option value="all">ប្រភេទទាំងអស់</option>
-            {categories.map((c, i) => (
-              <option key={i} value={c.name}>{(c.name || '').replace(/\s*\(.*?\)/g, '')}</option>
-            ))}
-          </select>
-        </div>
+      {/* Top bar: Search + Add button */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+        <input
+          className="input-glass-admin"
+          style={{ flex: 1, padding: '10px 14px', borderRadius: 12, fontSize: 13 }}
+          placeholder={t('admin_search_product') || 'ស្វែងរកទំនិញ...'}
+          value={localProductSearchTerm}
+          onChange={e => setLocalProductSearchTerm(e.target.value)}
+        />
         <button
           onClick={() => setIsAddingProduct(true)}
           style={{
-            flexShrink: 0, padding: '12px 18px', borderRadius: 14,
-            border: '1.5px solid var(--border-subtle)', background: 'transparent',
-            color: 'var(--text-luxury)', fontWeight: 900, fontSize: 13, cursor: 'pointer',
+            flexShrink: 0, padding: '10px 16px', borderRadius: 12,
+            border: 'none', background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+            color: '#fff', fontWeight: 900, fontSize: 13, cursor: 'pointer',
             display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap',
+            boxShadow: '0 4px 14px rgba(16, 185, 129, 0.28)',
             transition: 'all 0.2s ease'
           }}
-          onMouseEnter={e => { e.currentTarget.style.background = 'var(--glass-border)'; }}
-          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
         >
-          ➕ {t('admin_add_product')}
+          ➕ {t('admin_add_product') || 'បន្ថែម'}
         </button>
+      </div>
+
+      {/* Category chips row — no dropdown, no overlap */}
+      <div style={{
+        display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4, marginBottom: 16,
+        scrollbarWidth: 'none', msOverflowStyle: 'none'
+      }}>
+        {[{ name: 'all', label: '📦 ទាំងអស់' }, ...categories.map(c => ({ name: c.name, label: (c.name || '').replace(/\s*\(.*?\)/g, '') }))].map((c, i) => {
+          const isActive = selectedCategory === c.name;
+          return (
+            <button
+              key={i}
+              onClick={() => setSelectedCategory(c.name)}
+              style={{
+                flexShrink: 0, padding: '7px 14px', borderRadius: 20, fontSize: 12, fontWeight: 800,
+                border: isActive ? 'none' : '1px solid var(--border-subtle)',
+                background: isActive ? 'linear-gradient(135deg, #6366f1, #8b5cf6)' : 'var(--bg-soft)',
+                color: isActive ? '#fff' : 'var(--text-muted)',
+                cursor: 'pointer', transition: 'all 0.18s ease',
+                boxShadow: isActive ? '0 4px 12px rgba(99,102,241,0.35)' : 'none',
+              }}
+            >
+              {c.label}
+            </button>
+          );
+        })}
       </div>
 
       <div style={{ display: 'grid', gap: 12, marginBottom: 30 }}>
@@ -75,8 +88,8 @@ const AdminProductsTab = React.memo(({
 
             {openMenu === p.id && (
               <>
-                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9 }} onClick={(e) => { e.stopPropagation(); setOpenMenu(null); }}></div>
-                <div className="dropdown-menu-animate" style={{ position: 'absolute', right: 12, top: 50, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: 12, padding: 6, zIndex: 10, display: 'flex', flexDirection: 'column', gap: 4, boxShadow: '0 8px 24px rgba(0,0,0,0.5)', minWidth: 140 }}>
+                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 499 }} onClick={(e) => { e.stopPropagation(); setOpenMenu(null); }}></div>
+                <div className="dropdown-menu-animate" style={{ position: 'absolute', right: 12, top: 50, background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 14, padding: 6, zIndex: 500, display: 'flex', flexDirection: 'column', gap: 4, boxShadow: '0 12px 32px rgba(0,0,0,0.25), 0 2px 8px rgba(0,0,0,0.12)', minWidth: 140 }}>
                   <button style={{ background: 'transparent', border: 'none', color: 'var(--text-main)', padding: '10px 16px', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 13, fontWeight: 700 }} onClick={() => {
                     setOpenMenu(null);
                     setEditingProduct(p);
@@ -93,7 +106,7 @@ const AdminProductsTab = React.memo(({
                   onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                   >
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
-                    កែប្រែ (Edit)
+                    កែប្រែ
                   </button>
                   <button style={{ background: 'transparent', border: 'none', color: '#ef4444', padding: '10px 16px', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 13, fontWeight: 700 }} onClick={() => {
                     setOpenMenu(null);
@@ -103,7 +116,7 @@ const AdminProductsTab = React.memo(({
                   onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                   >
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
-                    លុប (Delete)
+                    លុប
                   </button>
                 </div>
               </>

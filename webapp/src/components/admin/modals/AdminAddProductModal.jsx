@@ -12,10 +12,10 @@ const AdminAddProductModal = React.memo(({
 
   return (
     <div className="admin-dashboard-overhaul" style={{ position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, background: 'rgba(0, 0, 0, 0.55)', backdropFilter: 'blur(8px)', padding: '20px', boxSizing: 'border-box' }}>
-      <div className="glass-card-luxury" style={{ width: '92%', maxWidth: 440, maxHeight: '85vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'var(--bg-midnight)', backdropFilter: 'none' }}>
-        <h3 style={{ marginBottom: 20, flexShrink: 0 }}>➕ {t('admin_add_product')}</h3>
+      <div className="glass-card-luxury" style={{ width: '94%', maxWidth: 440, maxHeight: '90vh', padding: 22, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'var(--bg-surface)', backdropFilter: 'none', boxShadow: '0 20px 40px rgba(0,0,0,0.3)' }}>
+        <h3 style={{ marginBottom: 16, flexShrink: 0, fontSize: 18, fontWeight: 900 }}>➕ {t('admin_add_product')}</h3>
 
-        <div style={{ overflowY: 'auto', flex: 1, paddingRight: 5, paddingBottom: 5 }}>
+        <div style={{ overflowY: 'auto', flex: 1, paddingRight: 6, paddingBottom: 40 }}>
           <div style={{ marginBottom: 14 }}>
             <label style={{ display: 'block', fontSize: 11, fontWeight: 800, marginBottom: 8, opacity: 0.6 }}>{t('admin_product_image')}</label>
             <label className="upload-zone-luxury" style={{ height: 140, position: 'relative' }}>

@@ -45,7 +45,7 @@ const productRepository = {
     let paramIndex = 3;
 
     if (search) {
-      query += ` AND name ILIKE $${paramIndex}`;
+      query += ` AND (name ILIKE $${paramIndex} OR category ILIKE $${paramIndex} OR description ILIKE $${paramIndex} OR id::text ILIKE $${paramIndex})`;
       params.push(`%${search}%`);
       paramIndex++;
     }
@@ -117,9 +117,13 @@ const productRepository = {
       'INSERT INTO products (name, category, price, image, stock, description, additional_images, flash_sale_price, flash_sale_end, video_url, variants) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *',
       [p.name, p.category, p.price, p.image, p.stock || 0, p.description || '', p.additional_images || '[]', p.flash_sale_price || null, p.flash_sale_end || null, p.video_url || null, variantsJson]
     );
-    // 🚀 Invalidate cache on create
-    await cacheService.clearPattern('products:*');
-    await cacheService.delete('system:init:data');
+    // 🚀 Invalidate cache on create (Non-blocking for instant API response)
+    Promise.all([
+      cacheService.clearPattern('products:*'),
+      cacheService.delete('system:init:data'),
+      cacheService.delete('admin:dashboard_data'),
+      cacheService.delete('admin:advanced_analytics')
+    ]).catch(err => console.error('Cache invalidate error:', err.message));
     return res.rows[0];
   },
 
@@ -129,9 +133,13 @@ const productRepository = {
       'UPDATE products SET name = $1, category = $2, price = $3, image = $4, stock = $5, description = $6, additional_images = $7, flash_sale_price = $8, flash_sale_end = $9, video_url = $10, variants = $11 WHERE id = $12 RETURNING *',
       [p.name, p.category, p.price, p.image, p.stock, p.description, p.additional_images, p.flash_sale_price, p.flash_sale_end, p.video_url, variantsJson, id]
     );
-    // 🚀 Invalidate cache on update
-    await cacheService.clearPattern('products:*');
-    await cacheService.delete('system:init:data');
+    // 🚀 Invalidate cache on update (Non-blocking)
+    Promise.all([
+      cacheService.clearPattern('products:*'),
+      cacheService.delete('system:init:data'),
+      cacheService.delete('admin:dashboard_data'),
+      cacheService.delete('admin:advanced_analytics')
+    ]).catch(err => console.error('Cache invalidate error:', err.message));
     return res.rows[0];
   },
 
@@ -217,9 +225,13 @@ const productRepository = {
 
   delete: async (id) => {
     const res = await pool.query('DELETE FROM products WHERE id = $1 RETURNING *', [id]);
-    // 🚀 Invalidate cache on delete
-    await cacheService.clearPattern('products:*');
-    await cacheService.delete('system:init:data');
+    // 🚀 Invalidate cache on delete (Non-blocking)
+    Promise.all([
+      cacheService.clearPattern('products:*'),
+      cacheService.delete('system:init:data'),
+      cacheService.delete('admin:dashboard_data'),
+      cacheService.delete('admin:advanced_analytics')
+    ]).catch(err => console.error('Cache invalidate error:', err.message));
     return res.rows[0];
   }
 };

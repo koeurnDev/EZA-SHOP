@@ -214,7 +214,8 @@ const orderService = {
     }
 
     // 🛡️ SECURITY FIX: If a non-system caller triggered this, force real-time Bakong verification!
-    if (!isSystem) {
+    // Bypass this check if the caller is an admin, so they can manually approve.
+    if (!isSystem && !isAdmin) {
       console.log(`🔒 Verifying payment for ${orderCode} via Bakong API...`);
       const result = await bakongService.checkTransaction(order.qr_string);
       if (!result.success) {
