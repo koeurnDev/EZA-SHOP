@@ -335,42 +335,45 @@ const InvoiceModal = ({ order, onClose, paymentQrUrl, paymentInfo, BACKEND_URL, 
           </div>
         )}
 
-        {/* ── BUTTONS ── */}
-        <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
-          <button
-            onClick={async () => {
-              if (!receiptRef.current) return;
-              setIsSaving(true);
-              try {
-                const canvas = await html2canvas(receiptRef.current, { scale: 3, backgroundColor: '#ffffff', useCORS: true });
-                const image = canvas.toDataURL('image/png');
-                const link = document.createElement('a');
-                link.href = image;
-                link.download = `Receipt_${displayId}.png`;
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-                if (window.Telegram?.WebApp?.HapticFeedback) window.Telegram.WebApp.HapticFeedback.notificationOccurred('success');
-              } catch (err) {
-                console.error("Failed to save receipt", err);
-              } finally {
-                setIsSaving(false);
-              }
-            }}
-            disabled={isSaving}
-            className="detail-btn-cart-luxury"
-            style={{ flex: 1, height: 42, fontSize: 12, borderRadius: 10, opacity: isSaving ? 0.7 : 1 }}>
-            {isSaving ? '⌛...' : `📥 ${lang === 'kh' ? 'រក្សាទុក' : 'Save'}`}
-          </button>
-          <button
-            onClick={onClose}
-            className="detail-btn-cart-luxury"
-            style={{ flex: 1, height: 42, borderRadius: 10, fontSize: 12, background: 'var(--bg-soft)', color: 'var(--text-bold)', boxShadow: 'none', border: '1.5px solid var(--border-color)' }}>
-            {lang === 'kh' ? 'បិទ' : 'Close'}
-          </button>
+        {/* ── END OF RECEIPT CONTENT ── */}
         </div>
-
       </div>
+
+      {/* ── BUTTONS (Excluded from saved image) ── */}
+      <div style={{ display: 'flex', gap: 8, padding: '0 18px 14px 18px' }}>
+        <button
+          onClick={async () => {
+            if (!receiptRef.current) return;
+            setIsSaving(true);
+            try {
+              const canvas = await html2canvas(receiptRef.current, { scale: 3, backgroundColor: '#ffffff', useCORS: true });
+              const image = canvas.toDataURL('image/png');
+              const link = document.createElement('a');
+              link.href = image;
+              link.download = `Receipt_${displayId}.png`;
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+              if (window.Telegram?.WebApp?.HapticFeedback) window.Telegram.WebApp.HapticFeedback.notificationOccurred('success');
+            } catch (err) {
+              console.error("Failed to save receipt", err);
+            } finally {
+              setIsSaving(false);
+            }
+          }}
+          disabled={isSaving}
+          className="detail-btn-cart-luxury"
+          style={{ flex: 1, height: 42, fontSize: 12, borderRadius: 10, opacity: isSaving ? 0.7 : 1 }}>
+          {isSaving ? '⌛...' : `📥 ${lang === 'kh' ? 'រក្សាទុក' : 'Save'}`}
+        </button>
+        <button
+          onClick={onClose}
+          className="detail-btn-cart-luxury"
+          style={{ flex: 1, height: 42, borderRadius: 10, fontSize: 12, background: 'var(--bg-soft)', color: 'var(--text-bold)', boxShadow: 'none', border: '1.5px solid var(--border-color)' }}>
+          {lang === 'kh' ? 'បិទ' : 'Close'}
+        </button>
+      </div>
+
     </div>
   );
 
