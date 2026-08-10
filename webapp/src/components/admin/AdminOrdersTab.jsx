@@ -73,7 +73,6 @@ const AdminOrdersTab = React.memo(({
                   alt="Receipt"
                   style={{ width: '100%', maxHeight: '200px', objectFit: 'contain', background: 'var(--bg-soft)', cursor: 'pointer' }}
                   onClick={() => {
-                    const tg = window.Telegram?.WebApp;
                     if (tg?.openLink) {
                       tg.openLink(o.receipt_url);
                     } else {
@@ -88,9 +87,8 @@ const AdminOrdersTab = React.memo(({
             {o.status === 'processing' && <button className="ticket-btn-primary" onClick={() => updateStatus(o.id, 'shipped')}>✨ {t('admin_filter_shipped')}</button>}
             {['paid', 'processing', 'shipped', 'delivering', 'delivered'].includes(o.status) && (
               <button className="icon-btn-admin" style={{ flexShrink: 0 }} aria-label="Print Order" onClick={() => {
-                const tg = window.Telegram?.WebApp;
-                if (tg && ['android', 'ios'].includes(tg.platform) && tg.showPopup) {
-                  tg.showPopup({
+                if (tg && ['android', 'ios'].includes(tg.platform) && showPopup) {
+                  showPopup({
                     title: 'ជម្រើស Print (ទូរស័ព្ទ)',
                     message: 'Telegram មិនអនុញ្ញាតឱ្យ Print ផ្ទាល់ទេ។ សូមជ្រើសរើស:',
                     buttons: [
@@ -105,13 +103,13 @@ const AdminOrdersTab = React.memo(({
                         const itemsText = items.map(i => `- ${i.product_name} x${i.quantity} ($${i.price})`).join('\n');
                         const text = `វិក្កយបត្រ: ${o.order_code || o.id}\nអតិថិជន: ${o.user_name}\nទូរស័ព្ទ: ${o.phone}\nទីតាំង: ${o.address || ''}${o.province ? `, ${o.province}` : ''}\n----------------\n${itemsText}\n----------------\nសរុប: $${parseFloat(o.total).toFixed(2)}`;
                         navigator.clipboard.writeText(text);
-                        tg.showAlert("បានចម្លង(Copy)ជោគជ័យ! លោកអ្នកអាច Paste ក្នុងកម្មវិធី Print បាន។");
+                        showAlert("បានចម្លង(Copy)ជោគជ័យ! លោកអ្នកអាច Paste ក្នុងកម្មវិធី Print បាន។");
                       } catch (e) {
                         console.error(e);
-                        tg.showAlert("មានបញ្ហាក្នុងការចម្លង!");
+                        showAlert("មានបញ្ហាក្នុងការចម្លង!");
                       }
                     } else if (buttonId === 'browser') {
-                      tg.showAlert("ដើម្បី Print ជាវិក្កយបត្រពេញលេញ:\n1. ចុចសញ្ញា (⋮) នៅខាងលើស្តាំ\n2. ជ្រើសរើសយក 'Open in browser'\n3. ចុចប៊ូតុង Print ម្ដងទៀតក្នុង Browser!");
+                      showAlert("ដើម្បី Print ជាវិក្កយបត្រពេញលេញ:\n1. ចុចសញ្ញា (⋮) នៅខាងលើស្តាំ\n2. ជ្រើសរើសយក 'Open in browser'\n3. ចុចប៊ូតុង Print ម្ដងទៀតក្នុង Browser!");
                     }
                   });
                   return;
