@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import QRCode from 'qrcode';
+import html2canvas from 'html2canvas';
 import { useTelegram } from '../context/TelegramContext';
 
 /**
@@ -41,6 +42,9 @@ const InvoiceModal = ({ order, onClose, paymentQrUrl, paymentInfo, BACKEND_URL, 
   const [qrError, setQrError] = useState('');
   const [isUploadingReceipt, setIsUploadingReceipt] = useState(false);
   const [receiptUploaded, setReceiptUploaded] = useState(false);
+  
+  const receiptRef = useRef(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   // 🔄 Sync local order when parent prop updates (Essential for Draft -> Real transition)
   useEffect(() => {
@@ -176,8 +180,10 @@ const InvoiceModal = ({ order, onClose, paymentQrUrl, paymentInfo, BACKEND_URL, 
   const renderReceipt = () => (
     <div className="receipt-luxury-paper animate-up" style={{ padding: 0, overflow: 'hidden' }}>
 
-      {/* ── HEADER ── */}
-      <div style={{ textAlign: 'center', padding: '20px 18px 14px', borderBottom: '1px dashed var(--border-color)' }}>
+      {/* ── Receipt Content to Save ── */}
+      <div ref={receiptRef} style={{ background: '#fff', padding: '0 0 14px 0' }}>
+        {/* ── HEADER ── */}
+        <div style={{ textAlign: 'center', padding: '20px 18px 14px', borderBottom: '1px dashed var(--border-color)' }}>
         <div style={{ display: 'inline-block', padding: 6, background: 'var(--bg-soft)', borderRadius: 16, marginBottom: 8 }}>
           <img src="/favicon.png" alt="MO MO" style={{ width: 44, height: 44, borderRadius: 10, display: 'block' }} />
         </div>
@@ -330,15 +336,31 @@ const InvoiceModal = ({ order, onClose, paymentQrUrl, paymentInfo, BACKEND_URL, 
         )}
 
         {/* ── BUTTONS ── */}
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
           <button
-            onClick={() => {
-              const shareText = `🛍️ MO MO Boutique\n${t('order_id')}: #${displayId}\n${t('final_total')}: $${parseFloat(localOrder.total).toFixed(2)}`;
-              switchInlineQuery(shareText, ['users', 'chats', 'groups', 'channels']);
+            onClick={async () => {
+              if (!receiptRef.current) return;
+              setIsSaving(true);
+              try {
+                const canvas = await html2canvas(receiptRef.current, { scale: 3, backgroundColor: '#ffffff', useCORS: true });
+                const image = canvas.toDataURL('image/png');
+                const link = document.createElement('a');
+                link.href = image;
+                link.download = `Receipt_${displayId}.png`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                if (window.Telegram?.WebApp?.HapticFeedback) window.Telegram.WebApp.HapticFeedback.notificationOccurred('success');
+              } catch (err) {
+                console.error("Failed to save receipt", err);
+              } finally {
+                setIsSaving(false);
+              }
             }}
+            disabled={isSaving}
             className="detail-btn-cart-luxury"
-            style={{ flex: 1, height: 42, fontSize: 12, borderRadius: 10 }}>
-            📤 {lang === 'kh' ? 'ចែករំលែក' : 'Share'}
+            style={{ flex: 1, height: 42, fontSize: 12, borderRadius: 10, opacity: isSaving ? 0.7 : 1 }}>
+            {isSaving ? '⌛...' : `📥 ${lang === 'kh' ? 'រក្សាទុក' : 'Save'}`}
           </button>
           <button
             onClick={onClose}
