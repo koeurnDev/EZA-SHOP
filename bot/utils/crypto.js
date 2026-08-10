@@ -61,8 +61,29 @@ function decrypt(cipherText) {
     
     return decrypted;
   } catch (err) {
-    // If decryption fails, return original (useful if some data is not yet encrypted)
-    return cipherText;
+    // Fallback pepper attempt if primary pepper fails
+    try {
+      const fallbackPepper = process.env.FALLBACK_PEPPER || '24d2713bad9e902a64c48970868f0a07';
+      const parts = cipherText.split(':');
+      const [ivHex, tagHex, saltHex] = parts;
+      const encryptedHex = parts.slice(3).join(':');
+      
+      const iv = Buffer.from(ivHex, 'hex');
+      const tag = Buffer.from(tagHex, 'hex');
+      const salt = Buffer.from(saltHex, 'hex');
+      
+      const key = crypto.scryptSync(fallbackPepper, salt, 32);
+      const decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
+      decipher.setAuthTag(tag);
+      
+      let decrypted = decipher.update(encryptedHex, 'hex', 'utf8');
+      decrypted += decipher.final('utf8');
+      
+      return decrypted;
+    } catch (fallbackErr) {
+      // If both fail, return original
+      return cipherText;
+    }
   }
 }
 
