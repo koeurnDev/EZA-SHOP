@@ -18,68 +18,56 @@ export const TelegramProvider = ({ children }) => {
   const [alertData, setAlertData] = useState({ show: false, message: '' });
 
   const value = useMemo(() => {
-    const safeTg = tg ? new Proxy(tg, {
-      get(target, prop) {
-        if (prop === 'HapticFeedback') {
-          return {
-            impactOccurred: (style) => {
-              try { if (target.isVersionAtLeast?.('6.1')) target.HapticFeedback.impactOccurred(style); } catch(e){}
-            },
-            notificationOccurred: (type) => {
-              try { if (target.isVersionAtLeast?.('6.1')) target.HapticFeedback.notificationOccurred(type); } catch(e){}
-            },
-            selectionChanged: () => {
-              try { if (target.isVersionAtLeast?.('6.1')) target.HapticFeedback.selectionChanged(); } catch(e){}
-            }
-          };
-        }
-        if (prop === 'showPopup') {
-          return (params, callback) => {
-            try {
-              if (target.isVersionAtLeast?.('6.2')) {
-                target.showPopup(params, callback);
-              } else {
-                setAlertData({ show: true, message: params.message });
-              }
-            } catch(e) {
-              setAlertData({ show: true, message: params.message });
-            }
-          };
-        }
-        if (prop === 'showAlert') {
-           return (message, callback) => {
-              try {
-                 if (target.isVersionAtLeast?.('6.2')) { target.showAlert(message, callback); } else { setAlertData({ show: true, message }); }
-              } catch(e) { setAlertData({ show: true, message }); }
-           };
-        }
-        if (prop === 'showConfirm') {
-           return (message, callback) => {
-              try {
-                 if (target.isVersionAtLeast?.('6.2')) { target.showConfirm(message, callback); } else { setConfirmData({ show: true, message, callback }); }
-              } catch(e) { setConfirmData({ show: true, message, callback }); }
-           };
-        }
-        if (prop === 'switchInlineQuery') {
-          return (query, chat_types = []) => {
-            try {
-              if (target.isVersionAtLeast?.('6.7')) {
-                target.switchInlineQuery(query, chat_types);
-              } else {
-                setAlertData({ show: true, message: query + "\n\n(Share feature requires a newer Telegram version)" });
-              }
-            } catch(e) {
-              setAlertData({ show: true, message: query + "\n\n(Share feature requires a newer Telegram version)" });
-            }
-          };
-        }
-        const val = target[prop];
-        return typeof val === 'function' ? val.bind(target) : val;
+    const safeHapticFeedback = tg ? {
+      impactOccurred: (style) => {
+        try { if (tg.isVersionAtLeast?.('6.1')) tg.HapticFeedback.impactOccurred(style); } catch(e){}
+      },
+      notificationOccurred: (type) => {
+        try { if (tg.isVersionAtLeast?.('6.1')) tg.HapticFeedback.notificationOccurred(type); } catch(e){}
+      },
+      selectionChanged: () => {
+        try { if (tg.isVersionAtLeast?.('6.1')) tg.HapticFeedback.selectionChanged(); } catch(e){}
       }
-    }) : null;
+    } : null;
+
+    const safeShowPopup = (params, callback) => {
+      try {
+        if (tg?.isVersionAtLeast?.('6.2')) {
+          tg.showPopup(params, callback);
+        } else {
+          setAlertData({ show: true, message: params.message });
+        }
+      } catch(e) {
+        setAlertData({ show: true, message: params.message });
+      }
+    };
+
+    const safeShowAlert = (message, callback) => {
+      try {
+        if (tg?.isVersionAtLeast?.('6.2')) { tg.showAlert(message, callback); } else { setAlertData({ show: true, message }); }
+      } catch(e) { setAlertData({ show: true, message }); }
+    };
+
+    const safeShowConfirm = (message, callback) => {
+      try {
+        if (tg?.isVersionAtLeast?.('6.2')) { tg.showConfirm(message, callback); } else { setConfirmData({ show: true, message, callback }); }
+      } catch(e) { setConfirmData({ show: true, message, callback }); }
+    };
+
+    const safeSwitchInlineQuery = (query, chat_types = []) => {
+      try {
+        if (tg?.isVersionAtLeast?.('6.7')) {
+          tg.switchInlineQuery(query, chat_types);
+        } else {
+          setAlertData({ show: true, message: query + "\n\n(Share feature requires a newer Telegram version)" });
+        }
+      } catch(e) {
+        setAlertData({ show: true, message: query + "\n\n(Share feature requires a newer Telegram version)" });
+      }
+    };
 
     return {
-      tg: safeTg,
+      tg: tg,
       user: tg?.initDataUnsafe?.user,
       initData: tg?.initData,
       isExpanded: tg?.isExpanded,
@@ -89,11 +77,11 @@ export const TelegramProvider = ({ children }) => {
       backgroundColor: tg?.backgroundColor,
       BackButton: tg?.BackButton,
       MainButton: tg?.MainButton,
-      HapticFeedback: safeTg?.HapticFeedback,
-      showPopup: safeTg?.showPopup,
-      showAlert: safeTg?.showAlert,
-      showConfirm: safeTg?.showConfirm,
-      switchInlineQuery: safeTg?.switchInlineQuery,
+      HapticFeedback: safeHapticFeedback,
+      showPopup: safeShowPopup,
+      showAlert: safeShowAlert,
+      showConfirm: safeShowConfirm,
+      switchInlineQuery: safeSwitchInlineQuery,
       sendData: tg?.sendData,
       close: tg?.close,
       setHeaderColor: (color) => { try { tg?.setHeaderColor?.(color); } catch(e){} },
