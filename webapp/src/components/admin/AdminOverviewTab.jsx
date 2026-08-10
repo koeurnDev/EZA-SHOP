@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useUser } from '../../context/UserContext';
 import { useTelegram } from '../../context/TelegramContext';
-const AdminOverviewTab = React.memo(({ summary, paddedDailyAnalytics, advancedAnalytics, orders, statusTags }) => {
+const AdminOverviewTab = React.memo(({ summary, paddedDailyAnalytics, advancedAnalytics, orders, statusTags, BACKEND_URL }) => {
   const { t } = useUser();
   return (
   <div className="tab-pane-animate">
@@ -26,14 +26,14 @@ const AdminOverviewTab = React.memo(({ summary, paddedDailyAnalytics, advancedAn
     </div>
 
     <div className="glass-card-luxury" style={{ marginBottom: 25, padding: 20 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 }}>
-        <div style={{ fontSize: 14, fontWeight: 900, display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span>📈</span> <span>ការវិភាគស៊ីជម្រៅ</span>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 }}>
+        <div style={{ fontSize: 14, fontWeight: 900, display: 'flex', alignItems: 'center', gap: 8, whiteSpace: 'nowrap', flexShrink: 0 }}>
+          <span>📈</span> <span style={{ whiteSpace: 'nowrap' }}>ការវិភាគស៊ីជម្រៅ</span>
         </div>
-        <div style={{ display: 'flex', gap: 10 }}>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', flexShrink: 0 }}>
           <button onClick={() => {
             const initData = window.Telegram?.WebApp?.initData || '';
-            fetch(`${window.location.origin}/api/admin/orders/export`, { headers: { 'X-TG-Data': initData } })
+            fetch(`${BACKEND_URL}/api/admin/orders/export`, { headers: { 'X-TG-Data': initData } })
               .then(res => res.blob())
               .then(blob => {
                 const url = window.URL.createObjectURL(blob);
@@ -42,11 +42,11 @@ const AdminOverviewTab = React.memo(({ summary, paddedDailyAnalytics, advancedAn
                 a.download = `MO-MO_Orders_${new Date().toISOString().split('T')[0]}.csv`;
                 a.click();
               });
-          }} style={{ background: 'var(--primary-color)', color: '#fff', padding: '6px 12px', borderRadius: 12, fontSize: 11, fontWeight: 800, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
+          }} style={{ background: '#1e293b', color: '#fff', padding: '6px 12px', borderRadius: 12, fontSize: 11, fontWeight: 800, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, whiteSpace: 'nowrap', flexShrink: 0 }}>
             📥 Export CSV
           </button>
-          <div style={{ fontSize: 10, fontWeight: 800, background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', padding: '4px 10px', borderRadius: 12, display: 'flex', alignItems: 'center', gap: 5 }}>
-            <div style={{ width: 6, height: 6, background: '#10b981', borderRadius: '50%', animation: 'pulse 2s infinite' }}></div>
+          <div style={{ fontSize: 10, fontWeight: 800, background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', padding: '4px 10px', borderRadius: 12, display: 'flex', alignItems: 'center', gap: 5, whiteSpace: 'nowrap', flexShrink: 0 }}>
+            <div style={{ width: 6, height: 6, background: '#10b981', borderRadius: '50%', animation: 'pulse 2s infinite', flexShrink: 0 }}></div>
             Marketing Active
           </div>
         </div>
@@ -140,7 +140,7 @@ const AdminOverviewTab = React.memo(({ summary, paddedDailyAnalytics, advancedAn
         <div key={o.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid var(--glass-border)' }}>
           <div>
             <div style={{ fontSize: 13, fontWeight: 800 }}>{o.user_name}</div>
-            <div className="ticket-id-luxury" style={{ fontSize: 9, padding: '2px 6px', marginTop: 4 }}>{o.order_code || o.id}</div>
+            <div className="ticket-id-luxury" style={{ fontSize: 9, padding: '2px 6px', marginTop: 4, textAlign: 'center' }}>{o.order_code || o.id}</div>
           </div>
           <div style={{ textAlign: 'right' }}>
             <div style={{ fontSize: 14, fontWeight: 900 }}>${parseFloat(o.total).toFixed(2)}</div>

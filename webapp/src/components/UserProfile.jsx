@@ -155,7 +155,7 @@ const UserProfile = ({ user, setView, BACKEND_URL, onViewInvoice, t, lang, toggl
            <button onClick={() => setView('home')} className="back-btn-pill">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
            </button>
-           <h1 className="detail-title-mega" style={{ fontSize: 24, margin: 0 }}>{t('my_account')}</h1>
+           <h1 className="detail-title-mega" style={{ fontSize: 24, margin: 0, whiteSpace: 'nowrap' }}>{t('my_account')}</h1>
         </div>
         
         <div className="hero-actions-right">

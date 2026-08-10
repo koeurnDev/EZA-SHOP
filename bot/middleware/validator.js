@@ -29,8 +29,13 @@ const schemas = {
   order: [
     body('userId').optional(),
     body('items').isArray({ min: 1 }).withMessage('Items must be a non-empty array'),
-    body('items.*.id').notEmpty().isString().withMessage('Item ID is required'),
+    body('items.*.id')
+      .notEmpty().withMessage('Item ID is required')
+      .customSanitizer(v => (v !== null && v !== undefined) ? String(v) : v)
+      .isString().withMessage('Item ID is required'),
     body('items.*.quantity').isInt({ min: 1, max: 100 }).withMessage('Quantity must be between 1 and 100'),
+    body('items.*.variant').optional(),
+    body('items.*.cartKey').optional(),
     body('total').isFloat({ min: 0 }).withMessage('Total must be a positive number'),
     body('deliveryInfo').isObject().withMessage('Delivery info is required'),
     body('deliveryInfo.phone')
@@ -40,6 +45,7 @@ const schemas = {
       .matches(/^[0-9\s\+\-\(\)]{8,15}$/).withMessage('Invalid phone number format. Must be 8-15 digits.'),
     body('deliveryInfo.address').notEmpty().trim().escape().withMessage('Address is required'),
     body('idempotencyKey').optional().trim().escape().isString(),
+    body('couponCode').optional().trim().isString(),
     validate
   ],
   product: [

@@ -78,13 +78,13 @@ const AdminCouponsTab = ({ BACKEND_URL }) => {
   };
 
   return (
-    <div className="admin-glass-card" style={{ padding: '20px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-        <h3 className="admin-section-title">🎫 គ្រប់គ្រងប័ណ្ណបញ្ចុះតម្លៃ (Coupons)</h3>
+    <div className="admin-glass-card" style={{ padding: '20px', overflow: 'hidden', boxSizing: 'border-box', maxWidth: '100%' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', gap: '10px' }}>
+        <h3 className="admin-section-title" style={{ whiteSpace: 'nowrap', margin: 0 }}>🎫 គ្រប់គ្រងប័ណ្ណបញ្ចុះតម្លៃ (Coupons)</h3>
         <button 
           className="admin-btn-primary" 
           onClick={() => setIsAdding(!isAdding)}
-          style={{ padding: '8px 15px', borderRadius: '8px' }}
+          style={{ padding: '8px 15px', borderRadius: '8px', whiteSpace: 'nowrap' }}
         >
           {isAdding ? 'បោះបង់' : '+ បង្កើតថ្មី'}
         </button>
@@ -92,7 +92,7 @@ const AdminCouponsTab = ({ BACKEND_URL }) => {
 
       {isAdding && (
         <form onSubmit={handleSubmit} style={{ background: 'rgba(0,0,0,0.02)', padding: '15px', borderRadius: '10px', marginBottom: '20px', border: '1px solid rgba(0,0,0,0.05)' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '15px' }}>
             <div>
               <label className="admin-form-label">កូដបញ្ចុះតម្លៃ (Code)</label>
               <input 
@@ -164,7 +164,7 @@ const AdminCouponsTab = ({ BACKEND_URL }) => {
         </div>
       ) : (
         <div style={{ overflowX: 'auto' }}>
-          <table className="admin-data-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <table className="admin-data-table" style={{ width: '100%', borderCollapse: 'collapse', whiteSpace: 'nowrap' }}>
             <thead>
               <tr style={{ borderBottom: '2px solid rgba(0,0,0,0.1)', textAlign: 'left' }}>
                 <th style={{ padding: '10px' }}>កូដ</th>

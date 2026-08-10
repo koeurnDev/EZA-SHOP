@@ -5952,9 +5952,10 @@ input:checked+.toggle-slider:before {
     display: block !important;
     background: white !important;
     width: 100% !important;
-    max-width: 58mm !important;
+    max-width: 48mm !important; /* Printable area for 58mm paper is 48mm */
     margin: 0 auto !important;
-    padding: 1mm 2mm;
+    padding: 0 !important; /* Remove padding to maximize space */
+    box-sizing: border-box !important;
     font-family: 'Kantumruy Pro', 'Inter', sans-serif !important;
     color: #000 !important;
     text-shadow: none !important;

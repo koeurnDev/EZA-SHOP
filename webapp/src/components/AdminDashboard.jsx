@@ -260,7 +260,7 @@ const AdminDashboard = ({
       setShowSuccessToast(true);
       setTimeout(() => setShowSuccessToast(false), 2500);
 
-      if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('success');
+      if (tg?.isVersionAtLeast?.('6.1') && tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
 
       setTrackingNumbers(prev => {
         const next = { ...prev };
@@ -892,9 +892,23 @@ const PrintableOrder = ({ order, shopName, subtitle, shopNote }) => {
         {order.note && <div className="print-row"><span>ចំណាំ:</span> <strong>{order.note}</strong></div>}
       </div>
       <div className="print-divider"></div>
-      <table className="print-table">
-        <thead><tr><th align="left">ឈ្មោះទំនិញ</th><th align="center">ចំនួន</th><th align="right">តម្លៃ</th></tr></thead>
-        <tbody>{items.map((item, i) => (<tr key={i}><td style={{ fontSize: '12px', fontWeight: 'bold' }}>{item.name}</td><td align="center">x{item.quantity}</td><td align="right">${(item.price * item.quantity).toFixed(2)}</td></tr>))}</tbody>
+      <table className="print-table" style={{ tableLayout: 'fixed', width: '100%' }}>
+        <thead>
+          <tr>
+            <th align="left" style={{ width: '55%' }}>ឈ្មោះទំនិញ</th>
+            <th align="center" style={{ width: '15%' }}>ចំនួន</th>
+            <th align="right" style={{ width: '30%' }}>តម្លៃ</th>
+          </tr>
+        </thead>
+        <tbody>
+          {items.map((item, i) => (
+            <tr key={i}>
+              <td style={{ fontSize: '11px', fontWeight: 'bold', wordWrap: 'break-word', whiteSpace: 'normal', paddingRight: '5px' }}>{item.name}</td>
+              <td align="center">x{item.quantity}</td>
+              <td align="right">${(item.price * item.quantity).toFixed(2)}</td>
+            </tr>
+          ))}
+        </tbody>
       </table>
       <div className="print-divider"></div>
       <div className="print-total"><span>សរុបរួម:</span> <span style={{ fontSize: 20, fontWeight: 950 }}>${parseFloat(order.total).toFixed(2)}</span></div>

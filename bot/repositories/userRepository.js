@@ -20,7 +20,11 @@ const userRepository = {
     await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS is_winback_reminded BOOLEAN DEFAULT false`).catch(() => {});
     
     const res = await pool.query('SELECT * FROM users ORDER BY last_seen DESC NULLS LAST, last_updated DESC');
-    return res.rows;
+    return res.rows.map(user => {
+      user.phone = decrypt(user.phone);
+      user.address = decrypt(user.address);
+      return user;
+    });
   },
 
   getAllIds: async () => {
@@ -33,7 +37,12 @@ const userRepository = {
       'UPDATE users SET role = $1, last_updated = CURRENT_TIMESTAMP WHERE user_id = $2 RETURNING *',
       [role, userId]
     );
-    return res.rows[0];
+    const user = res.rows[0];
+    if (user) {
+      user.phone = decrypt(user.phone);
+      user.address = decrypt(user.address);
+    }
+    return user;
   },
 
   deleteUser: async (userId) => {
@@ -52,7 +61,12 @@ const userRepository = {
     if (redisClient && redisClient.isOpen) {
       await redisClient.del(`ban_status:${userId}`).catch(e => console.warn('⚠️ Redis Error:', e.message));
     }
-    return res.rows[0];
+    const user = res.rows[0];
+    if (user) {
+      user.phone = decrypt(user.phone);
+      user.address = decrypt(user.address);
+    }
+    return user;
   },
 
   isBanned: async (userId) => {
@@ -84,7 +98,11 @@ const userRepository = {
       WHERE last_seen < NOW() - (INTERVAL '1 day' * $1)
       AND is_winback_reminded = false
     `, [days]);
-    return res.rows;
+    return res.rows.map(user => {
+      user.phone = decrypt(user.phone);
+      user.address = decrypt(user.address);
+      return user;
+    });
   },
 
   markAsWinbackReminded: async (userId) => {
@@ -115,7 +133,12 @@ const userRepository = {
       'UPDATE users SET loyalty_points = loyalty_points + $1, last_updated = CURRENT_TIMESTAMP WHERE user_id = $2 RETURNING *',
       [points, userId]
     );
-    return res.rows[0];
+    const user = res.rows[0];
+    if (user) {
+      user.phone = decrypt(user.phone);
+      user.address = decrypt(user.address);
+    }
+    return user;
   },
 
   getCount: async () => {

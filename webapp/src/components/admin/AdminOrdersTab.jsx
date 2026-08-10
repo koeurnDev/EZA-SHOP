@@ -1,13 +1,14 @@
 import React, { useMemo } from 'react';
 import DarkSelect from './DarkSelect';
 import { useUser } from '../../context/UserContext';
-
+import { useTelegram } from '../../context/TelegramContext';
 const AdminOrdersTab = React.memo(({
   orders, searchTerm, orderFilter, setOrderFilter,
   localSearchTerm, setLocalSearchTerm,
   updateStatus, setPrintingOrder, statusTags
 }) => {
   const { t } = useUser();
+  const { showPopup, showAlert, tg } = useTelegram();
 
   const ORDER_FILTER_OPTIONS = useMemo(() => [
     { value: 'all', label: t('admin_filter_all') },
@@ -87,6 +88,35 @@ const AdminOrdersTab = React.memo(({
             {o.status === 'processing' && <button className="ticket-btn-primary" onClick={() => updateStatus(o.id, 'shipped')}>✨ {t('admin_filter_shipped')}</button>}
             {['paid', 'processing', 'shipped', 'delivering', 'delivered'].includes(o.status) && (
               <button className="icon-btn-admin" style={{ flexShrink: 0 }} aria-label="Print Order" onClick={() => {
+                const tg = window.Telegram?.WebApp;
+                if (tg && ['android', 'ios'].includes(tg.platform) && tg.showPopup) {
+                  tg.showPopup({
+                    title: 'ជម្រើស Print (ទូរស័ព្ទ)',
+                    message: 'Telegram មិនអនុញ្ញាតឱ្យ Print ផ្ទាល់ទេ។ សូមជ្រើសរើស:',
+                    buttons: [
+                      { id: 'copy', type: 'default', text: 'ចម្លងអត្ថបទវិក្កយបត្រ (Copy)' },
+                      { id: 'browser', type: 'default', text: 'របៀប Print ពេញលេញ' },
+                      { type: 'cancel' }
+                    ]
+                  }, (buttonId) => {
+                    if (buttonId === 'copy') {
+                      try {
+                        const items = typeof o.items === 'string' ? JSON.parse(o.items) : (o.items || []);
+                        const itemsText = items.map(i => `- ${i.product_name} x${i.quantity} ($${i.price})`).join('\n');
+                        const text = `វិក្កយបត្រ: ${o.order_code || o.id}\nអតិថិជន: ${o.user_name}\nទូរស័ព្ទ: ${o.phone}\nទីតាំង: ${o.address || ''}${o.province ? `, ${o.province}` : ''}\n----------------\n${itemsText}\n----------------\nសរុប: $${parseFloat(o.total).toFixed(2)}`;
+                        navigator.clipboard.writeText(text);
+                        tg.showAlert("បានចម្លង(Copy)ជោគជ័យ! លោកអ្នកអាច Paste ក្នុងកម្មវិធី Print បាន។");
+                      } catch (e) {
+                        console.error(e);
+                        tg.showAlert("មានបញ្ហាក្នុងការចម្លង!");
+                      }
+                    } else if (buttonId === 'browser') {
+                      tg.showAlert("ដើម្បី Print ជាវិក្កយបត្រពេញលេញ:\n1. ចុចសញ្ញា (⋮) នៅខាងលើស្តាំ\n2. ជ្រើសរើសយក 'Open in browser'\n3. ចុចប៊ូតុង Print ម្ដងទៀតក្នុង Browser!");
+                    }
+                  });
+                  return;
+                }
+                
                 setPrintingOrder(o);
                 setTimeout(() => { window.print(); setPrintingOrder(null); }, 100);
               }}>

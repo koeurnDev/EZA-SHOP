@@ -71,6 +71,7 @@ const PromoBanner = ({ threshold, promoText, promoBannerUrl, t, lang }) => {
       const targetProduct = products.find(p => String(p.id) === String(banner.targetId));
       if (targetProduct) {
         setSelectedProduct(targetProduct);
+        setView('product_detail');
       }
     } else if (banner.linkType === 'cat') {
       setSelectedCategory(banner.targetId);

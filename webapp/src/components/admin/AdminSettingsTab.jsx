@@ -110,9 +110,9 @@ const AdminSettingsTab = React.memo(({
 
       {/* Banners + Logo */}
       <div className="admin-responsive-grid" style={{ gap: 15 }}>
-        <div className="glass-card-luxury" style={{ padding: 20, minWidth: 0 }}>
+        <div className="glass-card-luxury" style={{ padding: 20, minWidth: 0, overflow: 'hidden' }}>
           <div style={{ fontWeight: 950, marginBottom: 15, fontSize: 14 }}>🖼️ {t('admin_shop_banner')}</div>
-          <div style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 10 }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
             {(promoBannerUrl ? promoBannerUrl.split(',').map(u => u.trim()).filter(Boolean) : []).map((img, idx) => {
               const [url, targetStr] = img.split('|');
               let linkType = '';
@@ -125,7 +125,7 @@ const AdminSettingsTab = React.memo(({
               }
 
               return (
-              <div key={idx} style={{ position: 'relative', flexShrink: 0, width: 140, display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <div key={idx} style={{ position: 'relative', width: 140, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
                 <div style={{ position: 'relative', width: '100%', height: 80, borderRadius: 12, overflow: 'hidden', border: '1px solid var(--border-subtle)' }}>
                   <img src={url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="" crossOrigin="anonymous" />
                   <button className="remove-thumb-btn" onClick={() => removeBanner(idx)}>✕</button>

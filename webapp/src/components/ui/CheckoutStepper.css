@@ -3,7 +3,7 @@
   align-items: center;
   gap: 16px;
   padding: 16px;
-  background-color: white;
+  background-color: var(--bg-surface);
 }
 
 .stepper-progress-circle {
@@ -18,15 +18,13 @@
 .stepper-circle-progress {
   stroke-linecap: round;
   transition: stroke-dashoffset 0.5s ease;
-  transform: rotate(-90deg);
-  transform-origin: 50% 50%;
 }
 
 .stepper-progress-text {
   position: absolute;
   font-size: 13px;
   font-weight: 600;
-  color: #111827; /* gray-900 */
+  color: var(--text-main);
 }
 
 .stepper-info {
@@ -39,11 +37,11 @@
   margin: 0;
   font-size: 18px;
   font-weight: 700;
-  color: #111827; /* gray-900 */
+  color: var(--text-bold);
 }
 
 .stepper-next-title {
   margin: 0;
   font-size: 13px;
-  color: #6b7280; /* gray-500 */
+  color: var(--text-muted);
 }

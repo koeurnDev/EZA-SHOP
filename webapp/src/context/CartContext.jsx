@@ -112,7 +112,7 @@ export const CartProvider = ({ children }) => {
     setCart(prev => {
       const updated = prev.map(item => {
         const isMatch = item.cartKey ? item.cartKey === cartKeyOrId : item.id === cartKeyOrId;
-        return isMatch ? { ...item, quantity: item.quantity + delta } : item;
+        return isMatch ? { ...item, quantity: Math.min(item.quantity + delta, 100) } : item;
       });
       return updated.filter(item => item.quantity > 0);
     });

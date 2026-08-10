@@ -59,19 +59,22 @@
 /* Badge styling matching the dark circle in the image */
 .modern-nav-badge {
   position: absolute;
-  top: -4px;
-  right: -8px;
+  top: -6px;
+  right: -12px;
   background-color: var(--text-bold); /* Dark background */
   color: var(--bg-surface);
-  font-size: 11px;
-  font-weight: 700;
-  width: 18px;
+  font-size: 10px;
+  font-weight: 800;
+  min-width: 18px;
   height: 18px;
-  border-radius: 50%;
+  padding: 0 4px;
+  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
   border: 2px solid var(--bg-surface); /* Creates a cutout effect against other icons */
+  white-space: nowrap;
+  box-sizing: border-box;
 }
 
 /* The thick, rounded underline for active state */

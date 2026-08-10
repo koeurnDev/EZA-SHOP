@@ -88,9 +88,19 @@ bot.action(/^approve_order_(.+)$/, async (ctx) => {
 bot.action(/^reject_order_(.+)$/, async (ctx) => {
   try {
     const orderCode = ctx.match[1];
+    const telegramUserId = String(ctx.from.id);
+    let isAdmin = telegramUserId === String(process.env.SUPERADMIN_ID);
     
-    // 🛡️ SECURITY FIX: Check if the user is the Super Admin
-    if (String(ctx.from.id) !== String(process.env.SUPERADMIN_ID)) {
+    if (!isAdmin) {
+      const userRepository = require('../repositories/userRepository');
+      const dbUser = await userRepository.findById(telegramUserId);
+      if (dbUser && (dbUser.role === 'admin' || dbUser.role === 'staff')) {
+        isAdmin = true;
+      }
+    }
+
+    // 🛡️ SECURITY FIX: Check if the user is an Admin or Staff
+    if (!isAdmin) {
       return ctx.answerCbQuery('❌ Access Denied: Admin Only', { show_alert: true });
     }
 

@@ -204,8 +204,15 @@ const orderService = {
     const order = await orderRepository.findByCode(orderCode);
     if (!order) throw new Error('Order not found');
     
-    const isAdmin = String(tgUser.id) === String(process.env.SUPERADMIN_ID);
     const isSystem = String(tgUser.id) === 'SYSTEM';
+    let isAdmin = String(tgUser.id) === String(process.env.SUPERADMIN_ID);
+    
+    if (!isSystem && !isAdmin) {
+      const dbUser = await userRepository.findById(tgUser.id);
+      if (dbUser && (dbUser.role === 'admin' || dbUser.role === 'staff')) {
+        isAdmin = true;
+      }
+    }
 
     // 🛡️ Principal: Admin or owner may confirm; system is the internal worker.
     if (!isSystem && String(tgUser.id) !== String(order.user_id) && !isAdmin) {
