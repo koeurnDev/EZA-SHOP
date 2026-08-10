@@ -84,7 +84,7 @@ const orderService = {
       let grossTotal = 0, totalItemDiscount = 0, totalQty = 0;
 
       for (const cartItem of items) {
-        const realProduct = dbProducts.find(p => p.id === cartItem.id);
+        const realProduct = dbProducts.find(p => String(p.id) === String(cartItem.id));
         if (!realProduct) throw new Error('Invalid Product');
         grossTotal += realProduct.price * cartItem.quantity;
         totalQty += cartItem.quantity;
