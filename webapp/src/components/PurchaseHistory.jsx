@@ -55,7 +55,7 @@ const PurchaseHistory = ({ setView, BACKEND_URL }) => {
                <div className="history-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 15 }}>
                   <div>
                     <div style={{ fontSize: 11, fontWeight: 700, opacity: 0.5, marginBottom: 4, color: 'var(--text-muted)' }}>
-                        ORDER #{order.order_code || order.id}
+                        ORDER {order.order_code || order.id}
                     </div>
                     <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-bold)' }}>
                         {new Date(order.created_at).toLocaleDateString()}

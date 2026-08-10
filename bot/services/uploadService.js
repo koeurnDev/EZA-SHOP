@@ -9,36 +9,45 @@ const sharp = require('sharp');
 const uploadService = {
   uploadImage: async (file) => {
     if (!file) throw new Error('No file provided');
+    const fs = require('fs');
+    const buffer = file.buffer || fs.readFileSync(file.path);
     
-    if (file.mimetype.startsWith('video/')) {
-      const b64 = file.buffer.toString('base64');
-      const dataURI = `data:${file.mimetype};base64,${b64}`;
-      const res = await cloudinary.uploader.upload(dataURI, {
-        folder: 'products_videos',
-        resource_type: 'video'
-      });
-      return res.secure_url;
-    }
-    
-    // 🛠️ Optimization Pipeline:
-    // 1. Resize to max 1000px width (maintaining aspect ratio)
-    // 2. Convert to WebP for superior compression
-    // 3. Compress quality to 80% (Sweet spot for quality/size)
-    const optimizedBuffer = await sharp(file.buffer)
-      .resize({ width: 1000, withoutEnlargement: true })
-      .webp({ quality: 80 })
-      .toBuffer();
+    try {
+      if (file.mimetype.startsWith('video/')) {
+        const b64 = buffer.toString('base64');
+        const dataURI = `data:${file.mimetype};base64,${b64}`;
+        const res = await cloudinary.uploader.upload(dataURI, {
+          folder: 'products_videos',
+          resource_type: 'video'
+        });
+        return res.secure_url;
+      }
+      
+      // 🛠️ Optimization Pipeline:
+      // 1. Resize to max 1000px width (maintaining aspect ratio)
+      // 2. Convert to WebP for superior compression
+      // 3. Compress quality to 80% (Sweet spot for quality/size)
+      const optimizedBuffer = await sharp(buffer)
+        .resize({ width: 1000, withoutEnlargement: true })
+        .webp({ quality: 80 })
+        .toBuffer();
 
-    // Convert buffer to base64 for Cloudinary
-    const b64 = optimizedBuffer.toString('base64');
-    const dataURI = 'data:image/webp;base64,' + b64;
-    
-    const res = await cloudinary.uploader.upload(dataURI, {
-      folder: 'products',
-      resource_type: 'image'
-    });
-    
-    return res.secure_url;
+      // Convert buffer to base64 for Cloudinary
+      const b64 = optimizedBuffer.toString('base64');
+      const dataURI = 'data:image/webp;base64,' + b64;
+      
+      const res = await cloudinary.uploader.upload(dataURI, {
+        folder: 'products',
+        resource_type: 'image'
+      });
+      
+      return res.secure_url;
+    } finally {
+      // 🧹 Clean up the temporary file from disk
+      if (file.path && fs.existsSync(file.path)) {
+        fs.unlinkSync(file.path);
+      }
+    }
   },
 
   deleteImageByUrl: async (url) => {

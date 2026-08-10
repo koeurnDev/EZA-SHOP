@@ -26,7 +26,7 @@ const checkBypass = () => {
  * Middleware: verifyUser
  * Authenticates requests via X-TG-Data (Direct Telegram) or Authorization (JWT).
  */
-const verifyUser = (req, res, next) => {
+const verifyUser = async (req, res, next) => {
   const authHeader = req.get('Authorization');
   const initData = req.get('X-TG-Data');
 
@@ -49,6 +49,16 @@ const verifyUser = (req, res, next) => {
     const token = jwt.sign({ id: user.id, username: user.username }, SESSION_SECRET, { expiresIn: SESSION_EXPIRY });
     res.set('X-Session-Token', token);
     
+    // 🛡 Ban Check
+    try {
+      const userRepository = require('../repositories/userRepository');
+      if (await userRepository.isBanned(user.id)) {
+        return res.status(403).json({ success: false, error: 'គណនីរបស់អ្នកត្រូវបានផ្អាក (Account Banned)', code: 'BANNED' });
+      }
+    } catch (e) {
+      console.warn('⚠️ Auth: Failed to check ban status');
+    }
+
     req.user = { user_id: Number(user.id), ...user };
     req.tgUser = user;
     return next();
@@ -59,6 +69,17 @@ const verifyUser = (req, res, next) => {
     const token = authHeader.split(' ')[1];
     try {
       const decoded = jwt.verify(token, SESSION_SECRET);
+      
+      // 🛡 Ban Check
+      try {
+        const userRepository = require('../repositories/userRepository');
+        if (await userRepository.isBanned(decoded.id)) {
+          return res.status(403).json({ success: false, error: 'គណនីរបស់អ្នកត្រូវបានផ្អាក (Account Banned)', code: 'BANNED' });
+        }
+      } catch (e) {
+        console.warn('⚠️ Auth: Failed to check ban status');
+      }
+
       req.user = { user_id: decoded.id, username: decoded.username };
       req.tgUser = { id: decoded.id, username: decoded.username };
       return next();
@@ -79,14 +100,41 @@ const verifyUser = (req, res, next) => {
   return res.status(401).json({ success: false, error: 'Auth Required' });
 };
 
-const isAdmin = (req, res, next) => {
-  // Principal: Re-use verifyUser logic then check SuperAdmin ID
-  verifyUser(req, res, () => {
+const isStaffOrAdmin = (req, res, next) => {
+  // Principal: Re-use verifyUser logic then check SuperAdmin ID or Role
+  verifyUser(req, res, async () => {
     if (Number(req.user.user_id) === Number(process.env.SUPERADMIN_ID)) {
       return next();
     }
-    res.status(403).json({ success: false, error: 'Access Denied' });
+    try {
+      const userRepository = require('../repositories/userRepository');
+      const dbUser = await userRepository.findById(String(req.user.user_id));
+      if (dbUser && (dbUser.role === 'admin' || dbUser.role === 'staff')) {
+        return next();
+      }
+    } catch (e) {
+      console.warn('⚠️ Auth: Failed to check user role');
+    }
+    res.status(403).json({ success: false, error: 'Access Denied: Staff/Admin Only' });
   });
 };
 
-module.exports = { isAdmin, verifyUser };
+const isSuperAdminOnly = (req, res, next) => {
+  verifyUser(req, res, async () => {
+    if (Number(req.user.user_id) === Number(process.env.SUPERADMIN_ID)) {
+      return next();
+    }
+    try {
+      const userRepository = require('../repositories/userRepository');
+      const dbUser = await userRepository.findById(String(req.user.user_id));
+      if (dbUser && dbUser.role === 'admin') {
+        return next();
+      }
+    } catch (e) {
+      console.warn('⚠️ Auth: Failed to check superadmin role');
+    }
+    res.status(403).json({ success: false, error: 'Access Denied: SuperAdmin Only' });
+  });
+};
+
+module.exports = { isStaffOrAdmin, isSuperAdminOnly, verifyUser };

@@ -44,8 +44,9 @@ bot.command('orders', async (ctx) => {
       const date = new Date(o.created_at).toLocaleDateString('km-KH');
       const statusIcon = o.status === 'paid' ? '✅' : o.status === 'shipped' ? '🚚' : o.status === 'processing' ? '📦' : o.status === 'pending' ? '⏳' : '❌';
       const statusText = o.status === 'paid' ? 'បានបង់ប្រាក់' : o.status === 'shipped' ? 'កំពុងដឹកជញ្ជូន' : o.status === 'processing' ? 'កំពុងរៀបចំ' : o.status === 'pending' ? 'រង់ចាំការបង់ប្រាក់' : 'បានលុប';
+      const displayCode = o.order_code || o.id;
       
-      msg += `${statusIcon} *#${(o.order_code || o.id).substring(0, 8)}*\n`;
+      msg += `${statusIcon} *\`${displayCode}\`*\n`;
       msg += `   ↳ ស្ថានភាព: ${statusText}\n`;
       msg += `   ↳ ថ្ងៃទី: ${date} | សរុប: $${o.total}\n\n`;
     });
@@ -88,6 +89,11 @@ bot.action(/^reject_order_(.+)$/, async (ctx) => {
   try {
     const orderCode = ctx.match[1];
     
+    // 🛡️ SECURITY FIX: Check if the user is the Super Admin
+    if (String(ctx.from.id) !== String(process.env.SUPERADMIN_ID)) {
+      return ctx.answerCbQuery('❌ Access Denied: Admin Only', { show_alert: true });
+    }
+
     const res = await pool.query('UPDATE orders SET status = $1 WHERE order_code = $2 RETURNING user_id', ['cancelled', orderCode]);
     
     if (res.rowCount > 0) {

@@ -17,6 +17,11 @@ const wishlistRepository = {
 
   remove: async (userId, productId) => {
     await pool.query('DELETE FROM wishlist WHERE user_id = $1 AND product_id = $2', [userId, productId]);
+  },
+
+  countByUserId: async (userId) => {
+    const res = await pool.query('SELECT COUNT(*) as total FROM wishlist WHERE user_id = $1', [userId]);
+    return parseInt(res.rows[0].total, 10) || 0;
   }
 };
 

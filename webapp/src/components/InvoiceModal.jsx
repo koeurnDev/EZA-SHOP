@@ -50,7 +50,7 @@ const InvoiceModal = ({ order, onClose, paymentQrUrl, paymentInfo, BACKEND_URL, 
   if (!localOrder) return null;
 
   const isDraft = localOrder.id === 'DRAFT';
-  const displayId = isDraft ? '...' : (localOrder.order_code || `MO-${String(localOrder.id).padStart(5, '0')}`);
+  const displayId = isDraft ? '...' : (localOrder.order_code || String(localOrder.id));
   const dbId = localOrder.id;
   const items = React.useMemo(() => typeof localOrder.items === 'string' ? JSON.parse(localOrder.items) : localOrder.items, [localOrder.items]);
 
@@ -313,7 +313,7 @@ const InvoiceModal = ({ order, onClose, paymentQrUrl, paymentInfo, BACKEND_URL, 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(212,175,55,0.06)', border: '1px dashed #d4af37', borderRadius: 8, padding: '7px 12px', marginBottom: 12 }}>
           <span style={{ fontSize: 10, fontWeight: 900, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 1 }}>{lang === 'kh' ? 'លេខកូដ' : 'Ref #'}</span>
           <span style={{ fontSize: 13, fontWeight: 950, color: '#d4af37', fontFamily: 'monospace', letterSpacing: 1.5 }}>
-            {isDraft ? '...' : (localOrder.order_code || `MO-${String(localOrder.id).padStart(5, '0')}`)}
+            {isDraft ? '...' : (localOrder.order_code || String(localOrder.id))}
           </span>
         </div>
 

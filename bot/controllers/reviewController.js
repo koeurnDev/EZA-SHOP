@@ -1,4 +1,5 @@
 const reviewRepository = require('../repositories/reviewRepository');
+const orderRepository = require('../repositories/orderRepository');
 
 const reviewController = {
   getReviewsByProduct: async (req, res) => {
@@ -25,6 +26,15 @@ const reviewController = {
 
       if (rating < 1 || rating > 5) {
         return res.status(400).json({ success: false, error: 'Rating must be between 1 and 5' });
+      }
+
+      // 🛡️ Security Check: Prevent review bombing
+      const hasPurchased = await orderRepository.hasPurchasedProduct(user.id, product_id);
+      if (!hasPurchased) {
+        return res.status(403).json({ 
+          success: false, 
+          error: 'អ្នកអាចវាយតម្លៃបាន លុះត្រាតែអ្នកធ្លាប់បានទិញ និងទទួលបានទំនិញនេះ។ (You must purchase and receive this product before reviewing.)' 
+        });
       }
 
       const reviewData = {

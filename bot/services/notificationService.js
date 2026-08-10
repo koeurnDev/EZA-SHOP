@@ -48,12 +48,15 @@ notificationQueue.process(async (job) => {
     if (bot) {
       const itemsList = (items || []).map(it => `- ${it.name} x ${it.quantity}`).join('\n');
       
+      const timeStr = new Date().toLocaleString('en-GB', { timeZone: 'Asia/Phnom_Penh', hour12: true });
+      
       if (type === 'order_created') {
         const ticket = `🛒 *ការកម្ម៉ង់ថ្មី (New Order)*\n` +
                       `🆔 លេខសម្គាល់: \`${order.order_code}\`\n` +
                       `👤 អតិថិជន: *${order.user_name}*\n` +
                       `📝 ទំនិញ:\n${itemsList}\n\n` +
-                      `💰 សរុប: *$${order.total}*`;
+                      `💰 សរុប: *$${order.total}*\n` +
+                      `🕒 កាលបរិច្ឆេទ: *${timeStr}*`;
         await safeSendTelegram('sendMessage', adminId, ticket, { 
           parse_mode: 'Markdown',
           reply_markup: {
@@ -66,14 +69,16 @@ notificationQueue.process(async (job) => {
         
         const userTicket = `🛒 *ការកម្ម៉ង់របស់អ្នកត្រូវបានទទួល!*\n` +
                           `🆔 លេខសម្គាល់: \`${order.order_code}\`\n` +
-                          `💰 សរុប: *$${order.total}*`;
+                          `💰 សរុប: *$${order.total}*\n` +
+                          `🕒 កាលបរិច្ឆេទ: *${timeStr}*`;
         await safeSendTelegram('sendMessage', userId, userTicket, { parse_mode: 'Markdown' });
       } else if (type === 'order_paid') {
         const ticket = `🎫 *វិក្កយបត្រកម្មង់ដែលបានបង់ប្រាក់*\n` +
                        `🆔 លេខសម្គាល់: \`${order.order_code}\`\n` +
                        `👤 អតិថិជន: *${order.user_name}*\n` +
                        `📦 ទំនិញ:\n${itemsList}\n` +
-                       `💰 សរុប: *$${order.total}*`;
+                       `💰 សរុប: *$${order.total}*\n` +
+                       `🕒 កាលបរិច្ឆេទ: *${timeStr}*`;
         console.log(`ℹ️ Telegram send payload: adminId=${adminId}, userId=${userId}`);
     await safeSendTelegram('sendMessage', adminId, ticket, { parse_mode: 'Markdown' });
 
@@ -96,7 +101,8 @@ notificationQueue.process(async (job) => {
         const ticket = `🧾 *វិក្កយបត្របានបញ្ជូនពីអតិថិជន*\n` +
                        `🆔 លេខសម្គាល់: \`${order.order_code}\`\n` +
                        `👤 អតិថិជន: *${order.user_name}*\n` +
-                       `💰 សរុប: *$${order.total}*\n\n` +
+                       `💰 សរុប: *$${order.total}*\n` +
+                       `🕒 កាលបរិច្ឆេទ: *${timeStr}*\n\n` +
                        `👇 សូមពិនិត្យរូបភាពវិក្កយបត្រខាងក្រោម ឬ ក្នុង Admin Dashboard។`;
         await safeSendTelegram('sendPhoto', adminId, order.receipt_url, { 
           caption: ticket, 
@@ -120,12 +126,15 @@ const sendTelegramNotification = async (type, adminId, userId, order, items) => 
   if (!bot) return;
   const itemsList = (items || []).map(it => `- ${it.name} x ${it.quantity}`).join('\n');
 
+  const timeStr = new Date().toLocaleString('en-GB', { timeZone: 'Asia/Phnom_Penh', hour12: true });
+
   if (type === 'order_created') {
     const ticket = `🛒 *ការកម្ម៉ង់ថ្មី (New Order)*\n` +
                   `🆔 លេខសម្គាល់: \`${order.order_code}\`\n` +
                   `👤 អតិថិជន: *${order.user_name}*\n` +
                   `📝 ទំនិញ:\n${itemsList}\n\n` +
-                  `💰 សរុប: *$${order.total}*`;
+                  `💰 សរុប: *$${order.total}*\n` +
+                  `🕒 កាលបរិច្ឆេទ: *${timeStr}*`;
     await safeSendTelegram('sendMessage', adminId, ticket, { 
       parse_mode: 'Markdown',
       reply_markup: {
@@ -137,14 +146,16 @@ const sendTelegramNotification = async (type, adminId, userId, order, items) => 
     });
     const userTicket = `🛒 *ការកម្ម៉ង់របស់អ្នកត្រូវបានទទួល!*\n` +
                       `🆔 លេខសម្គាល់: \`${order.order_code}\`\n` +
-                      `💰 សរុប: *$${order.total}*`;
+                      `💰 សរុប: *$${order.total}*\n` +
+                      `🕒 កាលបរិច្ឆេទ: *${timeStr}*`;
     await safeSendTelegram('sendMessage', userId, userTicket, { parse_mode: 'Markdown' });
   } else if (type === 'order_paid') {
     const ticket = `🎫 *វិក្កយបត្រកម្មង់ដែលបានបង់ប្រាក់*\n` +
                    `🆔 លេខសម្គាល់: \`${order.order_code}\`\n` +
                    `👤 អតិថិជន: *${order.user_name}*\n` +
                    `📦 ទំនិញ:\n${itemsList}\n` +
-                   `💰 សរុប: *$${order.total}*`;
+                   `💰 សរុប: *$${order.total}*\n` +
+                   `🕒 កាលបរិច្ឆេទ: *${timeStr}*`;
     await safeSendTelegram('sendMessage', adminId, ticket, { parse_mode: 'Markdown' });
     const userTicket = `✨ *វិក្កយបត្រកម្មង់ដែលបានបង់ប្រាក់*\n` +
                       `🆔 លេខសម្គាល់: \`${order.order_code}\`\n` +
@@ -164,7 +175,8 @@ const sendTelegramNotification = async (type, adminId, userId, order, items) => 
     const ticket = `🧾 *វិក្កយបត្របានបញ្ជូនពីអតិថិជន*\n` +
                    `🆔 លេខសម្គាល់: \`${order.order_code}\`\n` +
                    `👤 អតិថិជន: *${order.user_name}*\n` +
-                   `💰 សរុប: *$${order.total}*\n\n` +
+                   `💰 សរុប: *$${order.total}*\n` +
+                   `🕒 កាលបរិច្ឆេទ: *${timeStr}*\n\n` +
                    `👇 សូមពិនិត្យរូបភាពវិក្កយបត្រខាងក្រោម ឬ ក្នុង Admin Dashboard.`;
     await safeSendTelegram('sendPhoto', adminId, order.receipt_url, { 
       caption: ticket, 

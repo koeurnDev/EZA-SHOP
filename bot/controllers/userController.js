@@ -47,6 +47,20 @@ const userController = {
       console.error('Error updating user profile:', error);
       res.status(500).json({ success: false, error: 'Failed to update profile' });
     }
+  },
+
+  // 🟢 Ping: silently update last_seen for the current user
+  ping: async (req, res) => {
+    try {
+      const tgUser = req.tgUser || req.user;
+      if (!tgUser?.id) return res.json({ success: true }); // Graceful no-op
+      const userName = tgUser.first_name || tgUser.username || null;
+      await userRepository.updateLastSeen(String(tgUser.id), userName);
+      res.json({ success: true });
+    } catch (err) {
+      // Non-critical — always return 200 so frontend doesn't retry aggressively
+      res.json({ success: true });
+    }
   }
 };
 

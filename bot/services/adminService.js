@@ -34,6 +34,19 @@ const adminService = {
   },
 
   getInitialData: async () => {
+    const { redisClient } = require('../config/redis');
+    const cacheKey = 'app:initial_data';
+
+    // ⚡ Redis Smart Cache: Serve from RAM
+    if (redisClient && redisClient.isOpen) {
+      try {
+        const cached = await redisClient.get(cacheKey);
+        if (cached) return JSON.parse(cached);
+      } catch (e) {
+        console.warn('⚠️ Redis Cache Error:', e.message);
+      }
+    }
+
     const [products, settings, categories, discounts] = await Promise.all([
       productRepository.findAllMinimal(),
       settingsRepository.getByKeys([
@@ -44,7 +57,14 @@ const adminService = {
       couponRepository.findActiveAuto()
     ]);
 
-    return { products, totalProducts: products.length, settings, categories, discounts };
+    const result = { products, totalProducts: products.length, settings, categories, discounts };
+
+    // Cache the entire massive object for 60 seconds
+    if (redisClient && redisClient.isOpen) {
+      redisClient.setEx(cacheKey, 60, JSON.stringify(result)).catch(() => {});
+    }
+
+    return result;
   },
 
   // --- Category Management ---

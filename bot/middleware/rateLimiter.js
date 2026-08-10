@@ -48,14 +48,22 @@ const orderCreationLimiter = async (req, res, next) => {
   if (isDev && (ip === '::1' || ip === '127.0.0.1' || ip.includes('localhost'))) {
     return next();
   }
-
-  const key = `rate:order:${ip}`;
+  // 🛡️ Use Telegram User ID for unbreakable rate limiting (instead of easily bypassed IP)
+  const tgId = req.tgUser?.id || req.user?.user_id;
+  
+  if (!tgId) {
+    // If somehow authentication failed but verifyUser passed (impossible), fallback to IP
+    console.warn('⚠️ Order Rate Limiter: tgId missing, falling back to IP');
+  }
+  
+  const identifier = tgId || ip;
+  const key = `rate:order:${identifier}`;
   
   try {
     const count = await redisRest.incr(key);
     if (count === 1) redisRest.expire(key, 600).catch(() => {}); // 10 minutes, fire-and-forget
     
-    // 🛡️ Increased limit to 15 orders for better testing/UX flow
+    // 🛡️ Limit to 15 orders per user per 10 minutes
     if (count > 15) {
       return res.status(429).json({ success: false, error: 'Too many orders. Please wait 10 minutes.' });
     }

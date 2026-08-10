@@ -52,7 +52,7 @@ const AdminOrdersTab = React.memo(({
       {filtered.map(o => (
         <div key={o.id} className="glass-card-luxury" style={{ marginBottom: 15, padding: 15 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 }}>
-            <span className="ticket-id-luxury">{o.order_code || `#MO-${o.id}`}</span>
+            <span className="ticket-id-luxury">{o.order_code || o.id}</span>
             <span style={{ fontSize: 11, fontWeight: 900, background: 'var(--glass-border)', padding: '4px 10px', borderRadius: 8 }}>
               {(statusTags[o.status] || {}).icon} {(statusTags[o.status] || {}).label}
             </span>

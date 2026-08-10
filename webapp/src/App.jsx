@@ -96,6 +96,24 @@ function App() {
     localStorage.setItem('momo_shipping_info', JSON.stringify(formData));
   }, [formData]);
 
+  // 🟢 Online Status Tracking: Ping server every 2 minutes
+  useEffect(() => {
+    if (!user?.id) return;
+    const pingServer = async () => {
+      try {
+        await fetch(`${BACKEND_URL}/api/ping`, {
+          method: 'POST',
+          headers: { 'x-tg-data': tg?.initData || '' }
+        });
+      } catch (err) {
+        // Silent fail
+      }
+    };
+    pingServer(); // Initial ping on load
+    const interval = setInterval(pingServer, 2 * 60 * 1000); // Ping every 2 mins
+    return () => clearInterval(interval);
+  }, [user?.id, tg?.initData]);
+
   // Navigation & BackButton Logic
   useEffect(() => {
     if (!tg) return;

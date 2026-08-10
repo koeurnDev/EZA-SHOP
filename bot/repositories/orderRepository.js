@@ -9,6 +9,7 @@ const orderRepository = {
         ALTER TABLE orders ADD COLUMN IF NOT EXISTS discount_amount DECIMAL(12,2) DEFAULT 0;
         ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_fee DECIMAL(12,2) DEFAULT 0;
         ALTER TABLE orders ADD COLUMN IF NOT EXISTS gross_total DECIMAL(12,2) DEFAULT 0;
+        ALTER TABLE orders ADD COLUMN IF NOT EXISTS is_reminded BOOLEAN DEFAULT false;
       `);
     } catch (e) {
       console.warn('⚠️ Migration Guard: Non-critical failure (Columns might already exist or permission issue)');
@@ -70,6 +71,9 @@ const orderRepository = {
   },
 
   findAll: async (limit = 100, offset = 0) => {
+    // 🛡️ Migration: Ensure is_reminded column exists
+    await pool.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS is_reminded BOOLEAN DEFAULT false`).catch(() => {});
+
     const res = await pool.query('SELECT * FROM orders ORDER BY created_at DESC LIMIT $1 OFFSET $2', [limit, offset]);
     return res.rows;
   },
@@ -138,11 +142,17 @@ const orderRepository = {
     const res = await pool.query(
       `SELECT * FROM orders 
        WHERE status = 'pending' 
+       AND is_reminded = false
        AND created_at > NOW() - (INTERVAL '1 hour' * $1)
+       AND created_at < NOW() - INTERVAL '2 hours'
        ORDER BY created_at ASC`,
       [lookbackHours]
     );
     return res.rows;
+  },
+
+  markAsReminded: async (id) => {
+    await pool.query('UPDATE orders SET is_reminded = true WHERE id = $1', [id]);
   },
 
   // --- Advanced Analytics / BI ---
@@ -194,6 +204,19 @@ const orderRepository = {
       aov: parseFloat(res.rows[0]?.aov || 0),
       aov_30d: parseFloat(res.rows[0]?.aov_30d || 0)
     };
+  },
+
+  hasPurchasedProduct: async (userId, productId) => {
+    // 🛡️ Security Check: Ensure user has a DELIVERED order containing this product ID
+    const res = await pool.query(`
+      SELECT 1 
+      FROM orders, jsonb_array_elements(items::jsonb) AS item 
+      WHERE user_id = $1 
+      AND status = 'delivered' 
+      AND item->>'id' = $2 
+      LIMIT 1
+    `, [userId, String(productId)]);
+    return res.rows.length > 0;
   }
 };
 

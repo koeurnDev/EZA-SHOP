@@ -4,7 +4,7 @@ const helmet = require('helmet');
 const compression = require('compression');
 const { observabilityLogger, telemetryHandler } = require('./middleware/observability');
 const { globalLimiter } = require('./middleware/rateLimiter');
-const { verifyUser, isAdmin } = require('./middleware/auth');
+const { verifyUser, isStaffOrAdmin, isSuperAdminOnly } = require('./middleware/auth');
 const validator = require('./middleware/validator');
 
 // Controller Imports
@@ -17,10 +17,25 @@ const analyticsController = require('./controllers/analyticsController');
 
 // Middleware Config
 const { orderCreationLimiter } = require('./middleware/rateLimiter');
+const os = require('os');
+const path = require('path');
 const multer = require('multer');
+const rateLimit = require('express-rate-limit');
+const uploadLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour window
+  max: 20, // limit each admin to 20 uploads per hour
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, error: 'Too many files uploaded, please try again after an hour' }
+});
+
 const upload = multer({ 
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 20 * 1024 * 1024 }, // 🛡 Limit to 20MB for videos
+  // 🛡️ SECURITY FIX: Use diskStorage instead of memoryStorage to prevent OOM (DDoS)
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => cb(null, os.tmpdir()),
+    filename: (req, file, cb) => cb(null, Date.now() + '-' + Math.round(Math.random() * 1E9) + path.extname(file.originalname))
+  }),
+  limits: { fileSize: 5 * 1024 * 1024 }, // 🛡 Limit to 5MB to prevent Storage Exhaustion
   fileFilter: (req, file, cb) => {
     if (file.mimetype.startsWith('image/') || file.mimetype.startsWith('video/')) cb(null, true);
     else cb(new Error('Only images and videos are allowed'));
@@ -121,7 +136,7 @@ app.get('/api/products/:productId/reviews', reviewController.getReviewsByProduct
 app.post('/api/reviews', verifyUser, reviewController.createReview);
 
 // Order Routes
-app.post('/api/orders', orderCreationLimiter, verifyUser, validator.order, orderController.createOrder);
+app.post('/api/orders', verifyUser, orderCreationLimiter, validator.order, orderController.createOrder);
 app.post('/api/orders/confirm', verifyUser, orderController.confirmOrder); // ✅ Fix: was missing, frontend calls this
 app.get('/api/orders/status/:orderCode', verifyUser, orderController.getStatus);
 app.post('/api/orders/validate-coupon', verifyUser, orderController.validateCoupon);
@@ -129,50 +144,56 @@ app.get('/api/user/orders', verifyUser, orderController.getUserOrders);
 app.post('/api/orders/receipt', verifyUser, orderController.uploadReceipt);
 
 // User Upload Route
-app.post('/api/upload', verifyUser, upload.single('image'), adminController.upload);
+app.post('/api/upload', verifyUser, uploadLimiter, upload.single('image'), adminController.upload);
 
 const userController = require('./controllers/userController');
 
 // User Profile Routes
 app.get('/api/user/profile', verifyUser, userController.getProfile);
 app.put('/api/user/profile', verifyUser, userController.updateProfile);
+app.post('/api/ping', verifyUser, userController.ping);
 
 // Wishlist Routes
 app.get('/api/wishlist/:userId', verifyUser, wishlistController.get);
 app.post('/api/wishlist/toggle', verifyUser, wishlistController.toggle);
 
 // Admin Routes
-app.get('/api/admin/summary', isAdmin, adminController.getSummary);
-app.get('/api/admin/analytics', isAdmin, adminController.getAnalytics);
-app.get('/api/admin/advanced-analytics', isAdmin, analyticsController.getAdvancedAnalytics);
-app.get('/api/admin/dashboard', isAdmin, (req, res) => adminController.getDashboardData(req, res)); // 🚀 Batch Endpoint (Ensuring visibility)
-app.get('/api/admin/products', isAdmin, adminController.getProducts);
-app.post('/api/admin/products', isAdmin, validator.product, adminController.createProduct);
-app.put('/api/admin/products/:id', isAdmin, validator.product, adminController.updateProduct);
-app.delete('/api/admin/products/:id', isAdmin, adminController.deleteProduct);
-app.get('/api/admin/settings', isAdmin, adminController.getSettings);
-app.post('/api/admin/settings', isAdmin, validator.setting, adminController.updateSetting);
-app.post('/api/admin/upload', isAdmin, upload.single('image'), adminController.upload);
-app.post('/api/admin/delete-file', isAdmin, adminController.deleteFile);
+app.get('/api/admin/online-users', isSuperAdminOnly, adminController.getOnlineUsers);
+app.get('/api/admin/summary', isSuperAdminOnly, adminController.getSummary);
+app.get('/api/admin/analytics', isSuperAdminOnly, adminController.getAnalytics);
+app.get('/api/admin/advanced-analytics', isSuperAdminOnly, analyticsController.getAdvancedAnalytics);
+app.get('/api/admin/dashboard', isStaffOrAdmin, (req, res) => adminController.getDashboardData(req, res)); // 🚀 Batch Endpoint (Ensuring visibility)
+app.get('/api/admin/products', isStaffOrAdmin, adminController.getProducts);
+app.post('/api/admin/products', isStaffOrAdmin, validator.product, adminController.createProduct);
+app.put('/api/admin/products/:id', isStaffOrAdmin, validator.product, adminController.updateProduct);
+app.delete('/api/admin/products/:id', isStaffOrAdmin, adminController.deleteProduct);
+app.get('/api/admin/settings', isSuperAdminOnly, adminController.getSettings);
+app.post('/api/admin/settings', isSuperAdminOnly, validator.setting, adminController.updateSetting);
+app.post('/api/admin/upload', isStaffOrAdmin, upload.single('image'), adminController.upload);
+app.post('/api/admin/delete-file', isStaffOrAdmin, adminController.deleteFile);
 
 // Admin FAQs
-app.get('/api/admin/faqs', isAdmin, faqController.getAdminFaqs);
-app.post('/api/admin/faqs', isAdmin, faqController.createFaq);
-app.put('/api/admin/faqs/:id', isAdmin, faqController.updateFaq);
-app.delete('/api/admin/faqs/:id', isAdmin, faqController.deleteFaq);
+app.get('/api/admin/faqs', isStaffOrAdmin, faqController.getAdminFaqs);
+app.post('/api/admin/faqs', isStaffOrAdmin, faqController.createFaq);
+app.put('/api/admin/faqs/:id', isStaffOrAdmin, faqController.updateFaq);
+app.delete('/api/admin/faqs/:id', isStaffOrAdmin, faqController.deleteFaq);
 
 // Additional Admin Routes
-app.get('/api/admin/categories', isAdmin, adminController.getCategories);
-app.post('/api/admin/categories', isAdmin, adminController.addCategory);
-app.delete('/api/admin/categories/:id', isAdmin, adminController.deleteCategory);
-app.get('/api/admin/coupons', isAdmin, adminController.getCoupons);
-app.post('/api/admin/coupons', isAdmin, validator.coupon, adminController.addCoupon);
-app.delete('/api/admin/coupons/:id', isAdmin, adminController.deleteCoupon);
-app.get('/api/admin/customers', isAdmin, adminController.getCustomers);
-app.post('/api/admin/users/points', isAdmin, adminController.addLoyaltyPoints);
-app.get('/api/admin/orders', isAdmin, adminController.getOrders);
-app.post('/api/admin/orders/status', isAdmin, adminController.updateOrderStatus);
-app.post('/api/admin/broadcast', isAdmin, adminController.broadcast);
+app.get('/api/admin/categories', isStaffOrAdmin, adminController.getCategories);
+app.post('/api/admin/categories', isStaffOrAdmin, adminController.addCategory);
+app.delete('/api/admin/categories/:id', isStaffOrAdmin, adminController.deleteCategory);
+app.get('/api/admin/coupons', isSuperAdminOnly, adminController.getCoupons);
+app.post('/api/admin/coupons', isSuperAdminOnly, validator.coupon, adminController.addCoupon);
+app.delete('/api/admin/coupons/:id', isSuperAdminOnly, adminController.deleteCoupon);
+app.get('/api/admin/customers', isSuperAdminOnly, adminController.getCustomers);
+app.delete('/api/admin/customers/:id', isSuperAdminOnly, adminController.deleteCustomer);
+app.put('/api/admin/customers/:id/ban', isSuperAdminOnly, adminController.banCustomer);
+app.put('/api/admin/customers/:id/role', isSuperAdminOnly, adminController.updateCustomerRole);
+app.post('/api/admin/users/points', isSuperAdminOnly, adminController.addLoyaltyPoints);
+app.get('/api/admin/orders/export', isSuperAdminOnly, adminController.exportOrders);
+app.get('/api/admin/orders', isStaffOrAdmin, adminController.getOrders);
+app.post('/api/admin/orders/status', isStaffOrAdmin, adminController.updateOrderStatus);
+app.post('/api/admin/broadcast', isStaffOrAdmin, adminController.broadcast);
 
 // --- Global Error Handler (Safety Net) ---
 app.use((err, req, res, next) => {

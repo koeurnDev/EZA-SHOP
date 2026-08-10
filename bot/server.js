@@ -4,6 +4,8 @@ const pool = require('./config/database');
 const { connectRedis } = require('./config/redis');
 const bot = require('./config/telegram');
 const paymentReconciler = require('./workers/paymentReconciler');
+const marketingAutomation = require('./workers/marketingAutomation');
+const winbackAutomation = require('./workers/winbackAutomation');
 
 // Error Handling (Global)
 process.on('uncaughtException', (err) => {
@@ -94,6 +96,12 @@ const startServer = async () => {
       
       // 5. 🛡️ Payment Resilience: Start Background Reconciler
       paymentReconciler.start();
+
+      // 6. 🚀 Marketing Automation: Start Abandoned Cart Recovery
+      marketingAutomation.start();
+
+      // 7. 🚀 Marketing Automation: Start Win-back Automation
+      winbackAutomation.start();
     });
   } catch (err) {
     console.error('🔴 Server Start Fail:', err.message);

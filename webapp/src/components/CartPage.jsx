@@ -104,6 +104,17 @@ const CartPage = ({
         onCheckout(finalTotal, validatedPromo ? validatedPromo.code : null);
       } else if (!isPhoneValid || !isAddressValid) {
         if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
+        
+        // Show an explicit error message to the user!
+        const msg = lang === 'kh' 
+          ? 'សូមបញ្ញូល លេខទូរស័ព្ទ និងអាសយដ្ឋាន ឲ្យបានត្រឹមត្រូវ ដើម្បីបន្តការកម្ម៉ង់!' 
+          : 'Please enter a valid phone number and delivery address!';
+        
+        if (tg?.showAlert) {
+          tg.showAlert(msg);
+        } else {
+          alert(msg);
+        }
       }
     }
   };

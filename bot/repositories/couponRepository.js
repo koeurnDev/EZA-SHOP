@@ -21,6 +21,7 @@ const couponRepository = {
       WHERE UPPER(c.code) = UPPER($1) AND c.active = true
       AND (c.start_date IS NULL OR c.start_date <= CURRENT_TIMESTAMP)
       AND (c.end_date IS NULL OR c.end_date >= CURRENT_TIMESTAMP)
+      AND (c.usage_limit IS NULL OR c.used_count < c.usage_limit)
       GROUP BY c.id
     `, [code]);
     return res.rows[0];
@@ -37,6 +38,7 @@ const couponRepository = {
           WHERE c.is_auto = true AND c.active = true 
           AND (c.start_date IS NULL OR c.start_date <= CURRENT_TIMESTAMP)
           AND (c.end_date IS NULL OR c.end_date >= CURRENT_TIMESTAMP)
+          AND (c.usage_limit IS NULL OR c.used_count < c.usage_limit)
           GROUP BY c.id
         `);
         return res.rows;
@@ -53,8 +55,8 @@ const couponRepository = {
       const eDate = (c.endDate && c.endDate.trim() !== '') ? c.endDate : null;
 
       const res = await client.query(
-        'INSERT INTO coupons (code, discount_type, value, is_auto, apply_to, start_date, end_date) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
-        [c.code.toUpperCase(), c.type, c.value, c.isAuto || false, c.applyTo || 'all', sDate, eDate]
+        'INSERT INTO coupons (code, discount_type, value, is_auto, apply_to, start_date, end_date, usage_limit) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *',
+        [c.code.toUpperCase(), c.type, c.value, c.isAuto || false, c.applyTo || 'all', sDate, eDate, c.usageLimit || null]
       );
       const coupon = res.rows[0];
       
@@ -74,6 +76,21 @@ const couponRepository = {
     } finally {
       client.release();
     }
+  },
+
+  incrementUsage: async (code, client = pool) => {
+    // 🛡️ Atomic increment with FOR UPDATE safety (if running in transaction)
+    const res = await client.query(
+      `UPDATE coupons SET used_count = used_count + 1 
+       WHERE UPPER(code) = UPPER($1) 
+       AND (usage_limit IS NULL OR used_count < usage_limit) 
+       RETURNING *`,
+      [code]
+    );
+    if (res.rowCount === 0) {
+      throw new Error(`Coupon ${code} usage limit reached or not found.`);
+    }
+    return res.rows[0];
   },
 
   delete: async (id) => {

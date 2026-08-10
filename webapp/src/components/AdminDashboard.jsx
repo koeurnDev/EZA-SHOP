@@ -17,6 +17,8 @@ import AdminProductsTab from './admin/AdminProductsTab';
 import AdminBroadcastTab from './admin/AdminBroadcastTab';
 import AdminFaqsTab from './admin/AdminFaqsTab';
 import AdminSettingsTab from './admin/AdminSettingsTab';
+import AdminCustomersTab from './admin/AdminCustomersTab';
+import AdminCouponsTab from './admin/AdminCouponsTab';
 import DarkSelect from './admin/DarkSelect';
 
 // 🗂️ Modular modals
@@ -65,6 +67,14 @@ const AdminDashboard = ({
     refetch: refetchDashboard,
     mutate: mutateDashboard
   } = useQuery('admin-dashboard', `${BACKEND_URL}/api/admin/dashboard`, { headers });
+
+  const userRole = dashboardData?.userRole || (dashboardLoading ? 'admin' : 'staff');
+
+  useEffect(() => {
+    if (userRole === 'staff' && activeTab === 'overview') {
+      setActiveTab('orders');
+    }
+  }, [userRole, activeTab]);
 
   // Derived state from consolidated query
   const { data: advancedAnalyticsData } = useQuery('admin-advanced-analytics', `${BACKEND_URL}/api/admin/advanced-analytics`, { headers });
@@ -227,12 +237,23 @@ const AdminDashboard = ({
   const updateStatus = async (orderId, status) => {
     const trackingNumber = trackingNumbers[orderId] || '';
 
+    // 🚀 Optimistic UI Update: update the local state immediately
+    mutateDashboard(prev => {
+      if (!prev || !prev.orders) return prev;
+      return {
+        ...prev,
+        orders: prev.orders.map(o => o.id === orderId ? { ...o, status } : o)
+      };
+    });
+
     fetchWithRetry(`${BACKEND_URL}/api/admin/orders/status`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...headers },
       body: JSON.stringify({ orderId, status, trackingNumber })
     }).then((res) => {
       if (res && !res.success) {
+        // Rollback on failure (simplified by just refetching)
+        refetchData(true);
         return showAlert('បរាជ័យ: ' + (res.error || 'មានបញ្ហាប្រព័ន្ធ'));
       }
       setToastMessage('បច្ចុប្បន្នភាពជោគជ័យ!');
@@ -246,8 +267,10 @@ const AdminDashboard = ({
         delete next[orderId];
         return next;
       });
+      // Background refetch to ensure total consistency without loader
       refetchData(true);
     }).catch(err => {
+      refetchData(true); // Rollback
       showAlert('បរាជ័យ: ' + err.message);
     });
   };
@@ -627,12 +650,16 @@ const AdminDashboard = ({
 
         <div className="admin-nav-luxury-grid">
           {[
-            { id: 'overview', label: `📊 ${t('admin_tab_overview')}` },
+            ...(userRole === 'admin' ? [{ id: 'overview', label: `📊 ${t('admin_tab_overview')}` }] : []),
             { id: 'orders', label: `🎫 ${t('admin_tab_orders')}` },
             { id: 'products', label: `🛍️ ${t('admin_tab_products')}` },
             { id: 'broadcast', label: `📢 ${t('admin_tab_broadcast')}` },
             { id: 'faqs', label: `❓ ${t('admin_tab_faqs')}` },
-            { id: 'settings', label: `⚙️ ${t('admin_tab_settings')}` }
+            ...(userRole === 'admin' ? [
+              { id: 'customers', label: `👥 អតិថិជន` },
+              { id: 'coupons', label: `🎟️ Coupons` },
+              { id: 'settings', label: `⚙️ ${t('admin_tab_settings')}` }
+            ] : [])
           ].map(tab => (
             <button key={tab.id} className={`nav-pill-btn ${activeTab === tab.id ? 'active' : ''}`} onClick={() => setActiveTab(tab.id)}>
               {tab.label}
@@ -643,12 +670,21 @@ const AdminDashboard = ({
                 <div style={{ padding: '0 15px' }}>
           {activeTab === 'overview' && (
             <AdminOverviewTab
+              BACKEND_URL={BACKEND_URL}
               summary={summary}
               paddedDailyAnalytics={paddedDailyAnalytics}
               advancedAnalytics={advancedAnalytics}
               orders={orders}
               statusTags={statusTags}
             />
+          )}
+
+          {activeTab === 'customers' && (
+            <AdminCustomersTab BACKEND_URL={BACKEND_URL} />
+          )}
+
+          {activeTab === 'coupons' && (
+            <AdminCouponsTab BACKEND_URL={BACKEND_URL} />
           )}
 
           {activeTab === 'orders' && (
@@ -848,7 +884,7 @@ const PrintableOrder = ({ order, shopName, subtitle, shopNote }) => {
       </div>
       <div className="print-divider"></div>
       <div className="print-section">
-        <div className="print-row"><span>លេខវិក្កយបត្រ:</span> <strong>{order.order_code || `#MO-${order.id}`}</strong></div>
+        <div className="print-row"><span>លេខវិក្កយបត្រ:</span> <strong>{order.order_code || order.id}</strong></div>
         <div className="print-row"><span>អតិថិជន:</span> <strong>{order.user_name}</strong></div>
         <div className="print-row"><span>លេខទូរស័ព្ទ:</span> <strong>{order.phone}</strong></div>
         {order.address && <div className="print-row"><span>ទីតាំង:</span> <strong>{order.address}{order.province ? `, ${order.province}` : ''}</strong></div>}

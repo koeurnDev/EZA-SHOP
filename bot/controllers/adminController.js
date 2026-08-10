@@ -22,7 +22,17 @@ const adminController = {
         async () => await adminService.getDashboardData(),
         30 // 30 seconds cache for real-time feel without crushing the DB
       );
-      res.json({ success: true, ...data });
+      
+      let userRole = 'staff';
+      if (Number(req.user.user_id) === Number(process.env.SUPERADMIN_ID)) {
+        userRole = 'admin';
+      } else {
+        const userRepository = require('../repositories/userRepository');
+        const dbUser = await userRepository.findById(String(req.user.user_id));
+        if (dbUser && dbUser.role === 'admin') userRole = 'admin';
+      }
+
+      res.json({ success: true, userRole, ...data });
     } catch (err) {
       console.error('🔴 Admin Batch Data Error:', err.message);
       res.status(500).json({ success: false, error: err.message });
@@ -148,6 +158,55 @@ const adminController = {
     }
   },
 
+  addLoyaltyPoints: async (req, res) => {
+    try {
+      const adminService = require('../services/adminService');
+      const { userId, points } = req.body;
+      const updatedUser = await adminService.addLoyaltyPoints(userId, points);
+      res.json({ success: true, points: updatedUser.loyalty_points });
+    } catch (err) {
+      console.error('🔴 Admin Loyalty Points Error:', err.message);
+      res.status(500).json({ success: false, error: err.message });
+    }
+  },
+
+  exportOrders: async (req, res) => {
+    try {
+      const orderRepository = require('../repositories/orderRepository');
+      const orders = await orderRepository.findAll(10000, 0); // Fetch up to 10k orders for export
+      
+      let csv = 'Order ID,Date,Customer Name,Customer Phone,Status,Total ($),Total (KHR)\n';
+      
+      for (const o of orders) {
+        const id = o.order_code || o.id;
+        const date = new Date(o.created_at).toISOString().split('T')[0];
+        const name = `"${(o.user_name || o.first_name || 'N/A').replace(/"/g, '""')}"`;
+        const phone = o.phone || 'N/A';
+        const status = o.status;
+        const totalUsd = parseFloat(o.total || 0).toFixed(2);
+        const totalKhr = parseFloat(o.total_khr || 0).toFixed(2);
+        
+        csv += `${id},${date},${name},${phone},${status},${totalUsd},${totalKhr}\n`;
+      }
+      
+      res.header('Content-Type', 'text/csv');
+      res.attachment('orders_export.csv');
+      res.send(csv);
+    } catch (err) {
+      console.error('🔴 Admin Export Orders Error:', err.message);
+      res.status(500).json({ success: false, error: err.message });
+    }
+  },
+
+  getOrders: async (req, res) => {
+    try {
+      const categories = await adminService.getCategories();
+      res.json({ success: true, categories });
+    } catch (err) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  },
+
   getCategories: async (req, res) => {
     try {
       const categories = await adminService.getCategories();
@@ -206,8 +265,56 @@ const adminController = {
   // --- User Management ---
   getCustomers: async (req, res) => {
     try {
-      const customers = await adminService.getCustomers();
+      const userRepository = require('../repositories/userRepository');
+      const customers = await userRepository.findAll();
       res.json({ success: true, customers });
+    } catch (err) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  },
+
+  deleteCustomer: async (req, res) => {
+    try {
+      const userRepository = require('../repositories/userRepository');
+      // Prevent deleting the SuperAdmin
+      if (Number(req.params.id) === Number(process.env.SUPERADMIN_ID)) {
+        return res.status(400).json({ success: false, error: 'Cannot delete SuperAdmin' });
+      }
+      await userRepository.deleteUser(req.params.id);
+      res.json({ success: true });
+    } catch (err) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  },
+
+  banCustomer: async (req, res) => {
+    try {
+      const userRepository = require('../repositories/userRepository');
+      // Prevent banning the SuperAdmin
+      if (Number(req.params.id) === Number(process.env.SUPERADMIN_ID)) {
+        return res.status(400).json({ success: false, error: 'Cannot ban SuperAdmin' });
+      }
+      const updated = await userRepository.updateBanStatus(req.params.id, req.body.is_banned);
+      res.json({ success: true, user: updated });
+    } catch (err) {
+      console.error('🔴 Admin Ban Customer Error:', err.message);
+      res.status(500).json({ success: false, error: err.message });
+    }
+  },
+
+  updateCustomerRole: async (req, res) => {
+    try {
+      const userRepository = require('../repositories/userRepository');
+      const { role } = req.body;
+      if (!['user', 'staff', 'admin'].includes(role)) {
+        return res.status(400).json({ success: false, error: 'Invalid role' });
+      }
+      // Prevent changing SuperAdmin role
+      if (Number(req.params.id) === Number(process.env.SUPERADMIN_ID)) {
+        return res.status(400).json({ success: false, error: 'Cannot modify SuperAdmin role' });
+      }
+      const updated = await userRepository.updateRole(req.params.id, role);
+      res.json({ success: true, user: updated });
     } catch (err) {
       res.status(500).json({ success: false, error: err.message });
     }
@@ -234,9 +341,10 @@ const adminController = {
 
   updateOrderStatus: async (req, res) => {
     try {
+      const adminService = require('../services/adminService');
       const updated = await adminService.updateOrderStatus(req.body.orderId, req.body.status, req.body.trackingNumber);
       
-      // 🚀 Feature 1: Telegram Bot Notifications
+      // 🚀 Feature 1: Telegram Bot Notifications (Async Fire-and-Forget to prevent UI lag/timeout)
       try {
         const bot = require('../config/telegram');
         const statusMap = {
@@ -245,19 +353,21 @@ const adminController = {
           'shipped': 'កំពុងដឹកជញ្ជូន 🚚'
         };
         const statusText = statusMap[updated.status] || updated.status;
-        let msg = `សួស្តីបង! ការកម្ម៉ង់របស់បងលេខ #${(updated.order_code || updated.id).toString().substring(0,8)} ត្រូវបានប្តូរស្ថានភាពទៅជា៖ *${statusText}*`;
+        const displayCode = updated.order_code || updated.id;
+        let msg = `សួស្តីបង! ការកម្ម៉ង់របស់បងលេខ \`${displayCode}\` ត្រូវបានប្តូរស្ថានភាពទៅជា៖ *${statusText}*`;
         if (req.body.trackingNumber) {
           msg += `\nលេខ Tracking របស់បងគឺ៖ \`${req.body.trackingNumber}\``;
         }
-        try {
-          await bot.telegram.sendMessage(String(updated.user_id), msg, { parse_mode: 'Markdown' });
-          console.log(`✅ Telegram order status sent to user ${updated.user_id} for order ${updated.order_code}`);
-        } catch (tgErr) {
-          console.warn(`⚠️ Telegram order status failed for user ${updated.user_id} order ${updated.order_code}:`, tgErr.message);
-        }
+        
+        // Fire and forget — DO NOT AWAIT
+        bot.telegram.sendMessage(String(updated.user_id), msg, { parse_mode: 'Markdown' })
+          .then(() => console.log(`✅ Telegram order status sent to user ${updated.user_id}`))
+          .catch(tgErr => console.warn(`⚠️ Telegram order status failed for user ${updated.user_id}:`, tgErr.message));
+          
       } catch (tgErr) {
-        console.warn('⚠️ Could not send telegram notification:', tgErr.message);
+        console.warn('⚠️ Could not configure telegram notification:', tgErr.message);
       }
+      
       res.json({ success: true, order: updated });
     } catch (err) {
       res.status(500).json({ success: false, error: err.message });
@@ -323,6 +433,37 @@ const adminController = {
     } catch (err) {
       console.error('Broadcast Fail:', err);
       if (!res.headersSent) res.status(500).json({ success: false });
+    }
+  },
+
+  // 🟢 Online Users: who is actively using the app right now
+  getOnlineUsers: async (req, res) => {
+    try {
+      const userRepository = require('../repositories/userRepository');
+      const [online, recent] = await Promise.all([
+        userRepository.getOnlineUsers(5),   // active within 5 min = "online"
+        userRepository.getOnlineUsers(60),  // active within 60 min = "recent"
+      ]);
+
+      // Enrich with "minutes ago"
+      const now = Date.now();
+      const enrich = (users) => users.map(u => ({
+        user_id: u.user_id,
+        user_name: u.user_name || `User ${String(u.user_id).slice(-4)}`,
+        last_seen: u.last_seen,
+        minutes_ago: Math.floor((now - new Date(u.last_seen).getTime()) / 60000)
+      }));
+
+      res.json({
+        success: true,
+        online: enrich(online),
+        recent: enrich(recent),
+        online_count: online.length,
+        recent_count: recent.length
+      });
+    } catch (err) {
+      console.error('🔴 getOnlineUsers Error:', err.message);
+      res.status(500).json({ success: false, error: err.message });
     }
   }
 };

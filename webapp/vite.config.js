@@ -16,6 +16,9 @@ export default defineConfig({
   build: {
     target: 'esnext',
     minify: 'esbuild', // Faster minification
+    esbuild: {
+      drop: ['console', 'debugger'], // 🛡️ Zero-Trust Security: Prevent Client-Side Leakage
+    },
     rollupOptions: {
       output: {
         manualChunks: {

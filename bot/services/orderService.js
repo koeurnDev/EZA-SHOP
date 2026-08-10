@@ -111,8 +111,8 @@ const orderService = {
         throw new Error(`Price Mismatch: Calc $${calculatedTotal} vs Sent $${total}`);
       }
 
-      const { customAlphabet } = require('nanoid');
-      const orderCode = `MO-${customAlphabet('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ', 8)()}`;
+      // 🏷️ Taobao-style 18-digit numeric Order ID: timestamp(13) + random(5)
+      const orderCode = Date.now().toString() + Math.floor(Math.random() * 100000).toString().padStart(5, '0');
 
       // 4. KHQR Generation (🛡️ Outside Transaction: No DB locks!)
       let qrString = '';
@@ -149,6 +149,11 @@ const orderService = {
 
       // --- TRANSACTION START (Minimized Duration) ---
       await client.query('BEGIN');
+      
+      // 🛡️ Increment coupon usage limit securely
+      if (manualCoupon) {
+        await couponRepository.incrementUsage(manualCoupon.code, client);
+      }
       
       const updatedProducts = await productRepository.deductStockBatch(
         items.map(i => ({ id: i.id, quantity: parseInt(i.quantity), variant: i.variant })), 
