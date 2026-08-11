@@ -378,6 +378,22 @@ const adminController = {
   upload: async (req, res) => {
     try {
       const url = await uploadService.uploadImage(req.file);
+      
+      // If client requests to send to user and we have a valid user ID from auth middleware
+      if (req.query.send_to_user === 'true' && req.user && req.user.user_id) {
+        try {
+          const bot = require('../config/telegram');
+          if (bot && bot.telegram) {
+            await bot.telegram.sendPhoto(req.user.user_id, url, {
+              caption: `🧾 *វិក្កយបត្រ MO MO BOUTIQUE*\n\nសូមអរគុណសម្រាប់ការគាំទ្រ! វិក្កយបត្ររបស់អ្នកត្រូវបានរក្សាទុកជោគជ័យ។`,
+              parse_mode: 'Markdown'
+            });
+          }
+        } catch (botErr) {
+          console.error("Failed to send receipt to user via bot:", botErr);
+        }
+      }
+
       res.json({ success: true, url });
     } catch (err) {
       res.status(500).json({ success: false, error: err.message });

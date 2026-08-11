@@ -29,7 +29,7 @@ const SuccessCheckmark = () => (
  * Matches the "Digital Parchment" luxury design.
  */
 const InvoiceModal = ({ order, onClose, paymentQrUrl, paymentInfo, BACKEND_URL, onPaymentSuccess, t, lang }) => {
-  const { switchInlineQuery } = useTelegram();
+  const { switchInlineQuery, showAlert } = useTelegram();
   const [localOrder, setLocalOrder] = useState(order);
   const [timeLeft, setTimeLeft] = useState(300);
   const [showReceipt, setShowReceipt] = useState(false);
@@ -185,7 +185,7 @@ const InvoiceModal = ({ order, onClose, paymentQrUrl, paymentInfo, BACKEND_URL, 
         {/* ── HEADER ── */}
         <div style={{ textAlign: 'center', padding: '20px 18px 14px', borderBottom: '1px dashed var(--border-color)' }}>
         <div style={{ display: 'inline-block', padding: 6, background: 'var(--bg-soft)', borderRadius: 16, marginBottom: 8 }}>
-          <img src="/favicon.png" alt="MO MO" style={{ width: 44, height: 44, borderRadius: 10, display: 'block' }} />
+          <img src="/favicon.png" alt="MO MO" crossOrigin="anonymous" style={{ width: 44, height: 44, borderRadius: 10, display: 'block' }} />
         </div>
         <div style={{ fontSize: 13, fontWeight: 900, color: 'var(--text-bold)', letterSpacing: 2 }}>MO MO BOUTIQUE</div>
         <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 700, marginTop: 2 }}>
@@ -357,34 +357,49 @@ const InvoiceModal = ({ order, onClose, paymentQrUrl, paymentInfo, BACKEND_URL, 
               link.click();
               document.body.removeChild(link);
 
-              // 2. Upload & Open Link (Allows Telegram Mobile App users to save to Phone Gallery)
+              // 2. Upload & Open Link (Allows Telegram Mobile App users to save to Phone Gallery + sends to chat)
               canvas.toBlob(async (blob) => {
                 if (!blob) return;
                 try {
                   const formData = new FormData();
                   formData.append('image', blob, `receipt_${displayId}.png`);
                   const tgData = window.Telegram?.WebApp?.initData || '';
-                  const res = await fetch(`${BACKEND_URL}/api/upload`, {
+                  const res = await fetch(`${BACKEND_URL}/api/upload?send_to_user=true`, {
                     method: 'POST',
                     headers: { 'X-TG-Data': tgData },
                     body: formData
                   });
                   const data = await res.json();
                   if (data.success && data.url) {
+                    const msg = lang === 'kh'
+                      ? 'វិក្កយបត្រត្រូវបានរក្សាទុក និងផ្ញើទៅកាន់សារផ្ទាល់ខ្លួនរបស់អ្នករួចរាល់ហើយ!'
+                      : 'Invoice has been saved and sent to your personal Telegram chat!';
+                    showAlert(msg);
+
                     if (window.Telegram?.WebApp?.openLink) {
                       window.Telegram.WebApp.openLink(data.url);
                     } else {
                       window.open(data.url, '_blank');
                     }
+                  } else {
+                    throw new Error(data.error || 'Server error');
                   }
                 } catch (e) {
                   console.error("Upload fallback failed:", e);
+                  const errorMsg = lang === 'kh'
+                    ? 'ការរក្សាទុកវិក្កយបត្របានបរាជ័យ។ សូមព្យាយាមម្តងទៀត!'
+                    : 'Failed to save receipt. Please try again!';
+                  showAlert(errorMsg);
                 }
               }, 'image/png');
 
               if (window.Telegram?.WebApp?.HapticFeedback) window.Telegram.WebApp.HapticFeedback.notificationOccurred('success');
             } catch (err) {
               console.error("Failed to save receipt", err);
+              const errorMsg = lang === 'kh'
+                ? 'ការរក្សាទុកវិក្កយបត្របានបរាជ័យ។ សូមព្យាយាមម្តងទៀត!'
+                : 'Failed to save receipt. Please try again!';
+              showAlert(errorMsg);
             } finally {
               setIsSaving(false);
             }

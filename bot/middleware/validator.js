@@ -55,6 +55,11 @@ const schemas = {
     body('description').optional().trim().escape().isString(),
     body('stock').optional().isInt({ min: 0 }),
     body('variants').optional().isArray(),
+    body('image').optional().trim().isString(),
+    body('additional_images').optional().isString(),
+    body('video_url').optional().trim().isString(),
+    body('flash_sale_price').optional().customSanitizer(v => v === '' ? null : v).isFloat({ min: 0 }).optional({ nullable: true }),
+    body('flash_sale_end').optional().customSanitizer(v => v === '' ? null : v).isString().optional({ nullable: true }),
     validate
   ],
   setting: [
