@@ -43,8 +43,29 @@ const InvoiceModal = ({ order, onClose, paymentQrUrl, paymentInfo, BACKEND_URL, 
   const [isUploadingReceipt, setIsUploadingReceipt] = useState(false);
   const [receiptUploaded, setReceiptUploaded] = useState(false);
   
+  const [logoDataUrl, setLogoDataUrl] = useState('');
   const receiptRef = useRef(null);
   const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    const img = new Image();
+    img.src = '/favicon.png';
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.drawImage(img, 0, 0);
+        try {
+          const dataUrl = canvas.toDataURL('image/png');
+          setLogoDataUrl(dataUrl);
+        } catch (e) {
+          console.warn("Failed to convert logo to data URL:", e);
+        }
+      }
+    };
+  }, []);
 
   // 🔄 Sync local order when parent prop updates (Essential for Draft -> Real transition)
   useEffect(() => {
@@ -185,7 +206,7 @@ const InvoiceModal = ({ order, onClose, paymentQrUrl, paymentInfo, BACKEND_URL, 
         {/* ── HEADER ── */}
         <div style={{ textAlign: 'center', padding: '20px 18px 14px', borderBottom: '1px dashed var(--border-color)' }}>
         <div style={{ display: 'inline-block', padding: 6, background: 'var(--bg-soft)', borderRadius: 16, marginBottom: 8 }}>
-          <img src="/favicon.png" alt="MO MO" crossOrigin="anonymous" style={{ width: 44, height: 44, borderRadius: 10, display: 'block' }} />
+          <img src={logoDataUrl || "/favicon.png"} alt="MO MO" crossOrigin="anonymous" style={{ width: 44, height: 44, borderRadius: 10, display: 'block' }} />
         </div>
         <div style={{ fontSize: 13, fontWeight: 900, color: 'var(--text-bold)', letterSpacing: 2 }}>MO MO BOUTIQUE</div>
         <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 700, marginTop: 2 }}>

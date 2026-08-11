@@ -402,12 +402,12 @@ const AdminDashboard = ({
         if (res.success) {
           mutateDashboard(prev => ({
             ...prev,
-            products: (prev?.products || []).filter(p => p.id !== id)
+            products: (prev?.products || []).filter(p => p.id !== productId)
           }));
           if (mutateShopData) {
             mutateShopData(prev => ({
               ...prev,
-              products: (prev?.products || []).filter(p => p.id !== id)
+              products: (prev?.products || []).filter(p => p.id !== productId)
             }));
           }
           refetchData(true);
