@@ -867,16 +867,26 @@ const AdminDashboard = ({
 };
 
 const BeautyModal = ({ text, icon, isAlert, onConfirm, onCancel }) => (
-  <div className="modal-overlay" style={{ zIndex: 9999 }}>
-    <div className="beauty-modal-card">
-      <div style={{ fontSize: 50, marginBottom: 20 }}>{icon || '✨'}</div>
-      <div style={{ fontSize: 18, fontWeight: 900, marginBottom: 30, lineHeight: 1.6, color: 'var(--text-luxury)' }}>{text}</div>
-      <div style={{ display: 'flex', gap: 12 }}>
+  <div className="modal-overlay" style={{ zIndex: 9999, background: 'rgba(0, 0, 0, 0.65)', backdropFilter: 'blur(8px)' }}>
+    <div className="beauty-modal-card" style={{ background: 'var(--bg-surface, #1e1e24)', border: '1px solid var(--border-color, rgba(255,255,255,0.15))', padding: '30px 24px', borderRadius: 28 }}>
+      <div style={{ fontSize: 48, marginBottom: 16 }}>{icon || (isAlert ? '✨' : '🗑️')}</div>
+      <div style={{ fontSize: 16, fontWeight: 800, marginBottom: 26, lineHeight: 1.6, color: 'var(--text-bold, #ffffff)' }}>{text}</div>
+      <div style={{ display: 'flex', gap: 10 }}>
         {!isAlert && (
-          <button className="nav-pill-btn" style={{ flex: 1, minHeight: 50 }} onClick={onCancel}>បោះបង់</button>
+          <button
+            className="nav-pill-btn"
+            style={{ flex: 1, minHeight: 46, borderRadius: 14, background: 'var(--bg-soft, rgba(255,255,255,0.1))', color: 'var(--text-bold, #ffffff)', border: '1px solid var(--border-subtle, rgba(255,255,255,0.15))', fontWeight: 800, fontSize: 14, cursor: 'pointer' }}
+            onClick={onCancel}
+          >
+            បោះបង់
+          </button>
         )}
-        <button className="ticket-btn-primary" style={{ flex: 1.5, minHeight: 50 }} onClick={onConfirm}>
-          {isAlert ? 'យល់ព្រម' : 'បន្ត'}
+        <button
+          className="detail-btn-buy-luxury"
+          style={{ flex: 1.2, minHeight: 46, borderRadius: 14, background: isAlert ? 'var(--primary-accent, #10b981)' : '#ef4444', color: '#ffffff', border: 'none', fontWeight: 900, fontSize: 14, cursor: 'pointer', boxShadow: isAlert ? '0 4px 14px rgba(16,185,129,0.3)' : '0 4px 14px rgba(239,68,68,0.3)' }}
+          onClick={onConfirm}
+        >
+          {isAlert ? 'យល់ព្រម' : 'លុប'}
         </button>
       </div>
     </div>
