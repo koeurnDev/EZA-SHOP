@@ -6,8 +6,8 @@ const AdminFaqModal = React.memo(({ isFaqModalOpen, editingFaq, setEditingFaq, s
   if (!isFaqModalOpen) return null;
 
   return (
-    <div className="admin-dashboard-overhaul" style={{ position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, background: 'var(--bg-soft)', padding: '20px', boxSizing: 'border-box' }}>
-      <div className="glass-card-luxury" style={{ width: '92%', maxWidth: 440, maxHeight: '85vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div className="admin-dashboard-overhaul" style={{ position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, background: 'rgba(0, 0, 0, 0.75)', backdropFilter: 'blur(12px)', padding: '20px', boxSizing: 'border-box' }}>
+      <div className="glass-card-luxury" style={{ width: '92%', maxWidth: 440, maxHeight: '85vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'var(--bg-surface, #ffffff)', backdropFilter: 'none', boxShadow: '0 25px 60px rgba(0,0,0,0.5)', border: '1px solid var(--border-subtle, rgba(0,0,0,0.15))' }}>
         <h3 style={{ marginBottom: 20, flexShrink: 0 }}>{editingFaq?.id ? `✏️ ${t('admin_edit')}` : `➕ ${t('admin_add_faq')}`}</h3>
 
         <div style={{ overflowY: 'auto', flex: 1, paddingRight: 5, paddingBottom: 5, display: 'flex', flexDirection: 'column', gap: 14 }}>

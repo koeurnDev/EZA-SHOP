@@ -114,10 +114,10 @@ const ProductGrid = () => {
 
       {/* 🛍 MAIN GRID HEADER */}
       <div className="section-header px-5 py-4 flex justify-between items-center">
-        <h2 className="text-lg font-black text-bold" style={{ wordBreak: 'break-word', lineHeight: 1.2 }}>
+        <h2 className="text-2xl font-black text-bold" style={{ wordBreak: 'break-word', lineHeight: 1.1 }}>
           {searchTerm ? `"${searchTerm}"` : selectedCategory === 'all' ? t('all') : selectedCategory === 'flash_sale' ? '⚡ Flash Sale' : formatCategory(selectedCategory, lang)}
         </h2>
-        <span className="text-xs font-black text-muted whitespace-nowrap">
+        <span className="text-sm font-semibold text-muted whitespace-nowrap" style={{ opacity: 0.85 }}>
           {filtered.length} {t('items')}
         </span>
       </div>

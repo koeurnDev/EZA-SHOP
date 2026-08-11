@@ -3,6 +3,19 @@ import { useTelegram } from '../context/TelegramContext';
 
 const TELEMETRY_URL = `${import.meta.env.VITE_BACKEND_URL}/api/v1/app-state`;
 
+const getCircularReplacer = () => {
+  const seen = new WeakSet();
+  return (key, value) => {
+    if (typeof value === "object" && value !== null) {
+      if (seen.has(value)) {
+        return;
+      }
+      seen.add(value);
+    }
+    return value;
+  };
+};
+
 export const useTelemetry = () => {
   const { tg } = useTelegram();
 
@@ -18,13 +31,13 @@ export const useTelemetry = () => {
 
       // Use sendBeacon for more reliable delivery on page exit
       if (navigator.sendBeacon) {
-        const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
+        const blob = new Blob([JSON.stringify(payload, getCircularReplacer())], { type: 'application/json' });
         navigator.sendBeacon(TELEMETRY_URL, blob);
       } else {
         fetch(TELEMETRY_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
+          body: JSON.stringify(payload, getCircularReplacer()),
           keepalive: true
         }).catch(() => {});
       }

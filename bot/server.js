@@ -7,14 +7,30 @@ const paymentReconciler = require('./workers/paymentReconciler');
 const marketingAutomation = require('./workers/marketingAutomation');
 const winbackAutomation = require('./workers/winbackAutomation');
 
-// Error Handling (Global)
+let isShuttingDown = false;
+
+// 🛡️ Production Error Handling: Graceful exit on uncaught exceptions so PM2 resets corrupt process state
 process.on('uncaughtException', (err) => {
-  console.error('🔥 UNCAUGHT EXCEPTION:', err);
-  // process.exit(1); // Keep alive for resilience
+  console.error('🔥 CRITICAL UNCAUGHT EXCEPTION:', err);
+  if (isShuttingDown) return;
+  isShuttingDown = true;
+
+  // Set hard fallback exit timeout
+  setTimeout(() => {
+    console.error('🔴 Forcing process exit after uncaught exception timeout');
+    process.exit(1);
+  }, 3000).unref();
+
+  try {
+    bot.stop('UNCAUGHT_EXCEPTION');
+    pool.end();
+  } catch (e) {}
+
+  process.exit(1);
 });
+
 process.on('unhandledRejection', (reason, promise) => {
-  console.error('🔥 UNHANDLED REJECTION:', reason);
-  // process.exit(1); // Keep alive for resilience
+  console.error('🔥 UNHANDLED REJECTION at:', promise, 'reason:', reason);
 });
 
 const validateEnv = () => {
@@ -39,11 +55,12 @@ const PORT = process.env.PORT || 5000;
 const startServer = async () => {
   try {
     validateEnv();
+    
     // 1. Initial Database Connection Check with Exponential Backoff
     console.log('⏳ Connecting to Database...');
     let client;
     let retries = 3;
-    let delay = 1000; // Start with 1s
+    let delay = 1000;
 
     while (retries > 0) {
       try {
@@ -58,18 +75,18 @@ const startServer = async () => {
         
         console.log(`🕒 Waiting ${delay}ms before next attempt...`);
         await new Promise(resolve => setTimeout(resolve, delay));
-        delay *= 2; // Exponential backoff: 1s, 2s, 4s
+        delay *= 2;
       }
     }
 
     // 2. Redis Connection (Async/Non-blocking)
     console.log('⏳ Connecting to Redis...');
-    connectRedis(); // No await here
+    connectRedis();
 
     // 3. Telegram Bot Start (🛡️ Hardened: Non-blocking launch)
     console.log('⏳ Launching Telegram Bot...');
     bot.launch({
-      dropPendingUpdates: true, // Prevent webhook/polling conflicts from stale updates
+      dropPendingUpdates: true,
     })
       .then(() => console.log('🤖 Bot: Launched'))
       .catch(botErr => {
@@ -77,7 +94,7 @@ const startServer = async () => {
         console.log('ℹ️ Server is running for Webapp API despite Bot conflict.');
       });
 
-    // Graceful Stop
+    // Graceful Stop Signal Handlers
     process.once('SIGINT', () => {
       bot.stop('SIGINT');
       pool.end();
@@ -94,14 +111,18 @@ const startServer = async () => {
     app.listen(PORT, () => {
       console.log(`🚀 Server: Running on port ${PORT}`);
       
-      // 5. 🛡️ Payment Resilience: Start Background Reconciler
-      paymentReconciler.start();
+      // 5. 🛡️ PM2 Cluster Safety: Only launch background workers on Primary Instance (#0)
+      const instanceId = process.env.NODE_APP_INSTANCE;
+      const isPrimaryWorkerInstance = instanceId === undefined || instanceId === '0';
 
-      // 6. 🚀 Marketing Automation: Start Abandoned Cart Recovery
-      marketingAutomation.start();
-
-      // 7. 🚀 Marketing Automation: Start Win-back Automation
-      winbackAutomation.start();
+      if (isPrimaryWorkerInstance) {
+        console.log('👷 Background Worker Manager: Launching cron workers on Primary Instance (#0)...');
+        paymentReconciler.start();
+        marketingAutomation.start();
+        winbackAutomation.start();
+      } else {
+        console.log(`ℹ️ Worker Instance #${instanceId}: Skipping background cron startup (handled by Primary Instance #0).`);
+      }
     });
   } catch (err) {
     console.error('🔴 Server Start Fail:', err.message);

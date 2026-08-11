@@ -19,11 +19,13 @@ export const useApi = (customConfig = {}) => {
     setLoading(true);
     setError(null);
 
+    // Preserve options immutably across retries to prevent reference loss or mutation
+    const fetchOptions = { ...options, headers: { ...options?.headers } };
     let attempts = 0;
     
     const executeFetch = async () => {
       try {
-        const response = await fetch(url, options);
+        const response = await fetch(url, fetchOptions);
         
         if (response.status === 429) {
           throw new Error('RATE_LIMITED');
@@ -51,7 +53,7 @@ export const useApi = (customConfig = {}) => {
           return { error: 'Too many requests. Please wait.', success: false, status: 429 };
         }
 
-        if (attempts < config.retries && (options.method === 'GET' || options.idempotent)) {
+        if (attempts < config.retries && (fetchOptions.method === 'GET' || fetchOptions.idempotent)) {
           const delay = config.exponential 
             ? config.retryDelay * Math.pow(2, attempts - 1) 
             : config.retryDelay;
@@ -62,12 +64,14 @@ export const useApi = (customConfig = {}) => {
         
         setError(err.message);
         return { error: err.message, success: false };
-      } finally {
-        setLoading(false);
       }
     };
 
-    return executeFetch();
+    try {
+      return await executeFetch();
+    } finally {
+      setLoading(false);
+    }
   }, [config]);
 
   return useMemo(() => ({ fetchWithRetry, loading, error }), [fetchWithRetry, loading, error]);

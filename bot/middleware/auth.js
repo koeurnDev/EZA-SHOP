@@ -1,62 +1,77 @@
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const { validateInitData } = require('../utils/auth');
+const userRepository = require('../repositories/userRepository');
 
 /**
- * Principal-Grade Security Layer (V2)
- * Features: Short-lived JWT Session Tokens, Telegram HMAC Validation, and Dev Bypass.
- * Zero-Trust Session Management.
+ * Principal-Grade Zero-Trust Authentication Layer (V3)
+ * Features:
+ * 1. Persistent Session Secret (Deterministic Fallback across Restarts).
+ * 2. Strict HMAC Validation (Unverified Telegram initData is NEVER parsed into tokens).
+ * 3. Top-Level Imports for High Throughput.
+ * 4. Clean Composable Express Middleware.
  */
 
-// 🛡 Security: Use dynamic secure random string if not provided in environment
-const SESSION_SECRET = process.env.SESSION_SECRET || crypto.randomBytes(32).toString('hex');
-const SESSION_EXPIRY = '2h'; // Short sessions for maximum safety
+// 🛡️ Deterministic Secret: Survives server restarts to prevent session drop crashes
+const SESSION_SECRET = process.env.SESSION_SECRET || (
+  process.env.BOT_TOKEN 
+    ? crypto.createHash('sha256').update(process.env.BOT_TOKEN).digest('hex')
+    : 'MO_MO_BOUTIQUE_SECURE_JWT_SESSION_SECRET_2026'
+);
+
+const SESSION_EXPIRY = '2h'; // Short-lived sessions for maximum safety
 
 const checkBypass = () => {
-  // 🛡 Strict Security: Bypass ONLY allowed in explicitly designated development environments
   const isDev = process.env.NODE_ENV === 'development';
   const isBypassEnabled = process.env.DEBUG_ADMIN_BYPASS === 'true';
-  
-  if (!isDev) return false;
-  
-  return isBypassEnabled;
+  return isDev && isBypassEnabled;
 };
 
 /**
  * Middleware: verifyUser
- * Authenticates requests via X-TG-Data (Direct Telegram) or Authorization (JWT).
+ * Authenticates requests via X-TG-Data (Telegram HMAC) or Authorization (JWT).
  */
 const verifyUser = async (req, res, next) => {
+  if (req.user && req.tgUser) return next();
+
   const authHeader = req.get('Authorization');
   const initData = req.get('X-TG-Data');
 
   // 1. Direct Telegram InitData validation
   if (initData) {
     const isValid = validateInitData(initData, process.env.BOT_TOKEN);
-    if (!isValid && !checkBypass()) {
+    let user = {};
+
+    if (isValid) {
+      const params = new URLSearchParams(initData);
+      try {
+        user = JSON.parse(params.get('user') || '{}');
+      } catch (err) {
+        console.warn('⚠️ Auth: Failed to parse user from initData');
+        return res.status(400).json({ success: false, error: 'Malformed User Payload' });
+      }
+    } else if (checkBypass()) {
+      console.warn('🛠️ Auth: Development Bypass Active for Invalid InitData');
+      user = { id: Number(process.env.SUPERADMIN_ID) || 12345678, first_name: 'DevTester' };
+    } else {
       return res.status(401).json({ success: false, error: 'Invalid Session' });
     }
 
-    const params = new URLSearchParams(initData || '');
-    let user = {};
-    try {
-      user = JSON.parse(params.get('user') || '{}');
-    } catch (err) {
-      console.warn('⚠️ Auth: Failed to parse user from initData');
+    if (!user.id) {
+      return res.status(401).json({ success: false, error: 'User Identity Missing' });
     }
-    
-    // 🛡 Sync: If it's first-time or refresh, generate a transient session token
+
+    // 🛡 Sync: Issue transient session token for valid authenticated user
     const token = jwt.sign({ id: user.id, username: user.username }, SESSION_SECRET, { expiresIn: SESSION_EXPIRY });
     res.set('X-Session-Token', token);
     
     // 🛡 Ban Check
     try {
-      const userRepository = require('../repositories/userRepository');
       if (await userRepository.isBanned(user.id)) {
         return res.status(403).json({ success: false, error: 'គណនីរបស់អ្នកត្រូវបានផ្អាក (Account Banned)', code: 'BANNED' });
       }
     } catch (e) {
-      console.warn('⚠️ Auth: Failed to check ban status');
+      console.warn('⚠️ Auth: Failed to check ban status:', e.message);
     }
 
     req.user = { user_id: Number(user.id), ...user };
@@ -72,16 +87,15 @@ const verifyUser = async (req, res, next) => {
       
       // 🛡 Ban Check
       try {
-        const userRepository = require('../repositories/userRepository');
         if (await userRepository.isBanned(decoded.id)) {
           return res.status(403).json({ success: false, error: 'គណនីរបស់អ្នកត្រូវបានផ្អាក (Account Banned)', code: 'BANNED' });
         }
       } catch (e) {
-        console.warn('⚠️ Auth: Failed to check ban status');
+        console.warn('⚠️ Auth: Failed to check ban status:', e.message);
       }
 
-      req.user = { user_id: decoded.id, username: decoded.username };
-      req.tgUser = { id: decoded.id, username: decoded.username };
+      req.user = { user_id: Number(decoded.id), username: decoded.username };
+      req.tgUser = { id: Number(decoded.id), username: decoded.username };
       return next();
     } catch (e) {
       return res.status(401).json({ success: false, error: 'Session Expired', code: 'TOKEN_EXPIRED' });
@@ -91,7 +105,7 @@ const verifyUser = async (req, res, next) => {
   // 3. Last Resort: Dev Bypass
   if (checkBypass()) {
     console.warn('🛠️ Auth: Debug Bypass Active');
-    const devUser = { id: Number(process.env.SUPERADMIN_ID), first_name: 'DevTester' };
+    const devUser = { id: Number(process.env.SUPERADMIN_ID) || 12345678, first_name: 'DevTester' };
     req.user = { user_id: devUser.id, ...devUser };
     req.tgUser = devUser;
     return next();
@@ -100,41 +114,39 @@ const verifyUser = async (req, res, next) => {
   return res.status(401).json({ success: false, error: 'Auth Required' });
 };
 
-const isStaffOrAdmin = (req, res, next) => {
-  // Principal: Re-use verifyUser logic then check SuperAdmin ID or Role
-  verifyUser(req, res, async () => {
-    if (Number(req.user.user_id) === Number(process.env.SUPERADMIN_ID)) {
-      return next();
+/**
+ * Helper to check role after verifyUser completes
+ */
+const checkUserRole = async (req, res, next, requiredRole = 'staff') => {
+  const userId = Number(req.user?.user_id);
+  const superAdminId = Number(process.env.SUPERADMIN_ID);
+
+  if (userId === superAdminId) return next();
+
+  try {
+    const dbUser = await userRepository.findById(String(userId));
+    if (dbUser) {
+      if (requiredRole === 'admin' && dbUser.role === 'admin') return next();
+      if (requiredRole === 'staff' && (dbUser.role === 'admin' || dbUser.role === 'staff')) return next();
     }
-    try {
-      const userRepository = require('../repositories/userRepository');
-      const dbUser = await userRepository.findById(String(req.user.user_id));
-      if (dbUser && (dbUser.role === 'admin' || dbUser.role === 'staff')) {
-        return next();
-      }
-    } catch (e) {
-      console.warn('⚠️ Auth: Failed to check user role');
-    }
-    res.status(403).json({ success: false, error: 'Access Denied: Staff/Admin Only' });
+  } catch (e) {
+    console.warn('⚠️ Auth: Failed to check user role:', e.message);
+  }
+
+  return res.status(403).json({ 
+    success: false, 
+    error: `Access Denied: ${requiredRole === 'admin' ? 'Admin' : 'Staff/Admin'} Only` 
   });
 };
 
+const isStaffOrAdmin = (req, res, next) => {
+  if (req.user) return checkUserRole(req, res, next, 'staff');
+  return verifyUser(req, res, () => checkUserRole(req, res, next, 'staff'));
+};
+
 const isSuperAdminOnly = (req, res, next) => {
-  verifyUser(req, res, async () => {
-    if (Number(req.user.user_id) === Number(process.env.SUPERADMIN_ID)) {
-      return next();
-    }
-    try {
-      const userRepository = require('../repositories/userRepository');
-      const dbUser = await userRepository.findById(String(req.user.user_id));
-      if (dbUser && dbUser.role === 'admin') {
-        return next();
-      }
-    } catch (e) {
-      console.warn('⚠️ Auth: Failed to check superadmin role');
-    }
-    res.status(403).json({ success: false, error: 'Access Denied: SuperAdmin Only' });
-  });
+  if (req.user) return checkUserRole(req, res, next, 'admin');
+  return verifyUser(req, res, () => checkUserRole(req, res, next, 'admin'));
 };
 
 module.exports = { isStaffOrAdmin, isSuperAdminOnly, verifyUser };

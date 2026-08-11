@@ -1,11 +1,12 @@
 const orderService = require('../services/orderService');
+const couponRepository = require('../repositories/couponRepository');
 const asyncHandler = require('../utils/asyncHandler');
-const { ForbiddenError, NotFoundError } = require('../utils/errors');
+const { ForbiddenError, NotFoundError, ValidationError } = require('../utils/errors');
 
 const orderController = {
   createOrder: asyncHandler(async (req, res) => {
     const result = await orderService.createOrder(req.body, req.tgUser);
-    res.json({ success: true, ...result });
+    res.status(201).json({ success: true, ...result });
   }),
 
   getStatus: asyncHandler(async (req, res) => {
@@ -14,11 +15,16 @@ const orderController = {
   }),
 
   getUserOrders: asyncHandler(async (req, res) => {
-    const limit = Math.min(parseInt(req.query.limit) || 20, 100);
-    const offset = parseInt(req.query.offset) || 0;
+    const limit = Math.min(Math.max(parseInt(req.query.limit) || 20, 1), 100);
+    const offset = Math.max(parseInt(req.query.offset) || 0, 0);
     
-    // Use tgUser.id as the canonical userId (from auth middleware)
-    const effectiveUserId = req.query.userId || req.tgUser?.id || req.user?.user_id;
+    // 🛡️ Authorization Security Guard: Only Admins/Staff can query arbitrary userId values via query params.
+    // Regular users are strictly locked to their authenticated Telegram / User ID.
+    const authUserId = req.tgUser?.id || req.user?.user_id;
+    const superAdminId = Number(process.env.SUPERADMIN_ID);
+    const isAdminOrStaff = req.user?.role === 'admin' || req.user?.role === 'staff' || Number(authUserId) === superAdminId;
+
+    const effectiveUserId = (isAdminOrStaff && req.query.userId) ? req.query.userId : authUserId;
     
     const { orders, total } = await orderService.getUserOrders(effectiveUserId, limit, offset, req.tgUser);
     
@@ -36,21 +42,22 @@ const orderController = {
 
   confirmOrder: asyncHandler(async (req, res) => {
     const { orderCode } = req.body;
+    if (!orderCode) throw new ValidationError('Order code is required.');
     const order = await orderService.confirmOrderPayment(orderCode, req.tgUser);
     res.json({ success: true, order });
   }),
 
   uploadReceipt: asyncHandler(async (req, res) => {
     const { orderCode, receiptUrl } = req.body;
-    if (!orderCode || !receiptUrl) throw new Error('Missing parameters');
+    if (!orderCode || !receiptUrl) throw new ValidationError('Missing orderCode or receiptUrl.');
     const order = await orderService.uploadReceipt(orderCode, receiptUrl, req.tgUser);
     res.json({ success: true, order });
   }),
 
   validateCoupon: asyncHandler(async (req, res) => {
     const { code } = req.body;
-    if (!code) throw new Error('Missing coupon code');
-    const couponRepository = require('../repositories/couponRepository');
+    if (!code) throw new ValidationError('Missing coupon code.');
+    
     const coupon = await couponRepository.findByCode(code);
     if (!coupon) {
       throw new NotFoundError('Coupon code is invalid or expired.');

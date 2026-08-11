@@ -28,6 +28,7 @@ const ProductDetail = ({ product, allProducts = [], onAdd, onClose, onBuyNow, ac
   const scrollRef = React.useRef(null);
   const mainScrollRef = React.useRef(null);
   const scrollTimeoutRef = React.useRef(null);
+  const [zoomState, setZoomState] = useState({ show: false, x: 0, y: 0, index: -1 });
 
   // Full Product Lazy Load
   const [fullProduct, setFullProduct] = useState(product);
@@ -102,12 +103,15 @@ const ProductDetail = ({ product, allProducts = [], onAdd, onClose, onBuyNow, ac
 
   if (!product) return null;
 
-  const gallery = React.useMemo(() => [
-    fullProduct.image,
-    ...(typeof fullProduct.additional_images === 'string'
-      ? JSON.parse(fullProduct.additional_images || '[]')
-      : (fullProduct.additional_images || []))
-  ].filter(img => img && typeof img === 'string'), [fullProduct.image, fullProduct.additional_images]);
+  const gallery = React.useMemo(() => {
+    const imgs = [
+      fullProduct.image,
+      ...(typeof fullProduct.additional_images === 'string'
+        ? JSON.parse(fullProduct.additional_images || '[]')
+        : (fullProduct.additional_images || []))
+    ].filter(img => img && typeof img === 'string');
+    return imgs.length > 0 ? imgs : ['/favicon.png'];
+  }, [fullProduct.image, fullProduct.additional_images]);
 
   const bestDiscount = calculateBestDiscount(product, activeDiscounts);
   const discountedPriceValue = getDiscountedPrice(product, bestDiscount);
@@ -188,76 +192,49 @@ const ProductDetail = ({ product, allProducts = [], onAdd, onClose, onBuyNow, ac
           {/* Scrollable content */}
           <div className="pd-scroll" ref={mainScrollRef}>
 
-            {/* Image Gallery */}
-            <div className="pd-image-section-wrapper">
-              {/* Floating Nav */}
-              <div className="pd-floating-nav">
-                <button className="pd-floating-btn" onClick={onClose} aria-label="Back">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M15 18l-6-6 6-6" />
+            {/* Standard Header Nav */}
+            <div className="pd-header-nav">
+              <button className="pd-header-btn" onClick={onClose} aria-label="Back">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M15 18l-6-6 6-6" />
+                </svg>
+              </button>
+
+              <div className="pd-header-title">
+                {lang === 'kh' ? 'ព័ត៌មានផលិតផល' : 'Product Details'}
+              </div>
+
+              <div className="pd-header-actions">
+                <button className="pd-header-btn" onClick={(e) => {
+                  e.stopPropagation();
+                  const tg = window.Telegram?.WebApp;
+                  const shareText = `🔥 មើលនេះសិន! ${product.name} លក់ត្រឹមតែ $${product.price} នៅ MO MO Boutique! 👗`;
+                  if (tg?.openTelegramLink) {
+                    tg.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent('https://t.me/mo_mo_boutique_bot')}&text=${encodeURIComponent(shareText)}`);
+                  }
+                }} aria-label="Share">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="18" cy="5" r="3"></circle>
+                    <circle cx="6" cy="12" r="3"></circle>
+                    <circle cx="18" cy="19" r="3"></circle>
+                    <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+                    <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
                   </svg>
                 </button>
-
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <button className="pd-floating-btn" style={{ flexShrink: 0 }} onClick={(e) => {
-                    e.stopPropagation();
-                    const tg = window.Telegram?.WebApp;
-                    const shareText = `🔥 មើលនេះសិន! ${product.name} លក់ត្រឹមតែ $${product.price} នៅ MO MO Boutique! 👗`;
-                    if (tg?.openTelegramLink) {
-                      tg.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent('https://t.me/mo_mo_boutique_bot')}&text=${encodeURIComponent(shareText)}`);
-                    }
-                  }} aria-label="Share">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <circle cx="18" cy="5" r="3"></circle>
-                      <circle cx="6" cy="12" r="3"></circle>
-                      <circle cx="18" cy="19" r="3"></circle>
-                      <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
-                      <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
-                    </svg>
-                  </button>
-                  <button className="pd-floating-btn" style={{ flexShrink: 0 }} onClick={(e) => { e.stopPropagation(); if (typeof onBuyNow === 'function') onBuyNow(e); }} aria-label="Cart">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
-                      <line x1="3" y1="6" x2="21" y2="6" />
-                      <path d="M16 10a4 4 0 0 1-8 0" />
-                    </svg>
-                  </button>
-                </div>
+                <button className="pd-header-btn" onClick={(e) => { e.stopPropagation(); if (typeof onBuyNow === 'function') onBuyNow(e); }} aria-label="Cart">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
+                    <line x1="3" y1="6" x2="21" y2="6" />
+                    <path d="M16 10a4 4 0 0 1-8 0" />
+                  </svg>
+                </button>
               </div>
+            </div>
+
+            {/* Image Gallery */}
+            <div className="pd-image-section-wrapper">
               <div className="pd-image-area" style={{ position: 'relative' }}>
 
-                {/* Left Arrow */}
-                {gallery.length > 1 && activeImg > 0 && (
-                  <button
-                    style={{ position: 'absolute', top: '50%', left: '10px', transform: 'translateY(-50%)', background: 'rgba(0,0,0,0.4)', color: 'white', border: 'none', borderRadius: '50%', width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10, cursor: 'pointer', backdropFilter: 'blur(4px)' }}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      scrollRef.current?.scrollTo({ left: (activeImg - 1) * scrollRef.current.offsetWidth, behavior: 'smooth' });
-                    }}
-                  >
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
-                  </button>
-                )}
-
-                {/* Right Arrow */}
-                {gallery.length > 1 && activeImg < gallery.length - 1 && (
-                  <button
-                    style={{ position: 'absolute', top: '50%', right: '10px', transform: 'translateY(-50%)', background: 'rgba(0,0,0,0.4)', color: 'white', border: 'none', borderRadius: '50%', width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10, cursor: 'pointer', backdropFilter: 'blur(4px)' }}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      scrollRef.current?.scrollTo({ left: (activeImg + 1) * scrollRef.current.offsetWidth, behavior: 'smooth' });
-                    }}
-                  >
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
-                  </button>
-                )}
-
-                {/* Image Counter Badge */}
-                {gallery.length > 1 && (
-                  <div style={{ position: 'absolute', top: '16px', right: '16px', background: 'rgba(0,0,0,0.5)', color: 'white', fontSize: '11px', fontWeight: 'bold', padding: '4px 10px', borderRadius: '12px', zIndex: 10, backdropFilter: 'blur(4px)' }}>
-                    {activeImg + 1} / {gallery.length}
-                  </div>
-                )}
 
                 <div
                   className="pd-swiper"
@@ -273,20 +250,49 @@ const ProductDetail = ({ product, allProducts = [], onAdd, onClose, onBuyNow, ac
                   }}
                 >
                   {gallery.map((img, i) => (
-                    <div key={i} className="pd-slide" onClick={() => setZoomIndex(i)}>
+                    <div 
+                      key={i} 
+                      className="pd-slide" 
+                      onClick={() => setZoomIndex(i)}
+                      onMouseMove={(e) => {
+                        if (window.innerWidth < 768) return; // Desktop only
+                        const { left, top, width, height } = e.currentTarget.getBoundingClientRect();
+                        const xPercent = ((e.clientX - left) / width) * 100;
+                        const yPercent = ((e.clientY - top) / height) * 100;
+                        setZoomState({ show: true, x: xPercent, y: yPercent, index: i });
+                      }}
+                      onMouseLeave={() => setZoomState({ show: false, x: 0, y: 0, index: -1 })}
+                      style={{ position: 'relative', cursor: 'zoom-in' }}
+                    >
                       <img
                         src={(img && img.includes('cloudinary'))
-                          ? img.replace('upload/', 'upload/f_auto,q_auto,w_800,h_800,c_pad,b_white/')
+                          ? img.replace('upload/', 'upload/f_auto,q_auto,w_1000,h_1250,c_fill,g_auto/')
                           : img}
                         alt={`${product.name} ${i + 1}`}
                         className="pd-slide-img"
                         crossOrigin="anonymous"
-                        loading={i === 0 ? "eager" : "lazy"}
+                        loading="eager"
                         decoding={i === 0 ? "sync" : "async"}
                         fetchpriority={i === 0 ? "high" : "auto"}
+                        onError={(e) => { e.target.onerror = null; e.target.src = '/favicon.png'; }}
+                        style={{ opacity: (zoomState.show && zoomState.index === i && window.innerWidth >= 768) ? 0 : 1 }}
                       />
+                      
+                      {zoomState.show && zoomState.index === i && window.innerWidth >= 768 && (
+                        <div style={{
+                          position: 'absolute',
+                          top: 0, left: 0, right: 0, bottom: 0,
+                          backgroundImage: `url(${(img && img.includes('cloudinary')) ? img.replace('upload/', 'upload/f_auto,q_auto:best,w_2000/') : img})`,
+                          backgroundPosition: `${zoomState.x}% ${zoomState.y}%`,
+                          backgroundSize: '200%',
+                          backgroundRepeat: 'no-repeat',
+                          zIndex: 5,
+                          pointerEvents: 'none'
+                        }} />
+                      )}
+
                       {/* Zoom Icon Hint */}
-                      <div style={{ position: 'absolute', bottom: 10, right: 10, background: 'rgba(255,255,255,0.7)', borderRadius: '50%', width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
+                      <div style={{ position: 'absolute', bottom: 10, right: 10, background: 'rgba(255,255,255,0.7)', color: '#111827', borderRadius: '50%', width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', pointerEvents: 'none' }}>
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                           <circle cx="11" cy="11" r="8"></circle>
                           <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
@@ -328,8 +334,7 @@ const ProductDetail = ({ product, allProducts = [], onAdd, onClose, onBuyNow, ac
             {/* Content */}
             <div className="pd-content">
 
-              {/* Brand */}
-              <p className="pd-brand">{formatCategory(product.category, lang) || 'MO MO Boutique'}</p>
+
 
               {/* Product Name */}
               <h1 className="pd-name">{product.name}</h1>
@@ -428,9 +433,9 @@ const ProductDetail = ({ product, allProducts = [], onAdd, onClose, onBuyNow, ac
 
               {/* Info rows */}
               <div className="pd-info-rows">
-                <div className="pd-info-row">
+                <div className={`pd-info-row ${isOutOfStock ? 'out-of-stock' : ''}`}>
                   <span className={`pd-stock-icon ${isOutOfStock ? 'out' : ''}`}>●</span>
-                  <span className={`pd-info-text ${isOutOfStock ? '' : 'green'}`}>
+                  <span className="pd-info-text">
                     {isOutOfStock
                       ? (lang === 'kh' ? 'អស់ស្តុក' : 'Out of stock')
                       : (lang === 'kh' ? `មានស្តុក (${actualStock})` : `In stock (${actualStock})`)}
@@ -464,7 +469,7 @@ const ProductDetail = ({ product, allProducts = [], onAdd, onClose, onBuyNow, ac
                         }}
                         style={{ minWidth: '120px', width: '120px', cursor: 'pointer', background: 'var(--bg-surface)', borderRadius: '16px', overflow: 'hidden', border: '1px solid var(--border-subtle)' }}
                       >
-                        <div style={{ width: '100%', aspectRatio: '1', background: 'var(--bg-soft)' }}>
+                        <div className="pd-image-area">
                           <img
                             src={(rp.image && rp.image.includes('cloudinary')) ? rp.image.replace('upload/', 'upload/f_auto,q_auto,w_200,c_fill,g_auto/') : rp.image}
                             alt={rp.name}
@@ -584,7 +589,7 @@ const ProductDetail = ({ product, allProducts = [], onAdd, onClose, onBuyNow, ac
             </button>
 
             <button
-              className={`pd-cart-btn ${isOutOfStock ? 'disabled' : ''}`}
+              className={`pd-cart-btn outline ${isOutOfStock ? 'disabled' : ''}`}
               onClick={handleAdd}
               disabled={isOutOfStock}
               style={{ flex: 1, padding: '0 8px' }}
@@ -599,7 +604,7 @@ const ProductDetail = ({ product, allProducts = [], onAdd, onClose, onBuyNow, ac
               className={`pd-cart-btn ${isOutOfStock ? 'disabled' : ''}`}
               onClick={handleBuyNow}
               disabled={isOutOfStock}
-              style={{ flex: 1, padding: '0 8px', background: '#16a34a', color: 'white' }}
+              style={{ flex: 1, padding: '0 8px' }}
             >
               {isOutOfStock
                 ? (lang === 'kh' ? 'អស់ស្តុក' : 'Out of Stock')

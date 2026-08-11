@@ -1,14 +1,25 @@
 const Queue = require('bull');
 const bot = require('../config/telegram');
 
-const redisConnection = process.env.REDIS_URL
-  ? { tls: process.env.REDIS_URL.startsWith('rediss://') ? { rejectUnauthorized: false } : undefined }
-  : { host: '127.0.0.1', port: 6379 };
+// 🛡️ Markdown V1 Escape Helper to prevent 400 Bad Request Telegram API crashes
+const escapeMarkdown = (text) => {
+  if (!text && text !== 0) return '';
+  return String(text).replace(/([_*`\[])/g, '\\$1');
+};
 
-// ✅ Initialize notification queue (Redis connection)
-const notificationQueue = process.env.REDIS_URL 
-  ? new Queue('notifications', process.env.REDIS_URL, { redis: redisConnection.tls ? { tls: redisConnection.tls } : {} })
-  : new Queue('notifications', { redis: redisConnection });
+// ⚡ Reliable Bull Queue Initialization with clean TLS support
+const getNotificationQueue = () => {
+  if (process.env.REDIS_URL) {
+    const isTls = process.env.REDIS_URL.startsWith('rediss://');
+    return new Queue('notifications', process.env.REDIS_URL, isTls ? {
+      redis: { tls: { rejectUnauthorized: false } }
+    } : {});
+  }
+  return new Queue('notifications', { redis: { host: '127.0.0.1', port: 6379 } });
+};
+
+const notificationQueue = getNotificationQueue();
+
 notificationQueue.on('error', (err) => {
   console.error('🔴 Notification Queue Error:', err.message || err);
 });
@@ -23,16 +34,8 @@ const safeSendTelegram = async (method, chatId, ...args) => {
   const normalizedChatId = String(chatId);
 
   try {
-    const chat = await bot.telegram.getChat(normalizedChatId);
-    const chatInfo = `${chat.type}${chat.username ? ` @${chat.username}` : ''}${chat.first_name ? ` ${chat.first_name}` : ''}`;
-    console.log(`ℹ️ Telegram chat verified: ${normalizedChatId} (${chatInfo})`);
-  } catch (chatErr) {
-    console.warn(`⚠️ Telegram getChat failed for ${normalizedChatId}:`, chatErr.description || chatErr.message || chatErr);
-  }
-
-  try {
     const result = await bot.telegram[method](normalizedChatId, ...args);
-    console.log(`✅ Telegram ${method} success to ${normalizedChatId} msg_id=${result?.message_id || 'unknown'}`);
+    console.log(`✅ Telegram ${method} success to ${normalizedChatId}`);
     return result;
   } catch (err) {
     console.error(`🔴 Telegram ${method} failed to ${normalizedChatId}:`, err.description || err.message || err);
@@ -40,146 +43,77 @@ const safeSendTelegram = async (method, chatId, ...args) => {
   }
 };
 
-// ✅ Queue processor: Handle Telegram notifications in the background
-notificationQueue.process(async (job) => {
-  const { type, adminId, userId, order, items } = job.data;
-  console.log(`ℹ️ Notification Worker: processing type=${type} adminId=${adminId} userId=${userId} orderCode=${order?.order_code || order?.id}`);
-  try {
-    if (bot) {
-      const itemsList = (items || []).map(it => `- ${it.name} x ${it.quantity}`).join('\n');
-      
-      const timeStr = new Date().toLocaleString('en-GB', { timeZone: 'Asia/Phnom_Penh', hour12: true });
-      
-      if (type === 'order_created') {
-        const ticket = `🛒 *ការកម្ម៉ង់ថ្មី (New Order)*\n` +
-                      `🆔 លេខសម្គាល់: \`${order.order_code}\`\n` +
-                      `👤 អតិថិជន: *${order.user_name}*\n` +
-                      `📝 ទំនិញ:\n${itemsList}\n\n` +
-                      `💰 សរុប: *$${order.total}*\n` +
-                      `🕒 កាលបរិច្ឆេទ: *${timeStr}*`;
-        await safeSendTelegram('sendMessage', adminId, ticket, { 
-          parse_mode: 'Markdown',
-          reply_markup: {
-            inline_keyboard: [
-              [{ text: '✅ បញ្ជាក់ការបង់ប្រាក់ (Confirm)', callback_data: `approve_order_${order.order_code}` }],
-              [{ text: '❌ បដិសេធ (Reject)', callback_data: `reject_order_${order.order_code}` }]
-            ]
-          }
-        });
-        
-        const userTicket = `🛒 *ការកម្ម៉ង់របស់អ្នកត្រូវបានទទួល!*\n` +
-                          `🆔 លេខសម្គាល់: \`${order.order_code}\`\n` +
-                          `💰 សរុប: *$${order.total}*\n` +
-                          `🕒 កាលបរិច្ឆេទ: *${timeStr}*`;
-        await safeSendTelegram('sendMessage', userId, userTicket, { parse_mode: 'Markdown' });
-      } else if (type === 'order_paid') {
-        const ticket = `🎫 *វិក្កយបត្រកម្មង់ដែលបានបង់ប្រាក់*\n` +
-                       `🆔 លេខសម្គាល់: \`${order.order_code}\`\n` +
-                       `👤 អតិថិជន: *${order.user_name}*\n` +
-                       `📦 ទំនិញ:\n${itemsList}\n` +
-                       `💰 សរុប: *$${order.total}*\n` +
-                       `🕒 កាលបរិច្ឆេទ: *${timeStr}*`;
-        console.log(`ℹ️ Telegram send payload: adminId=${adminId}, userId=${userId}`);
-    await safeSendTelegram('sendMessage', adminId, ticket, { parse_mode: 'Markdown' });
-
-        const userTicket = `✨ *វិក្កយបត្រកម្មង់ដែលបានបង់ប្រាក់*\n` +
-                          `🆔 លេខសម្គាល់: \`${order.order_code}\`\n` +
-                          `✅ ការបង់ប្រាក់ត្រូវបានបញ្ជាក់ជោគជ័យ! អរគុណសម្រាប់ការគាំទ្រពី MO MO Boutique។`;
-    await safeSendTelegram('sendMessage', userId, userTicket, { parse_mode: 'Markdown' });
-      } else if (type === 'reconciliation_success') {
-        const ticket = `🔄 *ការផ្ទៀងផ្ទាត់ឡើងវិញបានជោគជ័យ (Reconciled)*\n` +
-                       `🆔 លេខសម្គាល់: \`${order.order_code}\`\n` +
-                       `👤 អតិថិជន: *${order.user_name}*\n` +
-                       `✅ ប្រព័ន្ធបានឆែកឃើញការបង់ប្រាក់ដែលបាត់ដានកាលពីមុន។ អ័រឌឺត្រូវបានបញ្ជាក់ដោយស្វ័យប្រវត្តិ!`;
-        await safeSendTelegram('sendMessage', adminId, ticket, { parse_mode: 'Markdown' });
-
-        const userTicket = `✨ *ការបង់ប្រាក់របស់អ្នកត្រូវបានបញ្ជាក់ (Reconciled)*\n` +
-                          `🆔 លេខសម្គាល់: \`${order.order_code}\`\n` +
-                          `✅ ប្រព័ន្ធបានឆែកឃើញការបង់ប្រាក់របស់អ្នក។ អរគុណដែលបានរង់ចាំ!`;
-        await safeSendTelegram('sendMessage', userId, userTicket, { parse_mode: 'Markdown' });
-      } else if (type === 'receipt_uploaded') {
-        const ticket = `🧾 *វិក្កយបត្របានបញ្ជូនពីអតិថិជន*\n` +
-                       `🆔 លេខសម្គាល់: \`${order.order_code}\`\n` +
-                       `👤 អតិថិជន: *${order.user_name}*\n` +
-                       `💰 សរុប: *$${order.total}*\n` +
-                       `🕒 កាលបរិច្ឆេទ: *${timeStr}*\n\n` +
-                       `👇 សូមពិនិត្យរូបភាពវិក្កយបត្រខាងក្រោម ឬ ក្នុង Admin Dashboard។`;
-        await safeSendTelegram('sendPhoto', adminId, order.receipt_url, { 
-          caption: ticket, 
-          parse_mode: 'Markdown',
-          reply_markup: {
-            inline_keyboard: [
-              [{ text: '✅ អនុម័ត (Approve)', callback_data: `approve_order_${order.order_code}` }],
-              [{ text: '❌ បដិសេធ (Reject)', callback_data: `reject_order_${order.order_code}` }]
-            ]
-          }
-        });
-      }
-    }
-  } catch (e) {
-    console.error('🔴 Notification Worker Fail:', e.message);
-    throw e;
-  }
-});
-
-const sendTelegramNotification = async (type, adminId, userId, order, items) => {
+/**
+ * 🚀 Single Source of Truth for Notification Formatting & Telegram Dispatching
+ */
+const sendTelegramNotification = async (type, adminId, userId, order, items = []) => {
   if (!bot) return;
-  const itemsList = (items || []).map(it => `- ${it.name} x ${it.quantity}`).join('\n');
 
+  const itemsList = (items || []).map(it => `- ${escapeMarkdown(it.name)} x ${it.quantity}`).join('\n');
   const timeStr = new Date().toLocaleString('en-GB', { timeZone: 'Asia/Phnom_Penh', hour12: true });
+  const safeOrderCode = escapeMarkdown(order?.order_code || order?.id);
+  const safeUserName = escapeMarkdown(order?.user_name || 'អតិថិជន');
+  const safeTotal = order?.total || '0';
 
   if (type === 'order_created') {
-    const ticket = `🛒 *ការកម្ម៉ង់ថ្មី (New Order)*\n` +
-                  `🆔 លេខសម្គាល់: \`${order.order_code}\`\n` +
-                  `👤 អតិថិជន: *${order.user_name}*\n` +
-                  `📝 ទំនិញ:\n${itemsList}\n\n` +
-                  `💰 សរុប: *$${order.total}*\n` +
-                  `🕒 កាលបរិច្ឆេទ: *${timeStr}*`;
-    await safeSendTelegram('sendMessage', adminId, ticket, { 
-      parse_mode: 'Markdown',
-      reply_markup: {
-        inline_keyboard: [
-          [{ text: '✅ បញ្ជាក់ការបង់ប្រាក់ (Confirm)', callback_data: `approve_order_${order.order_code}` }],
-          [{ text: '❌ បដិសេធ (Reject)', callback_data: `reject_order_${order.order_code}` }]
-        ]
-      }
-    });
-    const userTicket = `🛒 *ការកម្ម៉ង់របស់អ្នកត្រូវបានទទួល!*\n` +
-                      `🆔 លេខសម្គាល់: \`${order.order_code}\`\n` +
-                      `💰 សរុប: *$${order.total}*\n` +
-                      `🕒 កាលបរិច្ឆេទ: *${timeStr}*`;
-    await safeSendTelegram('sendMessage', userId, userTicket, { parse_mode: 'Markdown' });
+    const adminTicket = `🛒 *ការកម្ម៉ង់ថ្មី (New Order)*\n` +
+                        `🆔 លេខសម្គាល់: \`${safeOrderCode}\`\n` +
+                        `👤 អតិថិជន: *${safeUserName}*\n` +
+                        `📞 លេខទូរស័ព្ទ: \`${escapeMarkdown(order?.phone)}\`\n` +
+                        `📍 អាសយដ្ឋាន: ${escapeMarkdown(order?.address)}\n` +
+                        `🚚 ដឹកជញ្ជូន: *${escapeMarkdown(order?.delivery_company)}*\n` +
+                        `💳 បង់ប្រាក់: *${escapeMarkdown(order?.payment_method)}*\n` +
+                        `🛍️ ទំនិញ:\n${itemsList}\n` +
+                        `💰 សរុប: *$${safeTotal}*\n` +
+                        `🕒 កាលបរិច្ឆេទ: *${timeStr}*`;
+    await safeSendTelegram('sendMessage', adminId, adminTicket, { parse_mode: 'Markdown' });
+
+    if (userId) {
+      const userTicket = `✅ *អរគុណសម្រាប់ការកម្ម៉ង់! (Order Received)*\n` +
+                         `🆔 លេខសម្គាល់: \`${safeOrderCode}\`\n` +
+                         `💰 ទឹកប្រាក់សរុប: *$${safeTotal}*\n` +
+                         `⏳ ប្រព័ន្ធកំពុងផ្ទៀងផ្ទាត់ការបង់ប្រាក់របស់អ្នក...`;
+      await safeSendTelegram('sendMessage', userId, userTicket, { parse_mode: 'Markdown' });
+    }
+
   } else if (type === 'order_paid') {
-    const ticket = `🎫 *វិក្កយបត្រកម្មង់ដែលបានបង់ប្រាក់*\n` +
-                   `🆔 លេខសម្គាល់: \`${order.order_code}\`\n` +
-                   `👤 អតិថិជន: *${order.user_name}*\n` +
-                   `📦 ទំនិញ:\n${itemsList}\n` +
-                   `💰 សរុប: *$${order.total}*\n` +
-                   `🕒 កាលបរិច្ឆេទ: *${timeStr}*`;
-    await safeSendTelegram('sendMessage', adminId, ticket, { parse_mode: 'Markdown' });
-    const userTicket = `✨ *វិក្កយបត្រកម្មង់ដែលបានបង់ប្រាក់*\n` +
-                      `🆔 លេខសម្គាល់: \`${order.order_code}\`\n` +
-                      `✅ ការបង់ប្រាក់ត្រូវបានបញ្ជាក់ជោគជ័យ! អរគុណសម្រាប់ការគាំទ្រពី MO MO Boutique។`;
-    await safeSendTelegram('sendMessage', userId, userTicket, { parse_mode: 'Markdown' });
+    const adminTicket = `💰 *ការបង់ប្រាក់បានបញ្ជាក់ (Payment Confirmed)*\n` +
+                        `🆔 លេខសម្គាល់: \`${safeOrderCode}\`\n` +
+                        `👤 អតិថិជន: *${safeUserName}*\n` +
+                        `💵 ចំនួនទឹកប្រាក់: *$${safeTotal}*\n` +
+                        `🕒 កាលបរិច្ឆេទ: *${timeStr}*`;
+    await safeSendTelegram('sendMessage', adminId, adminTicket, { parse_mode: 'Markdown' });
+
+    if (userId) {
+      const userTicket = `🎉 *ការបង់ប្រាក់ទទួលបានជោគជ័យ! (Payment Successful)*\n` +
+                         `🆔 លេខសម្គាល់: \`${safeOrderCode}\`\n` +
+                         `📦 យើងខ្ញុំកំពុងរៀបចំទំនិញដើម្បីដឹកជញ្ជូនជូនអ្នក!`;
+      await safeSendTelegram('sendMessage', userId, userTicket, { parse_mode: 'Markdown' });
+    }
+
   } else if (type === 'reconciliation_success') {
-    const ticket = `🔄 *ការផ្ទៀងផ្ទាត់ឡើងវិញបានជោគជ័យ (Reconciled)*\n` +
-                   `🆔 លេខសម្គាល់: \`${order.order_code}\`\n` +
-                   `👤 អតិថិជន: *${order.user_name}*\n` +
-                   `✅ ប្រព័ន្ធបានឆែកឃើញការបង់ប្រាក់ដែលបាត់ដានកាលពីមុន។ អ័រឌឺត្រូវបានបញ្ជាក់ដោយស្វ័យ​ប្រវត្តិ!`;
-    await safeSendTelegram('sendMessage', adminId, ticket, { parse_mode: 'Markdown' });
-    const userTicket = `✨ *ការបង់ប្រាក់របស់អ្នកត្រូវបានបញ្ជាក់ (Reconciled)*\n` +
-                      `🆔 លេខសម្គាល់: \`${order.order_code}\`\n` +
-                      `✅ ប្រព័ន្ធបានឆែកឃើញការបង់ប្រាក់របស់អ្នក។ អរគុណដែលបានរង់ចាំ!`;
-    await safeSendTelegram('sendMessage', userId, userTicket, { parse_mode: 'Markdown' });
+    const adminTicket = `🔄 *ការផ្ទៀងផ្ទាត់ឡើងវិញបានជោគជ័យ (Reconciled)*\n` +
+                         `🆔 លេខសម្គាល់: \`${safeOrderCode}\`\n` +
+                         `👤 អតិថិជន: *${safeUserName}*\n` +
+                         `✅ ប្រព័ន្ធបានឆែកឃើញការបង់ប្រាក់ដែលបាត់ដានកាលពីមុន។ អ័រឌឺត្រូវបានបញ្ជាក់ដោយស្វ័យប្រវត្តិ!`;
+    await safeSendTelegram('sendMessage', adminId, adminTicket, { parse_mode: 'Markdown' });
+
+    if (userId) {
+      const userTicket = `✨ *ការបង់ប្រាក់របស់អ្នកត្រូវបានបញ្ជាក់ (Reconciled)*\n` +
+                         `🆔 លេខសម្គាល់: \`${safeOrderCode}\`\n` +
+                         `✅ ប្រព័ន្ធបានឆែកឃើញការបង់ប្រាក់របស់អ្នក។ អរគុណដែលបានរង់ចាំ!`;
+      await safeSendTelegram('sendMessage', userId, userTicket, { parse_mode: 'Markdown' });
+    }
+
   } else if (type === 'receipt_uploaded') {
-    const ticket = `🧾 *វិក្កយបត្របានបញ្ជូនពីអតិថិជន*\n` +
-                   `🆔 លេខសម្គាល់: \`${order.order_code}\`\n` +
-                   `👤 អតិថិជន: *${order.user_name}*\n` +
-                   `💰 សរុប: *$${order.total}*\n` +
-                   `🕒 កាលបរិច្ឆេទ: *${timeStr}*\n\n` +
-                   `👇 សូមពិនិត្យរូបភាពវិក្កយបត្រខាងក្រោម ឬ ក្នុង Admin Dashboard.`;
+    const adminTicket = `🧾 *វិក្កយបត្របានបញ្ជូនពីអតិថិជន*\n` +
+                         `🆔 លេខសម្គាល់: \`${safeOrderCode}\`\n` +
+                         `👤 អតិថិជន: *${safeUserName}*\n` +
+                         `💰 សរុប: *$${safeTotal}*\n` +
+                         `🕒 កាលបរិច្ឆេទ: *${timeStr}*\n\n` +
+                         `👇 សូមពិនិត្យរូបភាពវិក្កយបត្រខាងក្រោម ឬ ក្នុង Admin Dashboard។`;
     await safeSendTelegram('sendPhoto', adminId, order.receipt_url, { 
-      caption: ticket, 
+      caption: adminTicket, 
       parse_mode: 'Markdown',
       reply_markup: {
         inline_keyboard: [
@@ -188,64 +122,101 @@ const sendTelegramNotification = async (type, adminId, userId, order, items) => 
         ]
       }
     });
+
+  } else if (type === 'broadcast') {
+    const { userIds, message, photoUrl } = order || {};
+    console.log(`📣 [Broadcast Queue Worker] Executing broadcast for ${(userIds || []).length} users...`);
+    for (const uid of (userIds || [])) {
+      if (!uid) continue;
+      try {
+        if (photoUrl) {
+          await safeSendTelegram('sendPhoto', uid, photoUrl, { caption: message, parse_mode: 'Markdown' });
+        } else {
+          await safeSendTelegram('sendMessage', uid, message, { parse_mode: 'Markdown' });
+        }
+      } catch (e) {
+        console.warn(`⚠️ [Broadcast Queue Worker] Skip ${uid}: ${e.message}`);
+      }
+      await new Promise(r => setTimeout(r, 100)); // 100ms throttle between sends
+    }
+    console.log('✅ [Broadcast Queue Worker] Broadcast completed.');
   }
 };
 
+// ⚙️ Queue Worker: Single Responsibility - Delegates to sendTelegramNotification
+notificationQueue.process(async (job) => {
+  const { type, adminId, userId, order, items } = job.data;
+  console.log(`ℹ️ Notification Worker: processing type=${type} adminId=${adminId} userId=${userId}`);
+  await sendTelegramNotification(type, adminId, userId, order, items);
+});
+
+/**
+ * 🚀 Write-Ahead Notification Service (Non-blocking HTTP execution)
+ */
 const notificationService = {
   notifyOrderCreated: async (adminId, userId, order, items) => {
-    console.log(`ℹ️ Direct notifyOrderCreated: adminId=${adminId} userId=${userId} orderCode=${order?.order_code}`);
     try {
-      return await sendTelegramNotification('order_created', adminId, userId, order, items);
-    } catch (directErr) {
-      console.error('⚠️ Direct order_created notification failed, falling back to queue:', directErr.message || directErr);
-      return notificationQueue.add({
+      return await notificationQueue.add({
         type: 'order_created', adminId, userId, order, items
       }, { attempts: 3, backoff: { type: 'exponential', delay: 2000 } });
+    } catch (e) {
+      console.warn('⚠️ Queue add failed, fallback to async direct send:', e.message);
+      sendTelegramNotification('order_created', adminId, userId, order, items).catch(() => {});
     }
   },
 
   notifyOrderPaid: async (adminId, userId, order, items) => {
-    console.log(`ℹ️ Direct notifyOrderPaid: adminId=${adminId} userId=${userId} orderCode=${order?.order_code}`);
     try {
-      return await sendTelegramNotification('order_paid', adminId, userId, order, items);
-    } catch (directErr) {
-      console.error('⚠️ Direct order_paid notification failed, falling back to queue:', directErr.message || directErr);
-      return notificationQueue.add({
+      return await notificationQueue.add({
         type: 'order_paid', adminId, userId, order, items
       }, { attempts: 3, backoff: { type: 'exponential', delay: 2000 } });
+    } catch (e) {
+      console.warn('⚠️ Queue add failed, fallback to async direct send:', e.message);
+      sendTelegramNotification('order_paid', adminId, userId, order, items).catch(() => {});
     }
   },
 
   sendLowStockAlert: async (adminId, product) => {
     if (!bot || !adminId) return;
+    const safeProductName = escapeMarkdown(product?.name || 'ទំនិញ');
+    const safeStock = product?.stock ?? 0;
     const msg = `⚠️ *LOW STOCK ALERT*\n\n` +
-                `📦 ទំនិញ: *${product.name}*\n` +
-                `📉 ចំនួននៅសល់: *${product.stock}* គ្រឿង\n\n` +
+                `📦 ទំនិញ: *${safeProductName}*\n` +
+                `📉 ចំនួននៅសល់: *${safeStock}* គ្រឿង\n\n` +
                 `សូមប្រញាប់បន្ថែមស្តុកបាទ!`;
-    await safeSendTelegram('sendMessage', adminId, msg, { parse_mode: 'Markdown' });
+    safeSendTelegram('sendMessage', adminId, msg, { parse_mode: 'Markdown' }).catch(() => {});
   },
 
   notifyReconciliationSuccess: async (adminId, userId, order) => {
-    console.log(`ℹ️ Direct notifyReconciliationSuccess: adminId=${adminId} userId=${userId} orderCode=${order?.order_code}`);
     try {
-      return await sendTelegramNotification('reconciliation_success', adminId, userId, order, []);
-    } catch (directErr) {
-      console.error('⚠️ Direct reconciliation notification failed, falling back to queue:', directErr.message || directErr);
-      return notificationQueue.add({
-        type: 'reconciliation_success', adminId, userId, order
+      return await notificationQueue.add({
+        type: 'reconciliation_success', adminId, userId, order, items: []
       }, { attempts: 3, backoff: { type: 'exponential', delay: 2000 } });
+    } catch (e) {
+      console.warn('⚠️ Queue add failed, fallback to async direct send:', e.message);
+      sendTelegramNotification('reconciliation_success', adminId, userId, order, []).catch(() => {});
     }
   },
 
   sendReceiptToAdmin: async (adminId, order) => {
-    console.log(`ℹ️ Direct sendReceiptToAdmin: adminId=${adminId} orderUserId=${order?.user_id} orderCode=${order?.order_code}`);
     try {
-      return await sendTelegramNotification('receipt_uploaded', adminId, order.user_id, order, []);
-    } catch (directErr) {
-      console.error('⚠️ Direct receipt notification failed, falling back to queue:', directErr.message || directErr);
-      return notificationQueue.add({
-        type: 'receipt_uploaded', adminId, userId: order.user_id, order
+      return await notificationQueue.add({
+        type: 'receipt_uploaded', adminId, userId: order?.user_id, order, items: []
       }, { attempts: 3, backoff: { type: 'exponential', delay: 2000 } });
+    } catch (e) {
+      console.warn('⚠️ Queue add failed, fallback to async direct send:', e.message);
+      sendTelegramNotification('receipt_uploaded', adminId, order?.user_id, order, []).catch(() => {});
+    }
+  },
+
+  sendBroadcast: async (userIds, message, photoUrl) => {
+    try {
+      return await notificationQueue.add({
+        type: 'broadcast', adminId: null, userId: null, order: { userIds, message, photoUrl }, items: []
+      }, { attempts: 2, backoff: { type: 'exponential', delay: 5000 } });
+    } catch (e) {
+      console.warn('⚠️ Queue add failed for broadcast, fallback to async direct send:', e.message);
+      sendTelegramNotification('broadcast', null, null, { userIds, message, photoUrl }).catch(() => {});
     }
   }
 };

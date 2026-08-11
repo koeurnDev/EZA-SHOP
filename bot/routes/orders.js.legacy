@@ -97,7 +97,7 @@ const logError = (msg) => {
     finalMsg = JSON.stringify(redacted);
   }
   const logMsg = `[${new Date().toISOString()}] ${finalMsg}\n`;
-  fs.appendFileSync(path.join(__dirname, '../../error_log.txt'), logMsg);
+  fs.promises.appendFile(path.join(__dirname, '../../error_log.txt'), logMsg).catch(() => {});
 };
 
 // 🛡 Senior 20-Year Exp: Secure 32-char Random ID

@@ -127,7 +127,7 @@ app.get('/api/products', publicController.getProducts);
 app.get('/api/products/:id', publicController.getProductById);
 app.get('/api/flags', publicController.getFlags); // 🚀 Combined Feature Flags
 app.get('/api/notifications', publicController.getNotifications); // 🔔 In-App System Messages
-app.delete('/api/notifications/:id', publicController.deleteNotification); // 🗑️ Delete Notification
+app.delete('/api/notifications/:id', isStaffOrAdmin, publicController.deleteNotification); // 🗑️ Delete Notification (Staff/Admin Only)
 app.get('/api/faqs', faqController.getFaqs);
 
 // Reviews Routes
@@ -198,7 +198,24 @@ app.post('/api/admin/broadcast', isStaffOrAdmin, adminController.broadcast);
 // --- Global Error Handler (Safety Net) ---
 app.use((err, req, res, next) => {
   console.error('🔥 Global App Error:', err.stack);
-  res.status(err.status || 500).json({
+
+  // 🧹 Stale Multer Disk Storage Cleanup to prevent orphaned /tmp files on upload errors
+  try {
+    const fs = require('fs');
+    if (req.file && req.file.path && fs.existsSync(req.file.path)) {
+      fs.unlink(req.file.path, () => {});
+    }
+    if (req.files) {
+      const files = Array.isArray(req.files) ? req.files : Object.values(req.files).flat();
+      files.forEach(f => {
+        if (f.path && fs.existsSync(f.path)) fs.unlink(f.path, () => {});
+      });
+    }
+  } catch (cleanErr) {
+    console.warn('⚠️ Multer Temp File Cleanup Warning:', cleanErr.message);
+  }
+
+  res.status(err.status || err.statusCode || 500).json({
     success: false,
     error: err.message || 'Internal Server Error'
   });

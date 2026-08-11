@@ -11,8 +11,9 @@ export const fetchOrderStatus = (orderCode) => {
   return apiRequest(`/api/orders/status/${orderCode}`);
 };
 
-export const fetchUserOrders = (userId, limit = 20, offset = 0) => {
-  return apiRequest(`/api/user/orders?userId=${userId}&limit=${limit}&offset=${offset}`);
+// 🛡️ No userId param — backend resolves user identity from X-TG-Data auth header (prevents IDOR)
+export const fetchUserOrders = (limit = 20, offset = 0) => {
+  return apiRequest(`/api/user/orders?limit=${limit}&offset=${offset}`);
 };
 
 export const submitReview = (reviewData) => {

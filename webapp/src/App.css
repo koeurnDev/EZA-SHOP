@@ -4794,18 +4794,23 @@ input:checked+.toggle-slider:before {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 20px;
-  z-index: 1000;
+  min-height: calc(60px + env(safe-area-inset-top, 0px));
+  padding: env(safe-area-inset-top, 0px) 14px 10px;
+  z-index: 10001;
   background: var(--bg-surface);
-  border-bottom: 1px solid var(--border-subtle);
+  border-bottom: none;
+  position: relative;
 }
 .pd-header-title {
-  flex: 1;
-  min-width: 0;
-  text-align: center;
-  font-size: 16px;
-  font-weight: 900;
-  color: var(--text-bold);
+  position: absolute;
+  left: 50%;
+  top: calc(50% + env(safe-area-inset-top, 0px) / 2);
+  transform: translate(-50%, -50%);
+  max-width: 58%;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  color: var(--text-main);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -4813,26 +4818,35 @@ input:checked+.toggle-slider:before {
 .pd-header-actions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   flex-shrink: 0;
 }
 .pd-header-btn {
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
   background: var(--bg-soft);
+  color: var(--text-main);
   border-radius: 50%;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   border: none;
   cursor: pointer;
-  color: var(--text-bold);
-  transition: all 0.2s ease;
+  box-shadow: none;
+  transition: transform 0.16s ease, background 0.16s ease;
   flex-shrink: 0;
 }
+.pd-header-btn svg {
+  stroke: currentColor;
+}
+.pd-header-btn:hover {
+  background: var(--bg-surface);
+}
 .pd-header-btn:active {
-  transform: scale(0.92);
-  background: var(--border-subtle);
+  transform: scale(0.96);
+  background: var(--bg-soft);
 }
 /* --- 3D Product Card Redesign --- */
 .product-card-luxury {

@@ -12,9 +12,14 @@ const CACHE_KEYS = {
   inventoryStats: 'products:inventory:stats'
 };
 
+const safeJsonParse = (val, fallback = []) => {
+  if (val === null || val === undefined) return fallback;
+  if (typeof val === 'object') return val;
+  try { return JSON.parse(val); } catch (e) { return fallback; }
+};
+
 const productRepository = {
   findAll: async (limit = 100, offset = 0) => {
-    // Note: Pagination with offset doesn't cache well, only cache full list
     if (offset === 0 && limit === 100) {
       return await cacheService.getOrFetch(
         CACHE_KEYS.allProducts,
@@ -26,7 +31,6 @@ const productRepository = {
       );
     }
 
-    // Non-cached for pagination
     const res = await pool.query('SELECT * FROM products ORDER BY id DESC LIMIT $1 OFFSET $2', [limit, offset]);
     return res.rows;
   },
@@ -89,7 +93,6 @@ const productRepository = {
     };
   },
 
-  // ⚡ Optimized for high-frequency storefront/admin-grid loads
   findAllMinimal: async () => {
     return await cacheService.getOrFetch(
       CACHE_KEYS.minimalProducts,
@@ -102,58 +105,73 @@ const productRepository = {
   },
 
   findById: async (id) => {
-    const res = await pool.query('SELECT * FROM products WHERE id = $1', [id]);
+    const numericId = parseInt(id, 10);
+    if (isNaN(numericId)) return null;
+    const res = await pool.query('SELECT * FROM products WHERE id = $1', [numericId]);
     return res.rows[0];
   },
 
   findByIds: async (ids) => {
-    const res = await pool.query('SELECT * FROM products WHERE id = ANY($1)', [ids]);
+    if (!Array.isArray(ids) || ids.length === 0) return [];
+    const numericIds = ids.map(id => parseInt(id, 10)).filter(id => !isNaN(id));
+    if (numericIds.length === 0) return [];
+
+    const res = await pool.query('SELECT * FROM products WHERE id = ANY($1::integer[])', [numericIds]);
     return res.rows;
   },
 
   create: async (p) => {
-    const variantsJson = p.variants ? JSON.stringify(p.variants) : '[]';
+    const variantsJson = JSON.stringify(safeJsonParse(p.variants, []));
+    const addImagesJson = JSON.stringify(safeJsonParse(p.additional_images, []));
+
     const res = await pool.query(
-      'INSERT INTO products (name, category, price, image, stock, description, additional_images, flash_sale_price, flash_sale_end, video_url, variants) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *',
-      [p.name, p.category, p.price, p.image, p.stock || 0, p.description || '', p.additional_images || '[]', p.flash_sale_price || null, p.flash_sale_end || null, p.video_url || null, variantsJson]
+      'INSERT INTO products (name, category, price, image, stock, description, additional_images, flash_sale_price, flash_sale_end, video_url, variants) VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8, $9, $10, $11::jsonb) RETURNING *',
+      [p.name, p.category, p.price, p.image, p.stock || 0, p.description || '', addImagesJson, p.flash_sale_price || null, p.flash_sale_end || null, p.video_url || null, variantsJson]
     );
-    // 🚀 Invalidate cache on create (Non-blocking for instant API response)
+
     Promise.all([
       cacheService.clearPattern('products:*'),
       cacheService.delete('system:init:data'),
       cacheService.delete('admin:dashboard_data'),
       cacheService.delete('admin:advanced_analytics')
     ]).catch(err => console.error('Cache invalidate error:', err.message));
+
     return res.rows[0];
   },
 
   update: async (id, p) => {
-    const variantsJson = p.variants ? JSON.stringify(p.variants) : '[]';
+    const numericId = parseInt(id, 10);
+    const variantsJson = JSON.stringify(safeJsonParse(p.variants, []));
+    const addImagesJson = JSON.stringify(safeJsonParse(p.additional_images, []));
+
     const res = await pool.query(
-      'UPDATE products SET name = $1, category = $2, price = $3, image = $4, stock = $5, description = $6, additional_images = $7, flash_sale_price = $8, flash_sale_end = $9, video_url = $10, variants = $11 WHERE id = $12 RETURNING *',
-      [p.name, p.category, p.price, p.image, p.stock, p.description, p.additional_images, p.flash_sale_price, p.flash_sale_end, p.video_url, variantsJson, id]
+      'UPDATE products SET name = $1, category = $2, price = $3, image = $4, stock = $5, description = $6, additional_images = $7::jsonb, flash_sale_price = $8, flash_sale_end = $9, video_url = $10, variants = $11::jsonb WHERE id = $12 RETURNING *',
+      [p.name, p.category, p.price, p.image, p.stock, p.description, addImagesJson, p.flash_sale_price, p.flash_sale_end, p.video_url, variantsJson, numericId]
     );
-    // 🚀 Invalidate cache on update (Non-blocking)
+
     Promise.all([
       cacheService.clearPattern('products:*'),
       cacheService.delete('system:init:data'),
       cacheService.delete('admin:dashboard_data'),
       cacheService.delete('admin:advanced_analytics')
     ]).catch(err => console.error('Cache invalidate error:', err.message));
+
     return res.rows[0];
   },
 
   deductStock: async (id, qty) => {
+    const numericId = parseInt(id, 10);
     const res = await pool.query(
       'UPDATE products SET stock = stock - $1 WHERE id = $2 AND stock >= $1 RETURNING *',
-      [qty, id]
+      [qty, numericId]
     );
     return res.rows[0];
   },
 
   deductStockBatch: async (items, client = pool) => {
-    // Lock the required products
-    const ids = [...new Set(items.map(i => i.id))];
+    const ids = [...new Set(items.map(i => parseInt(i.id, 10)).filter(id => !isNaN(id)))];
+    if (ids.length === 0) return [];
+
     const { rows: products } = await client.query(
       `SELECT * FROM products WHERE id = ANY($1::integer[]) FOR UPDATE`,
       [ids]
@@ -165,14 +183,14 @@ const productRepository = {
 
     const productsById = {};
     for (const p of products) {
-      productsById[p.id] = { ...p, variants: typeof p.variants === 'string' ? JSON.parse(p.variants) : (p.variants || []) };
+      productsById[p.id] = { ...p, variants: safeJsonParse(p.variants, []) };
     }
 
-    // Process deductions
     for (const item of items) {
       const p = productsById[item.id];
+      if (!p) continue;
+
       if (item.variant) {
-        // Find variant and deduct
         const v = p.variants.find(v => v.color === item.variant.color && v.size === item.variant.size);
         if (!v || v.stock < item.quantity) {
           throw new Error(`Out of stock for variant ${item.variant.color || ''} ${item.variant.size || ''} of ${p.name}`);
@@ -186,15 +204,16 @@ const productRepository = {
       }
     }
 
-    // Save updates
-    for (const p of Object.values(productsById)) {
-      await client.query(
-        `UPDATE products SET stock = $1, variants = $2::jsonb WHERE id = $3`,
-        [p.stock, JSON.stringify(p.variants), p.id]
-      );
-    }
+    // Concurrent DB batch updates to minimize FOR UPDATE lock retention
+    await Promise.all(
+      Object.values(productsById).map(p =>
+        client.query(
+          `UPDATE products SET stock = $1, variants = $2::jsonb WHERE id = $3`,
+          [p.stock, JSON.stringify(p.variants), p.id]
+        )
+      )
+    );
     
-    // 🚀 Invalidate all relevant caches on stock change (Non-blocking)
     cacheService.clearPattern('products:*').catch(() => {});
     cacheService.delete('system:init:data').catch(() => {});
     
@@ -202,17 +221,16 @@ const productRepository = {
   },
 
   addStock: async (id, qty) => {
+    const numericId = parseInt(id, 10);
     const res = await pool.query(
       'UPDATE products SET stock = stock + $1 WHERE id = $2 RETURNING *',
-      [qty, id]
+      [qty, numericId]
     );
-    // 🚀 Invalidate cache on stock change
     await cacheService.clearPattern('products:*');
     return res.rows[0];
   },
 
   getInventoryStats: async () => {
-    // ✅ Optimized: Query products table directly to avoid stale statistics from the unrefreshed materialized view
     return await cacheService.getOrFetch(
       CACHE_KEYS.inventoryStats,
       async () => {
@@ -224,8 +242,8 @@ const productRepository = {
   },
 
   delete: async (id) => {
-    const res = await pool.query('DELETE FROM products WHERE id = $1 RETURNING *', [id]);
-    // 🚀 Invalidate cache on delete (Non-blocking)
+    const numericId = parseInt(id, 10);
+    const res = await pool.query('DELETE FROM products WHERE id = $1 RETURNING *', [numericId]);
     Promise.all([
       cacheService.clearPattern('products:*'),
       cacheService.delete('system:init:data'),

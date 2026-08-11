@@ -118,7 +118,17 @@ const AdminCustomersTab = ({ BACKEND_URL }) => {
           <input 
             type="text" 
             placeholder="ស្វែងរកតាមឈ្មោះ ឬ ID..." 
-            className="modern-input"
+            style={{
+              width: '100%',
+              padding: '12px 16px',
+              borderRadius: '12px',
+              border: '1px solid var(--border-subtle)',
+              background: 'var(--bg-soft)',
+              color: 'var(--text-main)',
+              fontSize: '14px',
+              outline: 'none',
+              boxSizing: 'border-box'
+            }}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -144,7 +154,7 @@ const AdminCustomersTab = ({ BACKEND_URL }) => {
                     <div style={{ 
                       width: 40, height: 40, 
                       borderRadius: '50%', 
-                      background: 'var(--primary-color)', 
+                      background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)', 
                       color: '#fff', 
                       display: 'flex', 
                       alignItems: 'center', 
@@ -167,9 +177,11 @@ const AdminCustomersTab = ({ BACKEND_URL }) => {
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: 11, background: 'var(--bg-surface)', padding: 10, borderRadius: 12 }}>
-                  <div>
+                  <div style={{ minWidth: 0, overflow: 'hidden' }}>
                     <span style={{ color: 'var(--text-dim)' }}>Phone:</span> <br/>
-                    <span style={{ fontWeight: 700 }}>{user.phone || '---'}</span>
+                    <span style={{ fontWeight: 700, display: 'block', color: (user.phone && (user.phone.includes(':') || user.phone.length > 25)) ? 'var(--text-muted)' : 'inherit' }}>
+                      {user.phone && (user.phone.includes(':') || user.phone.length > 25) ? '🔒 Protected' : (user.phone || '---')}
+                    </span>
                   </div>
                   <div>
                     <span style={{ color: 'var(--text-dim)' }}>Active:</span> <br/>
@@ -185,29 +197,33 @@ const AdminCustomersTab = ({ BACKEND_URL }) => {
                       onClick={() => handleUpdateRole(user.user_id, user.role)}
                       style={{ 
                         flex: 1, 
-                        background: user.role === 'staff' ? 'var(--bg-surface)' : 'var(--primary-color)', 
-                        color: user.role === 'staff' ? 'var(--text-main)' : '#fff', 
-                        padding: '10px', 
+                        background: user.role === 'staff' ? 'var(--bg-surface)' : 'rgba(59, 130, 246, 0.12)', 
+                        color: user.role === 'staff' ? 'var(--text-bold)' : '#2563eb', 
+                        padding: '10px 4px', 
                         borderRadius: 12, 
-                        fontSize: 12, 
+                        fontSize: 11, 
                         fontWeight: 800,
-                        border: user.role === 'staff' ? '1px solid var(--border-subtle)' : 'none'
+                        border: user.role === 'staff' ? '1.5px solid var(--border-subtle)' : '1.5px solid rgba(59, 130, 246, 0.3)',
+                        cursor: 'pointer',
+                        whiteSpace: 'nowrap'
                       }}>
-                      {user.role === 'staff' ? 'ទម្លាក់ជា User' : '⭐ តម្លើងជា Staff'}
+                      {user.role === 'staff' ? 'ទម្លាក់សិទ្ធិ' : '⭐ តម្លើង Staff'}
                     </button>
                     <button 
                       onClick={() => handleBanUser(user.user_id, user.is_banned)}
                       style={{ 
                         flex: 1, 
-                        background: user.is_banned ? 'var(--primary-color)' : 'rgba(239, 68, 68, 0.1)', 
-                        color: user.is_banned ? '#fff' : '#ef4444', 
-                        padding: '10px', 
+                        background: user.is_banned ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)', 
+                        color: user.is_banned ? '#059669' : '#dc2626', 
+                        padding: '10px 4px', 
                         borderRadius: 12, 
-                        fontSize: 12, 
+                        fontSize: 11, 
                         fontWeight: 800,
-                        border: 'none'
+                        border: user.is_banned ? '1.5px solid rgba(16, 185, 129, 0.3)' : '1.5px solid rgba(239, 68, 68, 0.3)',
+                        cursor: 'pointer',
+                        whiteSpace: 'nowrap'
                       }}>
-                      {user.is_banned ? '🟢 បើកគណនីវិញ' : '🚫 ផ្អាកគណនី (Ban)'}
+                      {user.is_banned ? '🟢 បើកគណនី' : '🚫 ផ្អាកគណនី'}
                     </button>
                   </div>
                 )}
@@ -218,13 +234,14 @@ const AdminCustomersTab = ({ BACKEND_URL }) => {
                       onClick={() => handleDeleteUser(user.user_id)}
                       style={{ 
                         flex: 1, 
-                        background: 'rgba(239, 68, 68, 0.1)', 
-                        color: '#ef4444', 
+                        background: 'rgba(239, 68, 68, 0.08)', 
+                        color: '#dc2626', 
                         padding: '10px', 
                         borderRadius: 12, 
                         fontSize: 12, 
                         fontWeight: 800,
-                        border: 'none'
+                        border: '1.5px solid rgba(239, 68, 68, 0.2)',
+                        cursor: 'pointer'
                       }}>
                       🗑️ លុប
                     </button>

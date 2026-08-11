@@ -7,6 +7,20 @@ if (!process.env.BOT_TOKEN) {
   process.exit(1);
 }
 
+// 🛡️ Markdown V1 Escape Helper — prevents 400 Bad Request on dynamic user names
+const escapeMarkdown = (text) => {
+  if (!text && text !== 0) return '';
+  return String(text).replace(/([_*`\[])/g, '\\$1');
+};
+
+// 🔒 Shared RBAC authorization check for Telegram inline actions
+const isAuthorizedAdmin = async (telegramUserId) => {
+  if (String(telegramUserId) === String(process.env.SUPERADMIN_ID)) return true;
+  const userRepository = require('../repositories/userRepository');
+  const dbUser = await userRepository.findById(String(telegramUserId));
+  return dbUser && (dbUser.role === 'admin' || dbUser.role === 'staff');
+};
+
 const telegrafOptions = {};
 if (process.env.PROXY_URL) {
   telegrafOptions.telegram = {
@@ -17,11 +31,11 @@ if (process.env.PROXY_URL) {
 
 const bot = new Telegraf(process.env.BOT_TOKEN, telegrafOptions);
 
-// --- Core Bot logic (formerly in bot.js) ---
+// --- Core Bot logic ---
 
 // 1. Start Command
 bot.start((ctx) => {
-  ctx.reply(`សួស្តី ${ctx.from.first_name}! សូមស្វាគមន៍មកកាន់ MO MO Boutique 🛍️\n\nសូមចុចប៊ូតុងខាងក្រោមដើម្បីចូលមើលទំនិញថ្មីៗបាទ៖`, 
+  ctx.reply(`សួស្តី ${escapeMarkdown(ctx.from.first_name)}! សូមស្វាគមន៍មកកាន់ MO MO Boutique 🛍️\n\nសូមចុចប៊ូតុងខាងក្រោមដើម្បីចូលមើលទំនិញថ្មីៗបាទ៖`, 
     Markup.inlineKeyboard([
       [Markup.button.webApp('Shop Now 🛍️', process.env.WEBAPP_URL)],
       [Markup.button.callback('មើលការកម្ម៉ង់ / Orders 📦', 'view_orders')]
@@ -33,7 +47,10 @@ bot.start((ctx) => {
 bot.command('orders', async (ctx) => {
   try {
     const userId = ctx.from.id.toString();
-    const orders = await pool.query('SELECT * FROM orders WHERE user_id = $1 ORDER BY created_at DESC LIMIT 5', [userId]);
+    const orders = await pool.query(
+      'SELECT * FROM orders WHERE user_id = $1 ORDER BY created_at DESC LIMIT 5',
+      [userId]
+    );
 
     if (orders.rows.length === 0) {
       return ctx.reply('បងមិនទាន់មានការកុម្ម៉ង់នៅឡើយទេបាទ។ 🛍️');
@@ -44,7 +61,7 @@ bot.command('orders', async (ctx) => {
       const date = new Date(o.created_at).toLocaleDateString('km-KH');
       const statusIcon = o.status === 'paid' ? '✅' : o.status === 'shipped' ? '🚚' : o.status === 'processing' ? '📦' : o.status === 'pending' ? '⏳' : '❌';
       const statusText = o.status === 'paid' ? 'បានបង់ប្រាក់' : o.status === 'shipped' ? 'កំពុងដឹកជញ្ជូន' : o.status === 'processing' ? 'កំពុងរៀបចំ' : o.status === 'pending' ? 'រង់ចាំការបង់ប្រាក់' : 'បានលុប';
-      const displayCode = o.order_code || o.id;
+      const displayCode = escapeMarkdown(o.order_code || o.id);
       
       msg += `${statusIcon} *\`${displayCode}\`*\n`;
       msg += `   ↳ ស្ថានភាព: ${statusText}\n`;
@@ -60,17 +77,24 @@ bot.command('orders', async (ctx) => {
 
 bot.action('view_orders', (ctx) => ctx.reply('សូមវាយពាក្យ /orders ដើម្បីមើលប្រវត្តិរូបបងបាទ។'));
 
-// 4. Receipt Verification Handlers (Admin)
+// 3. Approve Order (Admin Inline Action)
 bot.action(/^approve_order_(.+)$/, async (ctx) => {
   try {
     const orderCode = ctx.match[1];
-    const orderService = require('../services/orderService');
     const telegramUserId = ctx.from.id.toString();
-    
+
+    // 🛡️ RBAC check — mirrors reject_order authorization logic
+    const authorized = await isAuthorizedAdmin(telegramUserId);
+    if (!authorized) {
+      return ctx.answerCbQuery('❌ Access Denied: Admin Only', { show_alert: true });
+    }
+
+    const orderService = require('../services/orderService');
     await orderService.confirmOrderPayment(orderCode, { id: telegramUserId }, false);
     
     const msg = ctx.update.callback_query.message;
-    const appendText = `\n\n✅ អនុម័តដោយ: ${ctx.from.first_name}`;
+    const safeName = escapeMarkdown(ctx.from.first_name);
+    const appendText = `\n\n✅ អនុម័តដោយ: ${safeName}`;
     
     if (msg.photo || msg.caption !== undefined) {
       await ctx.editMessageCaption(`${msg.caption || ''}${appendText}`);
@@ -80,36 +104,33 @@ bot.action(/^approve_order_(.+)$/, async (ctx) => {
     
     await ctx.answerCbQuery('Approved Successfully!');
   } catch (err) {
-    console.error('Approve Error:', err);
+    console.error('Approve Error:', err.message);
     await ctx.answerCbQuery(`Error: ${err.message}`, { show_alert: true });
   }
 });
 
+// 4. Reject Order (Admin Inline Action)
 bot.action(/^reject_order_(.+)$/, async (ctx) => {
   try {
     const orderCode = ctx.match[1];
     const telegramUserId = String(ctx.from.id);
-    let isAdmin = telegramUserId === String(process.env.SUPERADMIN_ID);
-    
-    if (!isAdmin) {
-      const userRepository = require('../repositories/userRepository');
-      const dbUser = await userRepository.findById(telegramUserId);
-      if (dbUser && (dbUser.role === 'admin' || dbUser.role === 'staff')) {
-        isAdmin = true;
-      }
-    }
 
-    // 🛡️ SECURITY FIX: Check if the user is an Admin or Staff
-    if (!isAdmin) {
+    // 🛡️ RBAC check
+    const authorized = await isAuthorizedAdmin(telegramUserId);
+    if (!authorized) {
       return ctx.answerCbQuery('❌ Access Denied: Admin Only', { show_alert: true });
     }
 
-    const res = await pool.query('UPDATE orders SET status = $1 WHERE order_code = $2 RETURNING user_id', ['cancelled', orderCode]);
+    const res = await pool.query(
+      'UPDATE orders SET status = $1 WHERE order_code = $2 RETURNING user_id',
+      ['cancelled', orderCode]
+    );
     
     if (res.rowCount > 0) {
       const userId = res.rows[0].user_id;
+      const safeCode = escapeMarkdown(orderCode);
       const userMsg = `❌ *វិក្កយបត្ររបស់អ្នកត្រូវបានបដិសេធ*\n` +
-                      `🆔 លេខសម្គាល់: \`${orderCode}\`\n` +
+                      `🆔 លេខសម្គាល់: \`${safeCode}\`\n` +
                       `សូមពិនិត្យមើលវាឡើងវិញ ឬទាក់ទងមកកាន់យើងខ្ញុំ។`;
       if (userId) {
         await ctx.telegram.sendMessage(String(userId), userMsg, { parse_mode: 'Markdown' }).catch(console.error);
@@ -117,7 +138,8 @@ bot.action(/^reject_order_(.+)$/, async (ctx) => {
     }
     
     const msg = ctx.update.callback_query.message;
-    const appendText = `\n\n❌ បដិសេធដោយ: ${ctx.from.first_name}`;
+    const safeName = escapeMarkdown(ctx.from.first_name);
+    const appendText = `\n\n❌ បដិសេធដោយ: ${safeName}`;
     
     if (msg.photo || msg.caption !== undefined) {
       await ctx.editMessageCaption(`${msg.caption || ''}${appendText}`);
@@ -127,14 +149,14 @@ bot.action(/^reject_order_(.+)$/, async (ctx) => {
     
     await ctx.answerCbQuery('Rejected Successfully!');
   } catch (err) {
-    console.error('Reject Error:', err);
+    console.error('Reject Error:', err.message);
     await ctx.answerCbQuery(`Error: ${err.message}`, { show_alert: true });
   }
 });
 
-// 5. Error Handling
+// 5. Global Bot Error Handler
 bot.catch((err, ctx) => {
-  console.error(`🔴 Bot Error for ${ctx.updateType}:`, err);
+  console.error(`🔴 Bot Error for ${ctx.updateType}:`, err.message || err);
 });
 
 module.exports = bot;

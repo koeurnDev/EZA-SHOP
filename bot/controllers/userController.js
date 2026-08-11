@@ -1,21 +1,29 @@
 const userRepository = require('../repositories/userRepository');
+const cacheService = require('../services/cacheService');
+
+const getResolvedUserId = (req) => {
+  return req.user?.user_id || req.user?.id || req.tgUser?.id;
+};
 
 const userController = {
   getProfile: async (req, res) => {
     try {
-      const tgUser = req.user; // Injected by verifyUser middleware
-      if (!tgUser || !tgUser.id) {
+      const userId = getResolvedUserId(req);
+      if (!userId) {
         return res.status(401).json({ success: false, error: 'Unauthorized' });
       }
 
-      const userProfile = await userRepository.findById(tgUser.id);
+      // ⚡ High-Performance Cache Layer (5 min TTL)
+      const userProfile = await cacheService.getOrFetch(`user:profile:${userId}`, async () => {
+        return await userRepository.findById(userId);
+      }, 300);
       
-      // If user not found in DB (never ordered), just return basic TG info
+      // If user not found in DB (never ordered), return basic fallback profile
       if (!userProfile) {
         return res.json({ 
           success: true, 
           profile: {
-            user_id: tgUser.id,
+            user_id: userId,
             loyalty_points: 0,
             phone: '',
             address: ''
@@ -32,15 +40,29 @@ const userController = {
 
   updateProfile: async (req, res) => {
     try {
-      const tgUser = req.user;
-      if (!tgUser || !tgUser.id) {
+      const userId = getResolvedUserId(req);
+      if (!userId) {
         return res.status(401).json({ success: false, error: 'Unauthorized' });
       }
 
       const { phone, address } = req.body;
+      const trimmedPhone = phone ? String(phone).trim() : '';
+      const trimmedAddress = address ? String(address).trim() : '';
+
+      // 🛡️ Input Validation Guards
+      if (trimmedPhone && !/^[0-9\s\+\-\(\)]{8,15}$/.test(trimmedPhone)) {
+        return res.status(400).json({ success: false, error: 'Invalid phone number format. Must be 8-15 digits.' });
+      }
+
+      if (trimmedAddress.length > 500) {
+        return res.status(400).json({ success: false, error: 'Address exceeds maximum allowed length of 500 characters.' });
+      }
       
       // Upsert the user profile
-      const updatedUser = await userRepository.upsert(tgUser.id, phone || '', address || '');
+      const updatedUser = await userRepository.upsert(userId, trimmedPhone, trimmedAddress);
+
+      // 🚀 Invalidate cached user profile on update
+      cacheService.delete(`user:profile:${userId}`);
 
       res.json({ success: true, profile: updatedUser });
     } catch (error) {
@@ -52,10 +74,13 @@ const userController = {
   // 🟢 Ping: silently update last_seen for the current user
   ping: async (req, res) => {
     try {
+      const userId = getResolvedUserId(req);
+      if (!userId) return res.json({ success: true }); // Graceful no-op
+
       const tgUser = req.tgUser || req.user;
-      if (!tgUser?.id) return res.json({ success: true }); // Graceful no-op
-      const userName = tgUser.first_name || tgUser.username || null;
-      await userRepository.updateLastSeen(String(tgUser.id), userName);
+      const userName = tgUser?.first_name || tgUser?.username || null;
+
+      await userRepository.updateLastSeen(String(userId), userName);
       res.json({ success: true });
     } catch (err) {
       // Non-critical — always return 200 so frontend doesn't retry aggressively

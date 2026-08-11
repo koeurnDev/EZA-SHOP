@@ -265,8 +265,9 @@ const adminController = {
   // --- User Management ---
   getCustomers: async (req, res) => {
     try {
-      const userRepository = require('../repositories/userRepository');
-      const customers = await userRepository.findAll();
+      const limit = Math.min(Math.max(parseInt(req.query.limit) || 100, 1), 500);
+      const offset = Math.max(parseInt(req.query.offset) || 0, 0);
+      const customers = await adminService.getCustomers(limit, offset);
       res.json({ success: true, customers });
     } catch (err) {
       res.status(500).json({ success: false, error: err.message });
@@ -332,7 +333,9 @@ const adminController = {
   // --- Order Management ---
   getOrders: async (req, res) => {
     try {
-      const orders = await adminService.getOrders();
+      const limit = Math.min(Math.max(parseInt(req.query.limit) || 100, 1), 500);
+      const offset = Math.max(parseInt(req.query.offset) || 0, 0);
+      const orders = await adminService.getOrders(limit, offset);
       res.json({ success: true, orders });
     } catch (err) {
       res.status(500).json({ success: false, error: err.message });
@@ -418,37 +421,20 @@ const adminController = {
 
       const userRepository = require('../repositories/userRepository');
       const broadcastRepository = require('../repositories/broadcastRepository');
+      const notificationService = require('../services/notificationService');
+
       const userIds = await userRepository.getAllIds();
 
       // Save broadcast in database for in-app NotificationsModal
       await broadcastRepository.create(message, photoUrl);
 
-      // Return response immediately for non-blocking UI
+      // 🚀 Offload long-running broadcast job to resilient background Bull Queue
+      await notificationService.sendBroadcast(userIds, message, photoUrl);
+
       res.json({ success: true, count: userIds.length });
-
-      // Run in background
-      (async () => {
-        const bot = require('../config/telegram');
-        console.log(`📣 [Broadcast] Starting for ${userIds.length} users...`);
-        for (const uid of userIds) {
-          if (!uid) continue;
-          try {
-            if (photoUrl) {
-              await bot.telegram.sendPhoto(uid, photoUrl, { caption: message, parse_mode: 'Markdown' });
-            } else {
-              await bot.telegram.sendMessage(uid, message, { parse_mode: 'Markdown' });
-            }
-          } catch (e) {
-            console.warn(`⚠️ [Broadcast] Skip ${uid}: ${e.message}`);
-          }
-          await new Promise(r => setTimeout(r, 100)); // Rate limit 10/sec
-        }
-        console.log(`✅ [Broadcast] Finished.`);
-      })();
-
     } catch (err) {
       console.error('Broadcast Fail:', err);
-      if (!res.headersSent) res.status(500).json({ success: false });
+      if (!res.headersSent) res.status(500).json({ success: false, error: err.message });
     }
   },
 

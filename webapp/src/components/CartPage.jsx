@@ -95,26 +95,31 @@ const CartPage = ({
     else setView('home');
   };
 
-  const handlePrimaryAction = () => {
+  const handlePrimaryAction = async () => {
     if (step === 1) {
       setStep(2);
       window.scrollTo(0, 0);
-    } else {
-      if (!isPlacingOrder && isPhoneValid && isAddressValid) {
-        onCheckout(finalTotal, validatedPromo ? validatedPromo.code : null);
-      } else if (!isPhoneValid || !isAddressValid) {
-        if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
-        
-        // Show an explicit error message to the user!
-        const msg = lang === 'kh' 
-          ? 'សូមបញ្ញូល លេខទូរស័ព្ទ និងអាសយដ្ឋាន ឲ្យបានត្រឹមត្រូវ ដើម្បីបន្តការកម្ម៉ង់!' 
-          : 'Please enter a valid phone number and delivery address!';
-        
-        if (tg?.showAlert) {
-          tg.showAlert(msg);
-        } else {
-          alert(msg);
-        }
+      return;
+    }
+
+    if (!isPlacingOrder && isPhoneValid && isAddressValid) {
+      const success = await onCheckout(finalTotal, validatedPromo ? validatedPromo.code : null);
+      if (success) {
+        setValidatedPromo(null);
+        setPromoInput('');
+      }
+    } else if (!isPhoneValid || !isAddressValid) {
+      if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
+      
+      // Show an explicit error message to the user!
+      const msg = lang === 'kh' 
+        ? 'សូមបញ្ញូល លេខទូរស័ព្ទ និងអាសយដ្ឋាន ឲ្យបានត្រឹមត្រូវ ដើម្បីបន្តការកម្ម៉ង់!' 
+        : 'Please enter a valid phone number and delivery address!';
+      
+      if (tg?.showAlert) {
+        tg.showAlert(msg);
+      } else {
+        alert(msg);
       }
     }
   };
@@ -170,7 +175,12 @@ const CartPage = ({
         <div className="flex-1">
           {step === 1 ? (
             <div className="animate-in mb-8">
-              <h3 className="text-xl font-black text-bold mb-6 lowercase">{t('items') || 'items'} ({totalItemsCount})</h3>
+              <h3 className="text-2xl font-black text-bold mb-6 lowercase">
+                {t('items') || 'items'}
+                <span style={{ marginLeft: 10, fontSize: '0.92rem', fontWeight: 600, color: 'var(--text-muted)', opacity: 0.85 }}>
+                  ({totalItemsCount})
+                </span>
+              </h3>
               <div className="cart-items-list">
                 {cart.map(item => {
                   const best = calculateBestDiscount(item, activeDiscounts);

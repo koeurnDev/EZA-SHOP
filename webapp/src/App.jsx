@@ -212,9 +212,11 @@ function App() {
     if (result.success) {
       setLastOrder(result.data.order);
       // Modal will automatically update via setLastOrder
+      return true;
     } else {
       setShowInvoice(false); // Rollback on error
       showAlert(result.error || 'Order Failed');
+      return false;
     }
   };
 

@@ -17,7 +17,8 @@ export const useMagnetic = (intensity = 0.5) => {
 
   return {
     style: {
-      transform: `translate(${transform.x}px, ${transform.y}px)`,
+      transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
+      willChange: 'transform',
       transition: transform.x === 0 ? 'transform 0.5s var(--spring-bounce)' : 'none'
     },
     onMouseMove,

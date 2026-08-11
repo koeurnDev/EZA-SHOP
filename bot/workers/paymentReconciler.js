@@ -1,9 +1,9 @@
 const orderService = require('../services/orderService');
+const cacheService = require('../services/cacheService');
 
 /**
- * 🕵️ Payment Reconciler Worker
+ * 🕵️ Payment Reconciler Worker (Distributed & Overlap-Safe)
  * Periodically scans the database for missed payments.
- * This is the ultimate "Zero-Touch" safety net.
  */
 class PaymentReconciler {
   constructor() {
@@ -13,7 +13,7 @@ class PaymentReconciler {
   }
 
   start() {
-    console.log('👷 Reconciler Worker: Initialized (Every 15m)');
+    console.log('👷 Reconciler Worker: Initialized (Every 15m, Distributed Lock)');
     
     // Initial run after 30s to allow server to stabilize
     setTimeout(() => this.run(), 30000);
@@ -29,6 +29,14 @@ class PaymentReconciler {
       return;
     }
 
+    // 🛡️ Distributed Locking: Prevent multi-pod concurrent DB scans
+    const lockKey = 'lock:worker:payment_reconciler';
+    const lockAcquired = await cacheService.set(lockKey, 'locked', 900); // 15 min lock TTL
+    if (!lockAcquired) {
+      console.log('🔒 Reconciler Worker: Lock held by another instance. Skipping...');
+      return;
+    }
+
     this.isProcessing = true;
     try {
       await orderService.reconcileAllPending();
@@ -36,6 +44,7 @@ class PaymentReconciler {
       console.error('🔴 Reconciler Worker Error:', err.message);
     } finally {
       this.isProcessing = false;
+      await cacheService.delete(lockKey).catch(() => {});
     }
   }
 

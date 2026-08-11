@@ -10,18 +10,25 @@ export const calculateBestDiscount = (product, activeDiscounts = []) => {
     
     if (!relevant.length) return null;
 
+    // Convert price to cents to prevent floating-point precision issues
+    const priceCents = Math.round(product.price * 100);
+
     // Sort to find the best discount (highest value)
     return relevant.sort((a, b) => {
-        const valA = a.discount_type === 'percent' ? (product.price * a.value / 100) : a.value;
-        const valB = b.discount_type === 'percent' ? (product.price * b.value / 100) : b.value;
+        const valA = a.discount_type === 'percent' ? Math.round(priceCents * a.value / 100) : Math.round(a.value * 100);
+        const valB = b.discount_type === 'percent' ? Math.round(priceCents * b.value / 100) : Math.round(b.value * 100);
         return valB - valA;
     })[0];
 };
 
 export const getDiscountedPrice = (product, bestDiscount) => {
     if (!bestDiscount) return product.price;
-    const price = bestDiscount.discount_type === 'percent' 
-        ? (product.price * (1 - bestDiscount.value / 100)) 
-        : Math.max(0, product.price - bestDiscount.value);
-    return parseFloat(price.toFixed(2));
+    const priceCents = Math.round(product.price * 100);
+    
+    // Safer math: (priceCents * (100 - bestDiscount.value)) / 100
+    const finalCents = bestDiscount.discount_type === 'percent' 
+        ? Math.round((priceCents * (100 - bestDiscount.value)) / 100) 
+        : Math.max(0, priceCents - Math.round(bestDiscount.value * 100));
+        
+    return finalCents / 100;
 };

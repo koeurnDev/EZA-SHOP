@@ -13,13 +13,19 @@ const userRepository = {
     return user;
   },
 
-  findAll: async () => {
+  findAll: async (limit = 100, offset = 0) => {
     // 🛡️ Self-Healing: Ensure role, is_banned, and is_winback_reminded columns exist
     await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS role TEXT DEFAULT 'user'`).catch(() => {});
     await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS is_banned BOOLEAN DEFAULT false`).catch(() => {});
     await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS is_winback_reminded BOOLEAN DEFAULT false`).catch(() => {});
     
-    const res = await pool.query('SELECT * FROM users ORDER BY last_seen DESC NULLS LAST, last_updated DESC');
+    const safeLimit = Math.min(Math.max(parseInt(limit) || 100, 1), 500);
+    const safeOffset = Math.max(parseInt(offset) || 0, 0);
+
+    const res = await pool.query(
+      'SELECT * FROM users ORDER BY last_seen DESC NULLS LAST, last_updated DESC LIMIT $1 OFFSET $2',
+      [safeLimit, safeOffset]
+    );
     return res.rows.map(user => {
       user.phone = decrypt(user.phone);
       user.address = decrypt(user.address);

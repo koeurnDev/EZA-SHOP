@@ -42,6 +42,7 @@ const InvoiceModal = ({ order, onClose, paymentQrUrl, paymentInfo, BACKEND_URL, 
   const [qrError, setQrError] = useState('');
   const [isUploadingReceipt, setIsUploadingReceipt] = useState(false);
   const [receiptUploaded, setReceiptUploaded] = useState(false);
+  const [uploadError, setUploadError] = useState('');
   
   const [logoDataUrl, setLogoDataUrl] = useState('');
   const receiptRef = useRef(null);
@@ -545,6 +546,11 @@ const InvoiceModal = ({ order, onClose, paymentQrUrl, paymentInfo, BACKEND_URL, 
                   )}
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    {uploadError && (
+                      <div style={{ fontSize: '13px', color: '#ef4444', fontWeight: 900, textAlign: 'center', background: 'rgba(239, 68, 68, 0.1)', padding: 10, borderRadius: 12 }}>
+                        ⚠️ {uploadError}
+                      </div>
+                    )}
                     {!receiptUploaded && (
                       <label className={`detail-btn-buy-luxury`} style={{ width: '100%', height: 48, borderRadius: 16, fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none', cursor: 'pointer', background: 'var(--primary-gradient)' }}>
                         {isUploadingReceipt ? (lang === 'kh' ? '⌛ កំពុងផ្ទុក...' : '⌛ Uploading...') : (lang === 'kh' ? '📤 ដាក់វិក្កយបត្របញ្ជាក់ទីនេះ' : 'Upload Receipt Here')}
@@ -574,13 +580,15 @@ const InvoiceModal = ({ order, onClose, paymentQrUrl, paymentInfo, BACKEND_URL, 
                                 } else {
                                   // 🔄 Rollback if failed
                                   setReceiptUploaded(false);
-                                  alert(lang === 'kh' ? 'មានបញ្ហាក្នុងការផ្ទុករូបភាព' : 'Upload failed');
+                                  setUploadError(data.error || (lang === 'kh' ? 'មានបញ្ហាក្នុងការផ្ទុករូបភាព' : 'Upload failed'));
+                                  setTimeout(() => setUploadError(''), 5000);
                                 }
                               } catch (err) {
                                 console.error(err);
                                 // 🔄 Rollback if failed
                                 setReceiptUploaded(false);
-                                alert(lang === 'kh' ? 'មានបញ្ហាបណ្តាញទាក់ទង' : 'Network Error');
+                                setUploadError(err.message || (lang === 'kh' ? 'មានបញ្ហាបណ្តាញទាក់ទង' : 'Network Error'));
+                                setTimeout(() => setUploadError(''), 5000);
                               } finally {
                                 setIsUploadingReceipt(false);
                               }

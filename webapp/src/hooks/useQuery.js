@@ -23,6 +23,8 @@ export const useQuery = (key, url, options = {}) => {
   const inFlight = useRef(null);
   const cooldownRef = useRef(0);
 
+  const optionsString = JSON.stringify(options);
+
   const fetchData = useCallback(async (isSilent = false) => {
     // 🛡️ Cooldown Protection
     if (Date.now() < cooldownRef.current) return;
@@ -34,7 +36,7 @@ export const useQuery = (key, url, options = {}) => {
     if (!isSilent) setLoading(true);
     
     try {
-      const result = await fetchWithRetry(url, options);
+      const result = await fetchWithRetry(url, JSON.parse(optionsString));
       
       if (result.success) {
         const payload = result.data;
@@ -56,8 +58,7 @@ export const useQuery = (key, url, options = {}) => {
       setLoading(false);
       inFlight.current = null;
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key, url, fetchWithRetry]); // ⚡ DO NOT add options here - JSON.stringify(options) creates a new string every render causing infinite re-fetch loop!
+  }, [key, url, fetchWithRetry, optionsString]);
 
   const mutate = useCallback((updater) => {
     setData(prev => {
@@ -80,8 +81,12 @@ export const useQuery = (key, url, options = {}) => {
     try {
       const cached = localStorage.getItem(`${CACHE_PREFIX}${key}`);
       if (cached) {
-        // ⚡ Stale-While-Revalidate: serve cached data instantly, then always refresh silently in bg
-        fetchData(true);
+        const { timestamp } = JSON.parse(cached);
+        const isStale = Date.now() - timestamp > STALE_TIME;
+        // ⚡ Stale-While-Revalidate: serve cached data instantly, then refresh silently in bg if stale
+        if (isStale) {
+          fetchData(true);
+        }
       } else {
         fetchData(); // cold start - must fetch
       }

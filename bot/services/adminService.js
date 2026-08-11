@@ -3,23 +3,41 @@ const productRepository = require('../repositories/productRepository');
 const userRepository = require('../repositories/userRepository');
 const settingsRepository = require('../repositories/settingsRepository');
 const couponRepository = require('../repositories/couponRepository');
+const cacheService = require('./cacheService');
 
 const adminService = {
   getDashboardSummary: async () => {
-    const [orderAggregates, customers, productStats] = await Promise.all([
-      orderRepository.getDashboardAggregates(),
-      userRepository.getCount(),
-      productRepository.getInventoryStats()
+    const [rawOrderAggregates, customersCount, rawProductStats] = await Promise.all([
+      orderRepository.getDashboardAggregates().catch(() => null),
+      userRepository.getCount().catch(() => 0),
+      productRepository.getInventoryStats().catch(() => null)
     ]);
 
-    const stockScore = (productStats.inStock / (productStats.total || 1)) * 40;
-    const orderScore = (orderAggregates.healthy / (orderAggregates.total || 1)) * 60;
+    const orderAggregates = {
+      revenue: 0,
+      totalOrders: 0,
+      activeOrders: 0,
+      healthy: 0,
+      total: 0,
+      ...(rawOrderAggregates || {})
+    };
+
+    const productStats = {
+      inStock: 0,
+      total: 0,
+      ...(rawProductStats || {})
+    };
+
+    const customers = Number(customersCount) || 0;
+
+    const stockScore = ((productStats.inStock || 0) / (productStats.total || 1)) * 40;
+    const orderScore = ((orderAggregates.healthy || 0) / (orderAggregates.total || 1)) * 60;
     const health = Math.round(stockScore + orderScore);
 
     return {
-      totalRevenue: orderAggregates.revenue,
-      totalOrders: orderAggregates.totalOrders,
-      activeOrders: orderAggregates.activeOrders,
+      totalRevenue: Number(orderAggregates.revenue) || 0,
+      totalOrders: Number(orderAggregates.totalOrders) || 0,
+      activeOrders: Number(orderAggregates.activeOrders) || 0,
       totalCustomers: customers,
       businessHealth: Math.max(0, Math.min(100, health))
     };
@@ -27,44 +45,27 @@ const adminService = {
 
   getAnalytics: async () => {
     const [daily, status] = await Promise.all([
-      orderRepository.getDailyStats(14),
-      orderRepository.getStatusDistribution()
+      orderRepository.getDailyStats(14).catch(() => []),
+      orderRepository.getStatusDistribution().catch(() => [])
     ]);
-    return { daily, status };
+    return { daily: daily || [], status: status || [] };
   },
 
   getInitialData: async () => {
-    const { redisClient } = require('../config/redis');
-    const cacheKey = 'app:initial_data';
+    // ⚡ Encapsulated CacheService: In-memory (0ms) -> TCP Redis -> REST Upstash with graceful fallback
+    return await cacheService.getOrFetch('system:init:data', async () => {
+      const [products, settings, categories, discounts] = await Promise.all([
+        productRepository.findAllMinimal(),
+        settingsRepository.getByKeys([
+          'shop_status', 'delivery_threshold', 'delivery_fee', 'promo_text', 
+          'payment_qr_url', 'payment_info', 'promo_banner_url', 'shop_logo_url'
+        ]),
+        settingsRepository.getCategories(),
+        couponRepository.findActiveAuto()
+      ]);
 
-    // ⚡ Redis Smart Cache: Serve from RAM
-    if (redisClient && redisClient.isOpen) {
-      try {
-        const cached = await redisClient.get(cacheKey);
-        if (cached) return JSON.parse(cached);
-      } catch (e) {
-        console.warn('⚠️ Redis Cache Error:', e.message);
-      }
-    }
-
-    const [products, settings, categories, discounts] = await Promise.all([
-      productRepository.findAllMinimal(),
-      settingsRepository.getByKeys([
-        'shop_status', 'delivery_threshold', 'delivery_fee', 'promo_text', 
-        'payment_qr_url', 'payment_info', 'promo_banner_url', 'shop_logo_url'
-      ]),
-      settingsRepository.getCategories(),
-      couponRepository.findActiveAuto()
-    ]);
-
-    const result = { products, totalProducts: products.length, settings, categories, discounts };
-
-    // Cache the entire massive object for 60 seconds
-    if (redisClient && redisClient.isOpen) {
-      redisClient.setEx(cacheKey, 60, JSON.stringify(result)).catch(() => {});
-    }
-
-    return result;
+      return { products, totalProducts: (products || []).length, settings: settings || {}, categories: categories || [], discounts: discounts || [] };
+    }, 60);
   },
 
   // --- Category Management ---
@@ -73,11 +74,20 @@ const adminService = {
   },
 
   addCategory: async (name) => {
-    return await settingsRepository.addCategory(name);
+    const res = await settingsRepository.addCategory(name);
+    // Invalidate init data cache so clients get updated categories
+    cacheService.delete('system:init:data');
+    cacheService.delete('app:initial_data');
+    cacheService.delete('admin:dashboard_data');
+    return res;
   },
 
   deleteCategory: async (id) => {
-    return await settingsRepository.deleteCategory(id);
+    const res = await settingsRepository.deleteCategory(id);
+    cacheService.delete('system:init:data');
+    cacheService.delete('app:initial_data');
+    cacheService.delete('admin:dashboard_data');
+    return res;
   },
 
   // --- Coupon Management ---
@@ -86,16 +96,24 @@ const adminService = {
   },
 
   addCoupon: async (couponData) => {
-    return await couponRepository.create(couponData);
+    const res = await couponRepository.create(couponData);
+    cacheService.delete('system:init:data');
+    cacheService.delete('app:initial_data');
+    cacheService.delete('admin:dashboard_data');
+    return res;
   },
 
   deleteCoupon: async (id) => {
-    return await couponRepository.delete(id);
+    const res = await couponRepository.delete(id);
+    cacheService.delete('system:init:data');
+    cacheService.delete('app:initial_data');
+    cacheService.delete('admin:dashboard_data');
+    return res;
   },
 
   // --- User Management ---
-  getCustomers: async () => {
-    return await userRepository.findAll();
+  getCustomers: async (limit = 100, offset = 0) => {
+    return await userRepository.findAll(limit, offset);
   },
 
   addLoyaltyPoints: async (userId, points) => {
@@ -103,8 +121,8 @@ const adminService = {
   },
 
   // --- Order Management ---
-  getOrders: async () => {
-    return await orderRepository.findAll();
+  getOrders: async (limit = 100, offset = 0) => {
+    return await orderRepository.findAll(limit, offset);
   },
 
   updateOrderStatus: async (orderId, status, trackingNumber) => {
@@ -125,9 +143,9 @@ const adminService = {
     return { 
       summary, 
       analytics, 
-      orders, 
-      products, 
-      categories, 
+      orders: orders || [], 
+      products: products || [], 
+      categories: categories || [], 
       settings: settings || {} 
     };
   }

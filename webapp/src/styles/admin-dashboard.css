@@ -38,7 +38,7 @@
 }
 [data-theme='light'] {
   --bg-midnight: #FDFBF0;
-  --glass-card: rgba(253, 251, 240, 0.85);
+  --glass-card: #ffffff;
   --glass-border: rgba(47, 72, 58, 0.1);
   --text-luxury: #1c1917;
   --text-dim: #78716c;
@@ -46,12 +46,12 @@
 }
 [data-theme='light'] .admin-dashboard-overhaul,
 [data-theme='light'] .admin-dashboard-overhaul * {
-  --bg-soft: rgba(0, 0, 0, 0.04);
-  --bg-surface: rgba(255, 255, 255, 0.8);
-  --bg-input: #f1f5f9;
-  --border-subtle: rgba(0, 0, 0, 0.08);
-  --text-bold: #1c1917;
-  --text-main: #44403c;
+  --bg-soft: #f1f5f9;
+  --bg-surface: #ffffff;
+  --bg-input: #f8fafc;
+  --border-subtle: rgba(0, 0, 0, 0.12);
+  --text-bold: #0f172a;
+  --text-main: #334155;
   --chart-primary: #1c1917;
   --btn-primary-bg: #ffffff;
   --btn-primary-text: #1c1917;
@@ -346,15 +346,28 @@ textarea.input-glass-admin {
   to   { opacity: 1; transform: translate(-50%, 0) scale(1); }
 }
 
-.recharts-wrapper, .recharts-surface, .recharts-cartesian-grid-bg, .recharts-layer {
+/* 📈 Recharts SVG Cross-Browser Cleanup */
+.recharts-wrapper, .recharts-surface {
   outline: none !important;
-  border: none !important;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .recharts-wrapper * {
   outline: none !important;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .recharts-cartesian-grid rect {
   stroke: none !important;
+}
+
+/* Fix for Safari SVG overflow clipping & crisp rendering */
+.recharts-surface {
+  overflow: visible !important;
+  shape-rendering: auto;
+}
+
+.recharts-tooltip-wrapper {
+  outline: none !important;
+  pointer-events: none !important; /* Prevent tooltip from blocking chart interactions */
 }

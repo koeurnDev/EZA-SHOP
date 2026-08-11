@@ -140,15 +140,19 @@ const orderRepository = {
     return res.rows;
   },
 
-  findPendingOrders: async (lookbackHours = 24) => {
+  findPendingOrders: async (lookbackHours = 24, limit = 50, offset = 0) => {
+    const safeLimit = Math.min(Math.max(parseInt(limit) || 50, 1), 200);
+    const safeOffset = Math.max(parseInt(offset) || 0, 0);
+
     const res = await pool.query(
       `SELECT * FROM orders 
        WHERE status = 'pending' 
        AND is_reminded = false
        AND created_at > NOW() - (INTERVAL '1 hour' * $1)
        AND created_at < NOW() - INTERVAL '2 hours'
-       ORDER BY created_at ASC`,
-      [lookbackHours]
+       ORDER BY created_at ASC
+       LIMIT $2 OFFSET $3`,
+      [lookbackHours, safeLimit, safeOffset]
     );
     return res.rows;
   },
@@ -159,8 +163,11 @@ const orderRepository = {
 
   // --- Advanced Analytics / BI ---
   
-  getTopSellingProducts: async (limit = 5) => {
-    // Unnest the JSON items array to aggregate by product id/name
+  getTopSellingProducts: async (limit = 5, days = 30) => {
+    const safeLimit = Math.min(Math.max(parseInt(limit) || 5, 1), 50);
+    const safeDays = Math.min(Math.max(parseInt(days) || 30, 1), 365);
+
+    // Unnest the JSON items array to aggregate by product id/name with date scoping
     const res = await pool.query(`
       SELECT 
         item->>'id' as product_id,
@@ -170,14 +177,18 @@ const orderRepository = {
       FROM orders,
       jsonb_array_elements(items::jsonb) as item
       WHERE status != 'cancelled'
+      AND created_at >= NOW() - (INTERVAL '1 day' * $2)
       GROUP BY item->>'id', item->>'name'
       ORDER BY total_quantity DESC
       LIMIT $1
-    `, [limit]);
+    `, [safeLimit, safeDays]);
     return res.rows;
   },
 
-  getTopCustomers: async (limit = 5) => {
+  getTopCustomers: async (limit = 5, days = 30) => {
+    const safeLimit = Math.min(Math.max(parseInt(limit) || 5, 1), 50);
+    const safeDays = Math.min(Math.max(parseInt(days) || 30, 1), 365);
+
     const res = await pool.query(`
       SELECT 
         user_id,
@@ -187,24 +198,27 @@ const orderRepository = {
         SUM(total) as total_spent
       FROM orders
       WHERE status != 'cancelled'
+      AND created_at >= NOW() - (INTERVAL '1 day' * $2)
       GROUP BY user_id
       ORDER BY total_spent DESC
       LIMIT $1
-    `, [limit]);
+    `, [safeLimit, safeDays]);
     return res.rows;
   },
 
-  getAverageOrderValue: async () => {
+  getAverageOrderValue: async (days = 30) => {
+    const safeDays = Math.min(Math.max(parseInt(days) || 30, 1), 365);
+
     const res = await pool.query(`
       SELECT 
         COALESCE(AVG(total), 0) as aov,
-        COALESCE(AVG(total) FILTER (WHERE created_at > NOW() - INTERVAL '30 days'), 0) as aov_30d
+        COALESCE(AVG(total) FILTER (WHERE created_at > NOW() - (INTERVAL '1 day' * $1)), 0) as aov_range
       FROM orders
       WHERE status != 'cancelled'
-    `);
+    `, [safeDays]);
     return {
       aov: parseFloat(res.rows[0]?.aov || 0),
-      aov_30d: parseFloat(res.rows[0]?.aov_30d || 0)
+      aov_30d: parseFloat(res.rows[0]?.aov_range || 0)
     };
   },
 

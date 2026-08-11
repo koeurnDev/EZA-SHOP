@@ -161,7 +161,7 @@ const ImageLightboxModal = ({ images = [], initialIndex = 0, onClose }) => {
         zIndex: 999999,
         display: 'flex',
         flexDirection: 'column',
-        justify: 'space-between',
+        justifyContent: 'space-between',
         userSelect: 'none',
         touchAction: 'none',
         transition: dismissOffset === 0 ? 'background-color 0.2s ease' : 'none'
@@ -177,7 +177,7 @@ const ImageLightboxModal = ({ images = [], initialIndex = 0, onClose }) => {
           padding: 'calc(env(safe-area-inset-top, 16px) + 12px) 20px 12px',
           display: 'flex',
           alignItems: 'center',
-          justify: 'flex-end',
+          justifyContent: 'flex-end',
           zIndex: 10,
           opacity: dismissOffset > 0 ? 0 : 1,
           transition: 'opacity 0.2s ease'
@@ -197,7 +197,7 @@ const ImageLightboxModal = ({ images = [], initialIndex = 0, onClose }) => {
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
-            justify: 'center',
+            justifyContent: 'center',
             backdropFilter: 'blur(8px)'
           }}
         >
@@ -257,7 +257,7 @@ const ImageLightboxModal = ({ images = [], initialIndex = 0, onClose }) => {
           style={{
             padding: '12px 16px calc(env(safe-area-inset-bottom, 16px) + 16px)',
             display: 'flex',
-            justify: 'center',
+            justifyContent: 'center',
             alignItems: 'center',
             gap: 8,
             overflowX: 'auto',

@@ -2,58 +2,65 @@ const crypto = require('crypto');
 require('dotenv').config({ path: require('path').join(__dirname, '..', '.env') });
 
 const ALGORITHM = 'aes-256-gcm';
-const IV_LENGTH = 16;
-const SALT_LENGTH = 64;
-const TAG_LENGTH = 16;
+const IV_LENGTH = 12; // Standard 96-bit GCM IV
 
 /**
- * Encrypts sensitive text using a secret SECURITY_PEPPER
+ * 🔒 Enterprise Key Derivation (RFC 5869 HKDF)
+ * Derives a high-entropy 256-bit key ONCE at module load to prevent CPU event-loop lag.
+ */
+const getSecretKey = () => {
+  const pepper = process.env.SECURITY_PEPPER || process.env.BOT_TOKEN;
+  if (!pepper) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('🛑 SECURITY_PEPPER or BOT_TOKEN is MISSING in Production. Encryption aborted.');
+    }
+  }
+  const secret = pepper || 'MO_MO_STATIC_CRYPTO_FALLBACK_PEPPER_2026';
+  return crypto.hkdfSync('sha256', secret, 'momo-salt-v1', 'momo-aes-256-gcm-key', 32);
+};
+
+const KEY = getSecretKey();
+
+/**
+ * Encrypts sensitive text using pre-derived RFC 5869 256-bit HKDF key
  * @param {string} text - The raw text to encrypt
- * @returns {string} - The combined IV:Tag:Salt:EncryptedData
+ * @returns {string} - Combined IV:Tag:EncryptedData
  */
 function encrypt(text) {
-  if (!text) return text;
-  text = String(text);
+  if (text === null || text === undefined || text === '') return text;
+  const rawText = String(text);
   
-  const pepper = process.env.SECURITY_PEPPER;
-  if (!pepper) throw new Error('🛑 SECURITY_PEPPER is MISSING. Encryption aborted.');
   const iv = crypto.randomBytes(IV_LENGTH);
-  const salt = crypto.randomBytes(SALT_LENGTH);
+  const cipher = crypto.createCipheriv(ALGORITHM, KEY, iv);
   
-  // Use Pepper as key or derive from it
-  const key = crypto.scryptSync(pepper, salt, 32);
-  const cipher = crypto.createCipheriv(ALGORITHM, key, iv);
-  
-  let encrypted = cipher.update(text, 'utf8', 'hex');
+  let encrypted = cipher.update(rawText, 'utf8', 'hex');
   encrypted += cipher.final('hex');
-  
   const tag = cipher.getAuthTag();
   
-  // Return IV:Tag:Salt:EncryptedData
-  return `${iv.toString('hex')}:${tag.toString('hex')}:${salt.toString('hex')}:${encrypted}`;
+  return `${iv.toString('hex')}:${tag.toString('hex')}:${encrypted}`;
 }
 
 /**
- * Decrypts text back to original form
- * @param {string} cipherText - The IV:Tag:Salt:EncryptedData string
+ * Decrypts text back to original form or throws operational error on failure
+ * @param {string} cipherText - The IV:Tag:EncryptedData string
  * @returns {string} - The original raw text
  */
 function decrypt(cipherText) {
-  if (!cipherText || !cipherText.includes(':')) return cipherText;
+  if (!cipherText || typeof cipherText !== 'string' || !cipherText.includes(':')) {
+    return cipherText;
+  }
   
+  const parts = cipherText.split(':');
+  if (parts.length < 3) return cipherText;
+
   try {
-    const pepper = process.env.SECURITY_PEPPER;
-    if (!pepper) throw new Error('🛑 SECURITY_PEPPER is MISSING. Decryption aborted.');
-    const parts = cipherText.split(':');
-    const [ivHex, tagHex, saltHex] = parts;
-    const encryptedHex = parts.slice(3).join(':'); // re-join in case encrypted portion has colons
+    const [ivHex, tagHex] = parts;
+    const encryptedHex = parts.slice(2).join(':');
     
     const iv = Buffer.from(ivHex, 'hex');
     const tag = Buffer.from(tagHex, 'hex');
-    const salt = Buffer.from(saltHex, 'hex');
     
-    const key = crypto.scryptSync(pepper, salt, 32);
-    const decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
+    const decipher = crypto.createDecipheriv(ALGORITHM, KEY, iv);
     decipher.setAuthTag(tag);
     
     let decrypted = decipher.update(encryptedHex, 'hex', 'utf8');
@@ -61,29 +68,8 @@ function decrypt(cipherText) {
     
     return decrypted;
   } catch (err) {
-    // Fallback pepper attempt if primary pepper fails
-    try {
-      const fallbackPepper = process.env.FALLBACK_PEPPER || '24d2713bad9e902a64c48970868f0a07';
-      const parts = cipherText.split(':');
-      const [ivHex, tagHex, saltHex] = parts;
-      const encryptedHex = parts.slice(3).join(':');
-      
-      const iv = Buffer.from(ivHex, 'hex');
-      const tag = Buffer.from(tagHex, 'hex');
-      const salt = Buffer.from(saltHex, 'hex');
-      
-      const key = crypto.scryptSync(fallbackPepper, salt, 32);
-      const decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
-      decipher.setAuthTag(tag);
-      
-      let decrypted = decipher.update(encryptedHex, 'hex', 'utf8');
-      decrypted += decipher.final('utf8');
-      
-      return decrypted;
-    } catch (fallbackErr) {
-      // If both fail, return original
-      return cipherText;
-    }
+    console.error('🔴 Decryption Error:', err.message);
+    throw new Error('Decryption failed: Invalid ciphertext or authentication tag mismatch');
   }
 }
 

@@ -11,7 +11,14 @@ const { calculateBestDiscount, getDiscountedPrice } = require('../utils/discount
 const { BakongKHQR, IndividualInfo, khqrData } = require('bakong-khqr');
 const khqr = new BakongKHQR();
 
+// 🛡️ Cent-based Integer Financial Arithmetic Helpers
+const toCents = (val) => Math.round(Number(val || 0) * 100);
+const fromCents = (cents) => Math.round(cents) / 100;
+
 const orderService = {
+  activeWatchers: 0,
+  maxWatchers: 15,
+
   /**
    * Refactored for Elite Architect EDA:
    * Focuses strictly on ACID consistency and fast response.
@@ -23,7 +30,6 @@ const orderService = {
       const { userId, userName, items, total, deliveryInfo, idempotencyKey, couponCode } = payload;
       
       // 🛡️ Pre-Flight Health Check: Ensure Bakong is reachable and Token is valid 
-      // before we even bother creating the order and showing the QR code.
       const health = await bakongService.checkHealth();
       if (!health.success) {
         console.warn('⚠️ Gateway Pre-flight Failed:', health.message);
@@ -38,10 +44,10 @@ const orderService = {
       const shopStatus = await settingsRepository.get('shop_status');
       if (shopStatus === 'closed') throw new Error('Shop closed');
 
-      // 1. Idempotency Guard (Pre-check outside transaction)
+      // 1. Idempotency Guard (Pre-check using cent-based financial comparison)
       if (idempotencyKey) {
         let existing = await orderRepository.findByIdempotencyKey(userId, idempotencyKey);
-        if (existing && Math.abs(parseFloat(existing.total) - parseFloat(total)) < 0.05) {
+        if (existing && Math.abs(toCents(existing.total) - toCents(total)) <= 5) {
           const now = Date.now();
           const exp = new Date(existing.expires_at).getTime();
           const isExpired = exp <= now;
@@ -56,7 +62,6 @@ const orderService = {
             
             // 🏷️ KHQR Refresh: Generate a new QR string with a fresh 15-min bank window
             await this.generateQR(existing);
-            // Re-fetch to get the new qr_string
             existing = await orderRepository.findById(existing.id);
           }
 
@@ -65,56 +70,73 @@ const orderService = {
         }
       }
 
-      // 2. Data Retrieval (Parallelized)
-      const itemIds = items.map(i => i.id);
+      // 2. Data Retrieval (Discounts & Settings)
       let manualCoupon = null;
       if (couponCode) {
         manualCoupon = await couponRepository.findByCode(couponCode);
       }
 
-      const [dbProducts, activeDiscounts, dbSettings] = await Promise.all([
-        productRepository.findByIds(itemIds),
+      const [activeDiscounts, dbSettings] = await Promise.all([
         couponRepository.findActiveAuto(),
         settingsRepository.getByKeys(['delivery_threshold', 'delivery_fee', 'bakong_account_id', 'bakong_merchant_name'])
       ]);
 
-      // 3. Price Verification
-      const threshold = parseFloat(dbSettings.delivery_threshold || '50');
-      const fee = parseFloat(dbSettings.delivery_fee || '1.50');
-      let grossTotal = 0, totalItemDiscount = 0, totalQty = 0;
+      // --- TRANSACTION START (Atomic SELECT FOR UPDATE & Stock Deduction) ---
+      await client.query('BEGIN');
+
+      // 🛡️ Atomic Stock Row-Locking (SELECT FOR UPDATE inside transaction)
+      const deductionPayload = items.map(i => ({ id: i.id, quantity: parseInt(i.quantity) || 1, variant: i.variant }));
+      const lockedProducts = await productRepository.deductStockBatch(deductionPayload, client);
+
+      // 3. Price Verification (Cent-Based Integer Financial Arithmetic)
+      const thresholdCents = toCents(dbSettings.delivery_threshold || '50');
+      const feeCents = toCents(dbSettings.delivery_fee || '1.50');
+      let grossTotalCents = 0;
+      let totalItemDiscountCents = 0;
 
       for (const cartItem of items) {
-        const realProduct = dbProducts.find(p => String(p.id) === String(cartItem.id));
+        const realProduct = lockedProducts.find(p => String(p.id) === String(cartItem.id));
         if (!realProduct) throw new Error('Invalid Product');
-        grossTotal += realProduct.price * cartItem.quantity;
-        totalQty += cartItem.quantity;
+
+        const priceCents = toCents(realProduct.price);
+        const qty = parseInt(cartItem.quantity) || 1;
+        grossTotalCents += priceCents * qty;
+
         const best = calculateBestDiscount(realProduct, activeDiscounts);
         const discountedPrice = getDiscountedPrice(realProduct, best);
-        totalItemDiscount += (realProduct.price - discountedPrice) * cartItem.quantity;
+        const discountedPriceCents = toCents(discountedPrice);
+
+        totalItemDiscountCents += (priceCents - discountedPriceCents) * qty;
       }
 
-      let subtotal = Math.max(0, grossTotal - totalItemDiscount);
+      let subtotalCents = Math.max(0, grossTotalCents - totalItemDiscountCents);
       
       // Apply Manual Coupon Discount (Order Level)
       if (manualCoupon) {
-         const manualDiscount = manualCoupon.discount_type === 'percent' 
-            ? subtotal * (manualCoupon.value / 100) 
-            : manualCoupon.value;
-         subtotal = Math.max(0, subtotal - manualDiscount);
-         totalItemDiscount += manualDiscount;
+        const manualDiscountCents = manualCoupon.discount_type === 'percent' 
+          ? Math.round(subtotalCents * (manualCoupon.value / 100))
+          : toCents(manualCoupon.value);
+        subtotalCents = Math.max(0, subtotalCents - manualDiscountCents);
+        totalItemDiscountCents += manualDiscountCents;
       }
 
-      const deliveryFee = subtotal >= threshold ? 0 : fee;
-      const calculatedTotal = parseFloat((subtotal + deliveryFee).toFixed(2));
+      const deliveryFeeCents = subtotalCents >= thresholdCents ? 0 : feeCents;
+      const calculatedTotalCents = subtotalCents + deliveryFeeCents;
+      const calculatedTotal = fromCents(calculatedTotalCents);
 
-      if (Math.abs(calculatedTotal - parseFloat(total)) > 0.20) {
+      if (Math.abs(calculatedTotalCents - toCents(total)) > 20) {
         throw new Error(`Price Mismatch: Calc $${calculatedTotal} vs Sent $${total}`);
       }
 
       // 🏷️ Taobao-style 18-digit numeric Order ID: timestamp(13) + random(5)
       const orderCode = Date.now().toString() + Math.floor(Math.random() * 100000).toString().padStart(5, '0');
 
-      // 4. KHQR Generation (🛡️ Outside Transaction: No DB locks!)
+      // 🛡️ Increment coupon usage limit securely inside transaction
+      if (manualCoupon) {
+        await couponRepository.incrementUsage(manualCoupon.code, client);
+      }
+
+      // 4. KHQR Generation
       let qrString = '';
       const bakongId = process.env.MERCHANT_BAKONG_ID || dbSettings.bakong_account_id;
       const merchantName = process.env.BAKONG_MERCHANT_NAME || dbSettings.bakong_merchant_name;
@@ -136,29 +158,13 @@ const orderService = {
         );
 
         const result = khqr.generateIndividual(individualInfo);
-        console.log('📡 KHQR Generation Result:', JSON.stringify(result));
 
         if (result?.data && result.status.code === 0) {
           qrString = result.data.qr;
         } else {
           console.error('🔴 KHQR Generation Failed:', result?.status?.message || 'Unknown error');
         }
-      } else {
-        console.warn('⚠️ KHQR Generation Skipped: bakongId is empty');
       }
-
-      // --- TRANSACTION START (Minimized Duration) ---
-      await client.query('BEGIN');
-      
-      // 🛡️ Increment coupon usage limit securely
-      if (manualCoupon) {
-        await couponRepository.incrementUsage(manualCoupon.code, client);
-      }
-      
-      const updatedProducts = await productRepository.deductStockBatch(
-        items.map(i => ({ id: i.id, quantity: parseInt(i.quantity), variant: i.variant })), 
-        client
-      );
 
       const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
 
@@ -167,10 +173,10 @@ const orderService = {
         user_name: userName || 'Guest',
         items: JSON.stringify(items),
         total: calculatedTotal,
-        subtotal: subtotal,
-        discount_amount: totalItemDiscount,
-        delivery_fee: deliveryFee,
-        gross_total: grossTotal,
+        subtotal: fromCents(subtotalCents),
+        discount_amount: fromCents(totalItemDiscountCents),
+        delivery_fee: fromCents(deliveryFeeCents),
+        gross_total: fromCents(grossTotalCents),
         qr_string: qrString,
         phone: deliveryInfo?.phone || '',
         address: deliveryInfo?.address || '',
@@ -185,12 +191,10 @@ const orderService = {
 
       await client.query('COMMIT');
 
-      // 🚀 persistent Job Queue (Fire and forget to prevent hanging if Redis is down)
+      // 🚀 Persistent Job Queue (Fire and forget to prevent hanging)
       QueueService.add('ORDER_POST_PROCESS', { orderId: order.id, items, deliveryInfo, userId, calculatedTotal }).catch(err => console.error('Queue Error:', err.message));
 
-      // 🕒 Synchronous UI Hint: Ensure frontend knows this is fresh
       order.expires_in = 300;
-
       return { order };
     } catch (err) {
       await client.query('ROLLBACK');
@@ -214,19 +218,15 @@ const orderService = {
       }
     }
 
-    // 🛡️ Principal: Admin or owner may confirm; system is the internal worker.
     if (!isSystem && String(tgUser.id) !== String(order.user_id) && !isAdmin) {
        throw new Error('Access Denied');
     }
     
-    // 🛡️ Idempotency: skip if already paid or final
     if (order.status !== 'pending') {
       console.log(`ℹ️ Order ${orderCode} already in state: ${order.status}. Skipping.`);
       return order;
     }
 
-    // 🛡️ SECURITY FIX: If a non-system caller triggered this, force real-time Bakong verification!
-    // Bypass this check if the caller is an admin, so they can manually approve.
     if (!isSystem && !isAdmin) {
       console.log(`🔒 Verifying payment for ${orderCode} via Bakong API...`);
       const result = await bakongService.checkTransaction(order.qr_string);
@@ -240,7 +240,6 @@ const orderService = {
 
     console.log(`✅ Payment Confirmed ${isReconciled ? '(RECONCILED)' : ''}: ${orderCode}`);
     
-    // 🚀 EDA: Notify Admin and User
     if (isReconciled) {
       await notificationService.notifyReconciliationSuccess(process.env.SUPERADMIN_ID, order.user_id, updated).catch(console.error);
     } else {
@@ -255,17 +254,12 @@ const orderService = {
     const order = await orderRepository.findByCode(orderCode);
     if (!order) throw new Error('Order not found');
     
-    // 🛡️ Ensure only the owner or system can upload
     if (String(tgUser.id) !== String(order.user_id) && String(tgUser.id) !== String(process.env.SUPERADMIN_ID)) {
        throw new Error('Access Denied');
     }
 
-    // Update DB
     const updated = await orderRepository.updateReceiptUrl(order.id, receiptUrl);
-
-    // Notify Admin via Telegram
     await notificationService.sendReceiptToAdmin(process.env.SUPERADMIN_ID, updated).catch(console.error);
-
     return updated;
   },
 
@@ -276,7 +270,7 @@ const orderService = {
 
       if (bakongId && bakongId.trim() !== '') {
         const optionalData = {
-          amount: parseFloat(order.total.toFixed(2)),
+          amount: parseFloat(Number(order.total).toFixed(2)),
           currency: khqrData.currency.usd,
           billNumber: order.order_code,
           expirationTimestamp: Date.now() + 15 * 60 * 1000,
@@ -305,13 +299,10 @@ const orderService = {
     let order = await orderRepository.findByCode(orderCode);
     if (!order) throw new Error('Order not found');
     
-    // 🛡️ Access Control
     if (String(tgUser.id) !== String(order.user_id) && String(tgUser.id) !== String(process.env.SUPERADMIN_ID)) {
        throw new Error('Access Denied');
     }
 
-    // 🛡️ SELF-HEALING: If pending, perform a one-time real-time Bakong check
-    // This recovers from server restarts that might have killed the background watchdog.
     if (order.status === 'pending') {
       try {
         const result = await bakongService.checkTransaction(order.qr_string);
@@ -320,8 +311,6 @@ const orderService = {
           const confirmed = await this.confirmOrderPayment(orderCode, { id: 'SYSTEM' });
           if (confirmed) order = confirmed;
         } else if (result.isStale) {
-          // 🛡️ Principal: ONLY regenerate if the order is genuinely old (> 15 mins)
-          // to avoid losing a payment made on a "fresh" QR that Bakong is just being slow with.
           const now = Date.now();
           const createdAt = new Date(order.created_at).getTime();
           const ageMinutes = (now - createdAt) / (1000 * 60);
@@ -330,8 +319,6 @@ const orderService = {
             console.log(`♻️ Healing: Stale context detected for OLD order ${orderCode}. Regenerating QR...`);
             await this.generateQR(order);
             order = await orderRepository.findByCode(orderCode);
-          } else {
-            console.log(`⏳ Healing: Bakong returned 15 (Internal Error) for FRESH order ${orderCode}. Retrying same MD5...`);
           }
         }
       } catch (err) {
@@ -339,22 +326,14 @@ const orderService = {
       }
     }
 
-    // 🕒 Calculate dynamic server-side expiration using the explicit expires_at column
-    // 🛡️ HARDENED: Handle potential Date object vs String from DB + Timezone resilience
     if (order.status === 'pending' && order.expires_at) {
       const expiresAt = new Date(order.expires_at).getTime();
       const now = Date.now();
-      
-      // Calculate remaining; if it's within a few seconds margin, don't flip to expired immediately
       const remaining = Math.floor((expiresAt - now) / 1000);
       order.expires_in = Math.max(0, remaining);
-
-      console.log(`🕒 Status Poll [${orderCode}]: ExpAt: ${new Date(expiresAt).toISOString()}, Now: ${new Date(now).toISOString()}, Remaining: ${order.expires_in}s`);
     } else if (order.status === 'paid') {
-      order.expires_in = 0; // Already paid, timer not needed
+      order.expires_in = 0;
     } else {
-      // Fallback for other statuses to prevent flickering "Expired" if status isn't strictly 'pending' yet
-      console.log(`⚠️ Status Poll [${orderCode}]: Status ${order.status} is not pending. Defaulting to 300s.`);
       order.expires_in = 300; 
     }
 
@@ -362,7 +341,6 @@ const orderService = {
   },
 
   async getUserOrders(userId, limit, offset, tgUser) {
-    // Security: only allow user to fetch their own orders
     if (userId && String(tgUser?.id) !== String(userId)) throw new Error('Access Denied');
     const effectiveId = userId || tgUser?.id;
     return {
@@ -372,73 +350,88 @@ const orderService = {
   },
 
   /**
-   * 🛡️ MO-MO Payment Watchdog
-   * Automatic polling to detect Bakong payments without user interaction.
-   * Runs for max 10 minutes or until success.
+   * 🛡️ MO-MO Payment Watchdog (Rate-Limit & Memory-Capped Exponential Backoff)
    */
   async startPaymentWatcher(order, qrString, attempt = 1) {
-    const MAX_ATTEMPTS = 200; // 200 * 3s = 10 minutes
-    const INTERVAL_MS = 3000; // 3 seconds (Aggressive background polling)
-
+    const MAX_ATTEMPTS = 20; // 20 checks (~5 minutes with backoff)
+    
     if (attempt === 1) {
-      console.log(`🔍 Watchdog: Checking Bakong for Order ${order.order_code}...`);
+      if (this.activeWatchers >= this.maxWatchers) {
+        console.log(`ℹ️ Watchdog: Limit reached (${this.activeWatchers}). Global reconciler will verify ${order.order_code}.`);
+        return;
+      }
+      this.activeWatchers++;
     }
+
+    const getDelay = (att) => Math.min(5000 + att * 2000, 20000); // Backoff: 5s, 7s, 9s... max 20s
 
     if (attempt > MAX_ATTEMPTS) {
       console.log(`⏳ Watchdog: Timeout for Order ${order.order_code}`);
+      this.activeWatchers = Math.max(0, this.activeWatchers - 1);
       return;
     }
 
     try {
-      // 1. Double check current status from DB
       const current = await orderRepository.findById(order.id);
       if (!current || current.status !== 'pending') {
-        console.log(`ℹ️ Watchdog: Order ${order.order_code} is no longer pending. Exiting loop.`);
+        this.activeWatchers = Math.max(0, this.activeWatchers - 1);
         return;
       }
 
-      // 2. Call Bakong API
       const result = await bakongService.checkTransaction(qrString);
 
       if (result.success) {
         console.log(`✅ Watchdog: Payment CONFIRMED for ${order.order_code}`);
+        this.activeWatchers = Math.max(0, this.activeWatchers - 1);
         await this.confirmOrderPayment(order.order_code, { id: 'SYSTEM' });
         return;
       }
 
-      // 3. Retry if not yet paid
       setTimeout(() => {
         this.startPaymentWatcher(order, qrString, attempt + 1).catch(console.error);
-      }, INTERVAL_MS);
+      }, getDelay(attempt));
 
     } catch (err) {
       console.error(`🔴 Watchdog Error [${order.order_code}]:`, err.message);
       setTimeout(() => {
         this.startPaymentWatcher(order, qrString, attempt + 1).catch(console.error);
-      }, INTERVAL_MS);
+      }, getDelay(attempt));
     }
   },
 
   /**
-   * 🔄 Global Reconciliation Loop
-   * Scans all pending orders from the last 24h and forces a Bakong check.
+   * 🔄 Global Reconciliation Loop (Paginated Batches to Protect Event Loop & Memory)
    */
-  async reconcileAllPending() {
-    console.log('🔄 Reconciler: Starting global scan for pending orders...');
+  async reconcileAllPending(batchSize = 20) {
+    console.log('🔄 Reconciler: Starting paginated scan for pending orders...');
     try {
-      const pendingOrders = await orderRepository.findPendingOrders(24);
-      console.log(`🔄 Reconciler: Found ${pendingOrders.length} pending orders to verify.`);
+      let offset = 0;
+      let hasMore = true;
 
-      for (const order of pendingOrders) {
-        try {
-          const result = await bakongService.checkTransaction(order.qr_string);
-          if (result.success) {
-            console.log(`✅ Reconciler: Found late payment for ${order.order_code}. Confirming...`);
-            await this.confirmOrderPayment(order.order_code, { id: 'SYSTEM' }, true);
-          }
-        } catch (itemErr) {
-          console.warn(`⚠️ Reconciler: Failed to check ${order.order_code}:`, itemErr.message);
+      while (hasMore) {
+        const pendingOrders = await orderRepository.findPendingOrders(24, batchSize, offset);
+        if (!pendingOrders || pendingOrders.length === 0) {
+          hasMore = false;
+          break;
         }
+
+        console.log(`🔄 Reconciler: Processing batch of ${pendingOrders.length} orders (offset ${offset})...`);
+
+        for (const order of pendingOrders) {
+          try {
+            const result = await bakongService.checkTransaction(order.qr_string);
+            if (result.success) {
+              console.log(`✅ Reconciler: Found late payment for ${order.order_code}. Confirming...`);
+              await this.confirmOrderPayment(order.order_code, { id: 'SYSTEM' }, true);
+            }
+          } catch (itemErr) {
+            console.warn(`⚠️ Reconciler: Failed to check ${order.order_code}:`, itemErr.message);
+          }
+          await new Promise(r => setTimeout(r, 200)); // Rate limit pause per request
+        }
+
+        offset += pendingOrders.length;
+        if (pendingOrders.length < batchSize) hasMore = false;
       }
       console.log('🔄 Reconciler: Global scan completed.');
     } catch (err) {
@@ -452,30 +445,21 @@ const orderService = {
   async _processOrderPostTasks(ctx) {
     const { orderId, items, deliveryInfo, userId, calculatedTotal } = ctx;
     
-    // Re-fetch fresh order to ensure state
     const order = await orderRepository.findById(orderId);
     if (!order) return;
 
     await Promise.allSettled([
-      // 1. Digital Twin Sync
       (userId && deliveryInfo) ? userRepository.upsert(userId, deliveryInfo.phone, deliveryInfo.address) : Promise.resolve(),
-      
-      // 2. Loyalty System
       (userId && calculatedTotal) ? userRepository.addLoyaltyPoints(userId, Math.floor(calculatedTotal)) : Promise.resolve(),
-      
-      // 3. Low Stock Alerts (Refetch stock to be sure)
       ...items.map(async (item) => {
         const p = await productRepository.findById(item.id);
         if (p && p.stock <= 5) {
           await notificationService.sendLowStockAlert(process.env.SUPERADMIN_ID, p).catch(() => {});
         }
       }),
-      
-      // 4. Send Order Created Notification
       notificationService.notifyOrderCreated(process.env.SUPERADMIN_ID, userId, order, items)
     ]);
 
-    // 5. Watchdog: Start Auto-Verification
     if (order.status === 'pending' && order.qr_string) {
       orderService.startPaymentWatcher(order, order.qr_string).catch(console.error);
     }
