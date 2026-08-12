@@ -36,16 +36,17 @@ process.on('unhandledRejection', (reason, promise) => {
 const validateEnv = () => {
   const required = [
     'BOT_TOKEN', 'DATABASE_URL', 
-    'WEBAPP_URL', 'SUPERADMIN_ID',
-    'SESSION_SECRET'
+    'WEBAPP_URL', 'SUPERADMIN_ID'
   ];
   const missing = required.filter(k => !process.env[k]);
   if (missing.length > 0) {
     console.error('🔴 CRITICAL: Missing required environment variables:', missing.join(', '));
     process.exit(1);
   }
-  
-  if (process.env.SESSION_SECRET?.length < 32) {
+
+  if (!process.env.SESSION_SECRET) {
+    console.warn('⚠️ WARNING: SESSION_SECRET is not set. Falling back to BOT_TOKEN-derived session secret. Set SESSION_SECRET for stronger production security.');
+  } else if (process.env.SESSION_SECRET.length < 32) {
     console.warn('⚠️ WARNING: SESSION_SECRET is too short (< 32 chars). Increased risk of brute force.');
   }
 };

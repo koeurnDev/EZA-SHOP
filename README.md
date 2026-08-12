@@ -38,6 +38,7 @@ npm start
 | `DATABASE_URL` | Neon PostgreSQL Connection String |
 | `SUPERADMIN_ID` | Your Telegram User ID (for Admin access) |
 | `WEBAPP_URL` | The URL where your frontend is hosted |
+| `SESSION_SECRET` | Strong random string for JWT session signing |
 | `WEBHOOK_URL` | (Production) Your backend URL for Telegram webhooks |
 | `CLOUDINARY_CLOUD_NAME` | Cloudinary Cloud Name |
 | `CLOUDINARY_API_KEY` | Cloudinary API Key |
