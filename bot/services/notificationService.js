@@ -57,63 +57,85 @@ const sendTelegramNotification = async (type, adminId, userId, order, items = []
 
   if (type === 'order_created') {
     const adminTicket = `🛒 *ការកម្ម៉ង់ថ្មី (New Order)*\n` +
-                        `🆔 លេខសម្គាល់: \`${safeOrderCode}\`\n` +
-                        `👤 អតិថិជន: *${safeUserName}*\n` +
-                        `📞 លេខទូរស័ព្ទ: \`${escapeMarkdown(order?.phone)}\`\n` +
-                        `📍 អាសយដ្ឋាន: ${escapeMarkdown(order?.address)}\n` +
-                        `🚚 ដឹកជញ្ជូន: *${escapeMarkdown(order?.delivery_company)}*\n` +
-                        `💳 បង់ប្រាក់: *${escapeMarkdown(order?.payment_method)}*\n` +
-                        `🛍️ ទំនិញ:\n${itemsList}\n` +
-                        `💰 សរុប: *$${safeTotal}*\n` +
-                        `🕒 កាលបរិច្ឆេទ: *${timeStr}*`;
+      `🆔 លេខសម្គាល់: \`${safeOrderCode}\`\n` +
+      `👤 អតិថិជន: *${safeUserName}*\n` +
+      `📞 លេខទូរស័ព្ទ: \`${escapeMarkdown(order?.phone)}\`\n` +
+      `📍 អាសយដ្ឋាន: ${escapeMarkdown(order?.address)}\n` +
+      `🚚 ដឹកជញ្ជូន: *${escapeMarkdown(order?.delivery_company)}*\n` +
+      `💳 បង់ប្រាក់: *${escapeMarkdown(order?.payment_method)}*\n` +
+      `🛍️ ទំនិញ:\n${itemsList}\n` +
+      `💰 សរុប: *$${safeTotal}*\n` +
+      `🕒 កាលបរិច្ឆេទ: *${timeStr}*`;
     await safeSendTelegram('sendMessage', adminId, adminTicket, { parse_mode: 'Markdown' });
 
     if (userId) {
       const userTicket = `✅ *អរគុណសម្រាប់ការកម្ម៉ង់! (Order Received)*\n` +
-                         `🆔 លេខសម្គាល់: \`${safeOrderCode}\`\n` +
-                         `💰 ទឹកប្រាក់សរុប: *$${safeTotal}*\n` +
-                         `⏳ ប្រព័ន្ធកំពុងផ្ទៀងផ្ទាត់ការបង់ប្រាក់របស់អ្នក...`;
+        `🆔 លេខសម្គាល់: \`${safeOrderCode}\`\n` +
+        `💰 ទឹកប្រាក់សរុប: *$${safeTotal}*\n` +
+        `⏳ ប្រព័ន្ធកំពុងផ្ទៀងផ្ទាត់ការបង់ប្រាក់របស់អ្នក...`;
       await safeSendTelegram('sendMessage', userId, userTicket, { parse_mode: 'Markdown' });
     }
 
   } else if (type === 'order_paid') {
     const adminTicket = `💰 *ការបង់ប្រាក់បានបញ្ជាក់ (Payment Confirmed)*\n` +
-                        `🆔 លេខសម្គាល់: \`${safeOrderCode}\`\n` +
-                        `👤 អតិថិជន: *${safeUserName}*\n` +
-                        `💵 ចំនួនទឹកប្រាក់: *$${safeTotal}*\n` +
-                        `🕒 កាលបរិច្ឆេទ: *${timeStr}*`;
+      `🆔 លេខសម្គាល់: \`${safeOrderCode}\`\n` +
+      `👤 អតិថិជន: *${safeUserName}*\n` +
+      `💵 ចំនួនទឹកប្រាក់: *$${safeTotal}*\n` +
+      `🕒 កាលបរិច្ឆេទ: *${timeStr}*`;
     await safeSendTelegram('sendMessage', adminId, adminTicket, { parse_mode: 'Markdown' });
 
     if (userId) {
-      const userTicket = `🎉 *ការបង់ប្រាក់ទទួលបានជោគជ័យ! (Payment Successful)*\n` +
-                         `🆔 លេខសម្គាល់: \`${safeOrderCode}\`\n` +
-                         `📦 យើងខ្ញុំកំពុងរៀបចំទំនិញដើម្បីដឹកជញ្ជូនជូនអ្នក!`;
+      let itemListText = '';
+      if (items && items.length > 0) {
+        itemListText = items.map(it => `• ${escapeMarkdown(it.name || it.product_name || 'ទំនិញ')} x${it.quantity || 1} ($${((it.price || 0) * (it.quantity || 1)).toFixed(2)})`).join('\n');
+      }
+
+      let userTicket = `សួស្តីបង! ការកម្ម៉ង់របស់បងលេខសម្គាល់៖ \`${safeOrderCode}\`\n`;
+      userTicket += `ការបរិច្ឆេទទិញ ${timeStr}\n\n`;
+      if (itemListText) {
+        userTicket += `🛍️ *ទំនិញដែលបានទិញ៖*\n${itemListText}\n\n`;
+      }
+      userTicket += `💰 *តម្លៃសរុប៖* $${safeTotal}\n`;
+
+      if (order?.phone) {
+        userTicket += `📞 *លេខទូរស័ព្ទ៖* \`${escapeMarkdown(order.phone)}\`\n`;
+      }
+      const fullAddr = [order?.address, order?.province].filter(Boolean).map(escapeMarkdown).join(', ');
+      if (fullAddr) {
+        userTicket += `📍 *អាសយដ្ឋាន៖* ${fullAddr}\n`;
+      }
+      if (order?.note) {
+        userTicket += `📝 *ចំណាំ៖* ${escapeMarkdown(order.note)}\n`;
+      }
+
+      userTicket += `\n📌 *ត្រូវបានប្តូរស្ថានភាពទៅជា៖*  *បានបង់ប្រាក់រួចរាល់ ✅*`;
+
       await safeSendTelegram('sendMessage', userId, userTicket, { parse_mode: 'Markdown' });
     }
 
   } else if (type === 'reconciliation_success') {
     const adminTicket = `🔄 *ការផ្ទៀងផ្ទាត់ឡើងវិញបានជោគជ័យ (Reconciled)*\n` +
-                         `🆔 លេខសម្គាល់: \`${safeOrderCode}\`\n` +
-                         `👤 អតិថិជន: *${safeUserName}*\n` +
-                         `✅ ប្រព័ន្ធបានឆែកឃើញការបង់ប្រាក់ដែលបាត់ដានកាលពីមុន។ អ័រឌឺត្រូវបានបញ្ជាក់ដោយស្វ័យប្រវត្តិ!`;
+      `🆔 លេខសម្គាល់: \`${safeOrderCode}\`\n` +
+      `👤 អតិថិជន: *${safeUserName}*\n` +
+      `✅ ប្រព័ន្ធបានឆែកឃើញការបង់ប្រាក់ដែលបាត់ដានកាលពីមុន។ អ័រឌឺត្រូវបានបញ្ជាក់ដោយស្វ័យប្រវត្តិ!`;
     await safeSendTelegram('sendMessage', adminId, adminTicket, { parse_mode: 'Markdown' });
 
     if (userId) {
       const userTicket = `✨ *ការបង់ប្រាក់របស់អ្នកត្រូវបានបញ្ជាក់ (Reconciled)*\n` +
-                         `🆔 លេខសម្គាល់: \`${safeOrderCode}\`\n` +
-                         `✅ ប្រព័ន្ធបានឆែកឃើញការបង់ប្រាក់របស់អ្នក។ អរគុណដែលបានរង់ចាំ!`;
+        `🆔 លេខសម្គាល់: \`${safeOrderCode}\`\n` +
+        `✅ ប្រព័ន្ធបានឆែកឃើញការបង់ប្រាក់របស់អ្នក។ អរគុណដែលបានរង់ចាំ!`;
       await safeSendTelegram('sendMessage', userId, userTicket, { parse_mode: 'Markdown' });
     }
 
   } else if (type === 'receipt_uploaded') {
     const adminTicket = `🧾 *វិក្កយបត្របានបញ្ជូនពីអតិថិជន*\n` +
-                         `🆔 លេខសម្គាល់: \`${safeOrderCode}\`\n` +
-                         `👤 អតិថិជន: *${safeUserName}*\n` +
-                         `💰 សរុប: *$${safeTotal}*\n` +
-                         `🕒 កាលបរិច្ឆេទ: *${timeStr}*\n\n` +
-                         `👇 សូមពិនិត្យរូបភាពវិក្កយបត្រខាងក្រោម ឬ ក្នុង Admin Dashboard។`;
-    await safeSendTelegram('sendPhoto', adminId, order.receipt_url, { 
-      caption: adminTicket, 
+      `🆔 លេខសម្គាល់: \`${safeOrderCode}\`\n` +
+      `👤 អតិថិជន: *${safeUserName}*\n` +
+      `💰 សរុប: *$${safeTotal}*\n` +
+      `🕒 កាលបរិច្ឆេទ: *${timeStr}*\n\n` +
+      `👇 សូមពិនិត្យរូបភាពវិក្កយបត្រខាងក្រោម ឬ ក្នុង Admin Dashboard។`;
+    await safeSendTelegram('sendPhoto', adminId, order.receipt_url, {
+      caption: adminTicket,
       parse_mode: 'Markdown',
       reply_markup: {
         inline_keyboard: [
@@ -161,7 +183,7 @@ const notificationService = {
       }, { attempts: 3, backoff: { type: 'exponential', delay: 2000 } });
     } catch (e) {
       console.warn('⚠️ Queue add failed, fallback to async direct send:', e.message);
-      sendTelegramNotification('order_created', adminId, userId, order, items).catch(() => {});
+      sendTelegramNotification('order_created', adminId, userId, order, items).catch(() => { });
     }
   },
 
@@ -172,7 +194,7 @@ const notificationService = {
       }, { attempts: 3, backoff: { type: 'exponential', delay: 2000 } });
     } catch (e) {
       console.warn('⚠️ Queue add failed, fallback to async direct send:', e.message);
-      sendTelegramNotification('order_paid', adminId, userId, order, items).catch(() => {});
+      sendTelegramNotification('order_paid', adminId, userId, order, items).catch(() => { });
     }
   },
 
@@ -181,10 +203,10 @@ const notificationService = {
     const safeProductName = escapeMarkdown(product?.name || 'ទំនិញ');
     const safeStock = product?.stock ?? 0;
     const msg = `⚠️ *LOW STOCK ALERT*\n\n` +
-                `📦 ទំនិញ: *${safeProductName}*\n` +
-                `📉 ចំនួននៅសល់: *${safeStock}* គ្រឿង\n\n` +
-                `សូមប្រញាប់បន្ថែមស្តុកបាទ!`;
-    safeSendTelegram('sendMessage', adminId, msg, { parse_mode: 'Markdown' }).catch(() => {});
+      `📦 ទំនិញ: *${safeProductName}*\n` +
+      `📉 ចំនួននៅសល់: *${safeStock}* គ្រឿង\n\n` +
+      `សូមប្រញាប់បន្ថែមស្តុកបាទ!`;
+    safeSendTelegram('sendMessage', adminId, msg, { parse_mode: 'Markdown' }).catch(() => { });
   },
 
   notifyReconciliationSuccess: async (adminId, userId, order) => {
@@ -194,7 +216,7 @@ const notificationService = {
       }, { attempts: 3, backoff: { type: 'exponential', delay: 2000 } });
     } catch (e) {
       console.warn('⚠️ Queue add failed, fallback to async direct send:', e.message);
-      sendTelegramNotification('reconciliation_success', adminId, userId, order, []).catch(() => {});
+      sendTelegramNotification('reconciliation_success', adminId, userId, order, []).catch(() => { });
     }
   },
 
@@ -205,7 +227,7 @@ const notificationService = {
       }, { attempts: 3, backoff: { type: 'exponential', delay: 2000 } });
     } catch (e) {
       console.warn('⚠️ Queue add failed, fallback to async direct send:', e.message);
-      sendTelegramNotification('receipt_uploaded', adminId, order?.user_id, order, []).catch(() => {});
+      sendTelegramNotification('receipt_uploaded', adminId, order?.user_id, order, []).catch(() => { });
     }
   },
 
@@ -216,7 +238,7 @@ const notificationService = {
       }, { attempts: 2, backoff: { type: 'exponential', delay: 5000 } });
     } catch (e) {
       console.warn('⚠️ Queue add failed for broadcast, fallback to async direct send:', e.message);
-      sendTelegramNotification('broadcast', null, null, { userIds, message, photoUrl }).catch(() => {});
+      sendTelegramNotification('broadcast', null, null, { userIds, message, photoUrl }).catch(() => { });
     }
   }
 };

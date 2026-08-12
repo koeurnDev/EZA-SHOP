@@ -11,9 +11,11 @@ const CategoryNavigator = ({ searchTerm, setSearchTerm, selectedCategory, setSel
   const dynamicCategories = useMemo(() => {
     const cats = new Set();
     (products || []).forEach(p => {
-      const c = p.category;
-      if (c && c !== 'all' && c !== 'new' && c !== 'flash_sale') {
-        cats.add(c);
+      if (p && (parseInt(p.stock) || 0) > 0) {
+        const c = p.category;
+        if (c && c !== 'all' && c !== 'new' && c !== 'flash_sale') {
+          cats.add(c);
+        }
       }
     });
     return Array.from(cats).map(c => {
@@ -28,11 +30,15 @@ const CategoryNavigator = ({ searchTerm, setSearchTerm, selectedCategory, setSel
     });
   }, [products, lang]);
 
+  const hasFlashSale = useMemo(() => {
+    return (products || []).some(p => p.flash_sale_price && p.flash_sale_end && new Date(p.flash_sale_end) > new Date() && (parseInt(p.stock) || 0) > 0);
+  }, [products]);
+
   const categories = [
     { id: 'all', label: t('all') },
     ...dynamicCategories,
     { id: 'new', label: t('new') },
-    { id: 'flash_sale', label: '⚡ Flash Sale' }
+    ...(hasFlashSale ? [{ id: 'flash_sale', label: '⚡ Flash Sale' }] : [])
   ];
 
   const handleSearchChange = (e) => {

@@ -82,7 +82,7 @@ const orderRepository = {
     await client.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS tracking_number VARCHAR(255)`).catch(() => {});
     
     const res = await client.query(
-      "UPDATE orders SET status = $1, tracking_number = $2 WHERE id = $3 RETURNING *",
+      "UPDATE orders SET status = $1, tracking_number = COALESCE(NULLIF($2, ''), tracking_number) WHERE id = $3 RETURNING *",
       [status, trackingNumber, id]
     );
     return res.rows[0];

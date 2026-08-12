@@ -12,7 +12,7 @@ const AdminEditProductModal = React.memo(({
 
   return (
     <div className="admin-dashboard-overhaul" style={{ position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, background: 'rgba(0, 0, 0, 0.75)', backdropFilter: 'blur(12px)', padding: '20px', boxSizing: 'border-box' }}>
-      <div className="glass-card-luxury" style={{ width: '94%', maxWidth: 440, maxHeight: '90vh', padding: 22, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'var(--bg-surface, #ffffff)', backdropFilter: 'none', boxShadow: '0 25px 60px rgba(0,0,0,0.5)', border: '1px solid var(--border-subtle, rgba(0,0,0,0.15))' }}>
+      <div className="glass-card-luxury" style={{ width: '94%', maxWidth: 460, maxHeight: '90vh', padding: 22, display: 'flex', flexDirection: 'column', overflow: 'hidden', overflowX: 'hidden', background: 'var(--bg-surface, #ffffff)', backdropFilter: 'none', boxShadow: '0 25px 60px rgba(0,0,0,0.5)', border: '1px solid var(--border-subtle, rgba(0,0,0,0.15))' }}>
         <h3 style={{ marginBottom: 16, flexShrink: 0, fontSize: 18, fontWeight: 900 }}>{t('admin_edit')}</h3>
 
         <div style={{ overflowY: 'auto', flex: 1, paddingRight: 6, paddingBottom: 40 }}>

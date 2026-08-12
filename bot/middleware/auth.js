@@ -76,6 +76,11 @@ const verifyUser = async (req, res, next) => {
 
     req.user = { user_id: Number(user.id), ...user };
     req.tgUser = user;
+
+    // ⚡ Auto-sync Telegram Profile (photo, name, username) in background
+    const fullName = [user.first_name, user.last_name].filter(Boolean).join(' ') || user.username || null;
+    userRepository.updateLastSeen(String(user.id), fullName, user.photo_url || null, user.username || null).catch(() => {});
+
     return next();
   }
 

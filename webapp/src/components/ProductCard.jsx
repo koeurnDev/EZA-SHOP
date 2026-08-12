@@ -93,9 +93,9 @@ const ProductCard = memo(({
       </div>
       
       {/* Content Below Image */}
-      <div className="standard-card-content">
-        <h3 className="standard-card-title">{product.name}</h3>
-        <div className="standard-card-bottom">
+      <div className="standard-card-content" style={{ gap: 8, justifyContent: 'flex-start' }}>
+        <h3 className="standard-card-title" style={{ margin: 0 }}>{product.name}</h3>
+        <div className="standard-card-bottom" style={{ marginTop: 0 }}>
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             <span className="standard-card-price" style={isDiscounted ? { color: '#ef4444' } : {}}>${finalPrice}</span>
             {isDiscounted && <span style={{ textDecoration: 'line-through', fontSize: '11px', color: '#999', marginTop: '-2px' }}>${product.price}</span>}

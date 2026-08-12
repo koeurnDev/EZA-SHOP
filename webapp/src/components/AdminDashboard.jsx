@@ -235,7 +235,12 @@ const AdminDashboard = ({
     return () => clearInterval(interval);
   }, []); // ✅ Empty deps — interval never resets
 
+  const updatingStatusRef = useRef(new Set());
+
   const updateStatus = async (orderId, status) => {
+    if (updatingStatusRef.current.has(orderId)) return;
+    updatingStatusRef.current.add(orderId);
+
     const trackingNumber = trackingNumbers[orderId] || '';
 
     // 🚀 Optimistic UI Update: update the local state immediately
@@ -273,6 +278,8 @@ const AdminDashboard = ({
     }).catch(err => {
       refetchData(true); // Rollback
       showAlert('បរាជ័យ: ' + err.message);
+    }).finally(() => {
+      updatingStatusRef.current.delete(orderId);
     });
   };
 
@@ -708,6 +715,8 @@ const AdminDashboard = ({
               updateStatus={updateStatus}
               setPrintingOrder={setPrintingOrder}
               statusTags={statusTags}
+              trackingNumbers={trackingNumbers}
+              setTrackingNumbers={setTrackingNumbers}
             />
           )}
 

@@ -6,6 +6,8 @@ const AdminCustomersTab = ({ BACKEND_URL }) => {
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [openMenu, setOpenMenu] = useState(null);
+  const [expandedUser, setExpandedUser] = useState(null);
 
   const fetchCustomers = async () => {
     try {
@@ -28,7 +30,17 @@ const AdminCustomersTab = ({ BACKEND_URL }) => {
     fetchCustomers();
   }, []);
 
+  useEffect(() => {
+    if (openMenu === null) return;
+    const handleClickOutside = () => setOpenMenu(null);
+    window.addEventListener('click', handleClickOutside);
+    return () => window.removeEventListener('click', handleClickOutside);
+  }, [openMenu]);
+
+  const isValidId = (id) => id && String(id) !== 'null' && String(id) !== 'undefined' && !isNaN(Number(id)) && Number(id) > 0;
+
   const handleUpdateRole = async (userId, currentRole) => {
+    if (!isValidId(userId)) return showAlert('មិនមាន ID ត្រឹមត្រូវសម្រាប់ធ្វើសកម្មភាពនេះទេ!');
     const newRole = currentRole === 'staff' ? 'user' : 'staff';
     const msg = currentRole === 'staff' ? 'តើអ្នកចង់ទម្លាក់សិទ្ធិគាត់មកត្រឹម User ធម្មតាវិញទេ?' : 'តើអ្នកចង់ដំឡើងគាត់ជា Staff (Admin) ទេ?';
     
@@ -54,6 +66,11 @@ const AdminCustomersTab = ({ BACKEND_URL }) => {
   };
 
   const handleDeleteUser = async (userId) => {
+    if (!isValidId(userId)) return showAlert('មិនមាន ID ត្រឹមត្រូវសម្រាប់ធ្វើសកម្មភាពនេះទេ!');
+    const target = customers.find(c => c.user_id === userId);
+    if (target && target.role === 'admin') {
+      return showAlert('មិនអាចលុបគណនី Admin បានទេ!');
+    }
     showConfirm('តើអ្នកពិតជាចង់លុបអាខោននេះមែនទេ? (ប្រវត្តិការកម្ម៉ង់ទាំងអស់របស់គាត់ក៏នឹងត្រូវលុបចោលដែរ)', async (confirm) => {
       if (!confirm) return;
       try {
@@ -75,6 +92,7 @@ const AdminCustomersTab = ({ BACKEND_URL }) => {
   };
 
   const handleBanUser = async (userId, isCurrentlyBanned) => {
+    if (!isValidId(userId)) return showAlert('មិនមាន ID ត្រឹមត្រូវសម្រាប់ធ្វើសកម្មភាពនេះទេ!');
     showConfirm(isCurrentlyBanned ? 'តើអ្នកចង់បើកគណនីនេះវិញទេ?' : 'តើអ្នកពិតជាចង់ផ្អាកគណនីនេះមែនទេ?', async () => {
       try {
         const initData = window.Telegram?.WebApp?.initData;
@@ -100,6 +118,7 @@ const AdminCustomersTab = ({ BACKEND_URL }) => {
   };
 
   const filteredCustomers = customers.filter(c => {
+    if (!isValidId(c.user_id)) return false;
     const term = searchTerm.toLowerCase();
     const nameMatch = c.user_name ? c.user_name.toLowerCase().includes(term) : false;
     const idMatch = String(c.user_id).includes(term);
@@ -109,18 +128,20 @@ const AdminCustomersTab = ({ BACKEND_URL }) => {
   return (
     <div className="tab-pane-animate">
       <div className="glass-card-luxury" style={{ marginBottom: 25, padding: 20 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10, marginBottom: 20 }}>
           <div style={{ fontSize: 16, fontWeight: 900 }}>👥 អតិថិជន និង Staff</div>
-          <div style={{ fontSize: 12, fontWeight: 800, color: 'var(--text-dim)' }}>{customers.length} នាក់</div>
+          <div style={{ fontSize: 12, fontWeight: 800, color: 'var(--text-dim)' }}>
+            {searchTerm ? `${filteredCustomers.length} / ${customers.length}` : customers.length} នាក់
+          </div>
         </div>
 
-        <div style={{ marginBottom: 20 }}>
+        <div style={{ marginBottom: 20, position: 'relative' }}>
           <input 
             type="text" 
             placeholder="ស្វែងរកតាមឈ្មោះ ឬ ID..." 
             style={{
               width: '100%',
-              padding: '12px 16px',
+              padding: '12px 38px 12px 16px',
               borderRadius: '12px',
               border: '1px solid var(--border-subtle)',
               background: 'var(--bg-soft)',
@@ -132,6 +153,14 @@ const AdminCustomersTab = ({ BACKEND_URL }) => {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
+          {searchTerm && (
+            <button 
+              onClick={() => setSearchTerm('')} 
+              style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 14, fontWeight: 900, padding: 4 }}
+            >
+              ✖
+            </button>
+          )}
         </div>
 
         {loading ? (
@@ -140,115 +169,143 @@ const AdminCustomersTab = ({ BACKEND_URL }) => {
           <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)' }}>រកមិនឃើញទេ</div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {filteredCustomers.map(user => (
-              <div key={user.user_id} style={{ 
-                background: 'var(--bg-soft)', 
-                padding: 16, 
-                borderRadius: 16, 
-                display: 'flex', 
-                flexDirection: 'column',
-                gap: 12
-              }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <div style={{ 
-                      width: 40, height: 40, 
-                      borderRadius: '50%', 
-                      background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)', 
-                      color: '#fff', 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      justifyContent: 'center',
-                      fontWeight: 800,
-                      fontSize: 16
-                    }}>
-                      {user.user_name ? user.user_name.charAt(0).toUpperCase() : '?'}
-                    </div>
-                    <div>
-                      <div style={{ fontSize: 14, fontWeight: 800, display: 'flex', alignItems: 'center', gap: 6 }}>
-                        {user.user_name || `User ${String(user.user_id).slice(-4)}`}
-                        {user.role === 'admin' && <span style={{ fontSize: 10, background: '#ef4444', color: '#fff', padding: '2px 6px', borderRadius: 10 }}>Admin</span>}
-                        {user.role === 'staff' && <span style={{ fontSize: 10, background: '#3b82f6', color: '#fff', padding: '2px 6px', borderRadius: 10 }}>Staff</span>}
-                        {user.is_banned && <span style={{ fontSize: 10, background: '#000', color: '#fff', padding: '2px 6px', borderRadius: 10 }}>Banned 🚫</span>}
+            {filteredCustomers.map(user => {
+              const isExpanded = expandedUser === user.user_id;
+              return (
+                <div 
+                  key={user.user_id} 
+                  style={{ 
+                    background: 'var(--bg-soft)', 
+                    padding: 14, 
+                    borderRadius: 16, 
+                    display: 'flex', 
+                    flexDirection: 'column',
+                    gap: isExpanded ? 12 : 0,
+                    position: 'relative',
+                    transition: 'all 0.2s ease',
+                    border: isExpanded ? '1px solid var(--border-subtle)' : '1px solid transparent'
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    {/* Clickable Header Area (Toggles expand/collapse details) */}
+                    <div 
+                      onClick={() => setExpandedUser(isExpanded ? null : user.user_id)}
+                      style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, cursor: 'pointer', minWidth: 0 }}
+                    >
+                      <div style={{ 
+                        width: 42, height: 42, 
+                        borderRadius: '50%', 
+                        background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)', 
+                        color: '#fff', 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'center',
+                        fontWeight: 800,
+                        fontSize: 16,
+                        flexShrink: 0,
+                        overflow: 'hidden',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
+                      }}>
+                        {user.photo_url ? (
+                          <img 
+                            src={user.photo_url} 
+                            alt="" 
+                            crossOrigin="anonymous" 
+                            style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                            onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                          />
+                        ) : (
+                          user.user_name ? user.user_name.charAt(0).toUpperCase() : '👤'
+                        )}
                       </div>
-                      <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>ID: {user.user_id}</div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 14, fontWeight: 800, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                          <span>{user.user_name || `User ${String(user.user_id).slice(-4)}`}</span>
+                          {user.username && <span style={{ fontSize: 11, color: '#3b82f6', fontWeight: 700 }}>@{user.username}</span>}
+                          {user.role === 'admin' && <span style={{ fontSize: 10, background: '#ef4444', color: '#fff', padding: '2px 6px', borderRadius: 10 }}>Admin</span>}
+                          {user.role === 'staff' && <span style={{ fontSize: 10, background: '#3b82f6', color: '#fff', padding: '2px 6px', borderRadius: 10 }}>Staff</span>}
+                          {user.is_banned && <span style={{ fontSize: 10, background: '#000', color: '#fff', padding: '2px 6px', borderRadius: 10 }}>Banned 🚫</span>}
+                        </div>
+                        <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>ID: {user.user_id || '---'}</div>
+                      </div>
+                      <span style={{ fontSize: 11, color: 'var(--text-muted)', padding: '0 4px', transition: 'transform 0.2s ease', transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)' }}>
+                        ▼
+                      </span>
                     </div>
-                  </div>
-                </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: 11, background: 'var(--bg-surface)', padding: 10, borderRadius: 12 }}>
-                  <div style={{ minWidth: 0, overflow: 'hidden' }}>
-                    <span style={{ color: 'var(--text-dim)' }}>Phone:</span> <br/>
-                    <span style={{ fontWeight: 700, display: 'block', color: (user.phone && (user.phone.includes(':') || user.phone.length > 25)) ? 'var(--text-muted)' : 'inherit' }}>
-                      {user.phone && (user.phone.includes(':') || user.phone.length > 25) ? '🔒 Protected' : (user.phone || '---')}
-                    </span>
-                  </div>
-                  <div>
-                    <span style={{ color: 'var(--text-dim)' }}>Active:</span> <br/>
-                    <span style={{ fontWeight: 700 }}>
-                      {user.last_seen ? new Date(user.last_seen).toLocaleDateString() : (user.last_updated ? new Date(user.last_updated).toLocaleDateString() : '---')}
-                    </span>
-                  </div>
-                </div>
+                    {/* 3-dots Action Menu Button */}
+                    {user.role !== 'admin' && (
+                      <div style={{ position: 'relative', zIndex: openMenu === user.user_id ? 500 : 1, marginLeft: 8 }} onClick={(e) => e.stopPropagation()}>
+                        <button 
+                          className="icon-btn-admin" 
+                          style={{ width: 36, height: 36, minWidth: 36, minHeight: 36, padding: 0 }}
+                          aria-label="Options" 
+                          onClick={(e) => { 
+                            e.stopPropagation(); 
+                            setOpenMenu(openMenu === user.user_id ? null : user.user_id); 
+                          }}
+                        >
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg>
+                        </button>
 
-                {user.role !== 'admin' && (
-                  <div style={{ display: 'flex', gap: 10, marginTop: 5 }}>
-                    <button 
-                      onClick={() => handleUpdateRole(user.user_id, user.role)}
-                      style={{ 
-                        flex: 1, 
-                        background: user.role === 'staff' ? 'var(--bg-surface)' : 'rgba(59, 130, 246, 0.12)', 
-                        color: user.role === 'staff' ? 'var(--text-bold)' : '#2563eb', 
-                        padding: '10px 4px', 
-                        borderRadius: 12, 
-                        fontSize: 11, 
-                        fontWeight: 800,
-                        border: user.role === 'staff' ? '1.5px solid var(--border-subtle)' : '1.5px solid rgba(59, 130, 246, 0.3)',
-                        cursor: 'pointer',
-                        whiteSpace: 'nowrap'
-                      }}>
-                      {user.role === 'staff' ? 'ទម្លាក់សិទ្ធិ' : '⭐ តម្លើង Staff'}
-                    </button>
-                    <button 
-                      onClick={() => handleBanUser(user.user_id, user.is_banned)}
-                      style={{ 
-                        flex: 1, 
-                        background: user.is_banned ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)', 
-                        color: user.is_banned ? '#059669' : '#dc2626', 
-                        padding: '10px 4px', 
-                        borderRadius: 12, 
-                        fontSize: 11, 
-                        fontWeight: 800,
-                        border: user.is_banned ? '1.5px solid rgba(16, 185, 129, 0.3)' : '1.5px solid rgba(239, 68, 68, 0.3)',
-                        cursor: 'pointer',
-                        whiteSpace: 'nowrap'
-                      }}>
-                      {user.is_banned ? '🟢 បើកគណនី' : '🚫 ផ្អាកគណនី'}
-                    </button>
+                        {openMenu === user.user_id && (
+                          <div className="dropdown-menu-animate" style={{ position: 'absolute', right: 0, top: 42, background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 14, padding: 6, zIndex: 1000, display: 'flex', flexDirection: 'column', gap: 4, boxShadow: '0 12px 32px rgba(0,0,0,0.35)', minWidth: 160 }} onClick={(e) => e.stopPropagation()}>
+                            <button 
+                              style={{ background: 'transparent', border: 'none', color: user.role === 'staff' ? 'var(--text-main)' : '#2563eb', padding: '10px 14px', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 13, fontWeight: 700, textAlign: 'left' }}
+                              onClick={(e) => { e.stopPropagation(); setOpenMenu(null); handleUpdateRole(user.user_id, user.role); }}
+                              onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-soft)'}
+                              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                            >
+                              {user.role === 'staff' ? '🔻 ទម្លាក់សិទ្ធិ' : '⭐ តម្លើង Staff'}
+                            </button>
+
+                            <button 
+                              style={{ background: 'transparent', border: 'none', color: user.is_banned ? '#059669' : '#dc2626', padding: '10px 14px', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 13, fontWeight: 700, textAlign: 'left' }}
+                              onClick={(e) => { e.stopPropagation(); setOpenMenu(null); handleBanUser(user.user_id, user.is_banned); }}
+                              onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-soft)'}
+                              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                            >
+                              {user.is_banned ? '🟢 បើកគណនី' : '🚫 ផ្អាកគណនី'}
+                            </button>
+
+                            <button 
+                              style={{ background: 'transparent', border: 'none', color: '#dc2626', padding: '10px 14px', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 13, fontWeight: 700, textAlign: 'left' }}
+                              onClick={(e) => { e.stopPropagation(); setOpenMenu(null); handleDeleteUser(user.user_id); }}
+                              onMouseEnter={e => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.15)'}
+                              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                            >
+                              🗑️ លុប
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
-                )}
-                
-                {user.role !== 'admin' && (
-                  <div style={{ display: 'flex', gap: 10, marginTop: 5 }}>
-                    <button 
-                      onClick={() => handleDeleteUser(user.user_id)}
-                      style={{ 
-                        flex: 1, 
-                        background: 'rgba(239, 68, 68, 0.08)', 
-                        color: '#dc2626', 
-                        padding: '10px', 
-                        borderRadius: 12, 
-                        fontSize: 12, 
-                        fontWeight: 800,
-                        border: '1.5px solid rgba(239, 68, 68, 0.2)',
-                        cursor: 'pointer'
-                      }}>
-                      🗑️ លុប
-                    </button>
-                  </div>
-                )}
-              </div>
-            ))}
+
+                  {/* Expanded Details Box */}
+                  {isExpanded && (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: 11, background: 'var(--bg-surface)', padding: 12, borderRadius: 12, border: '1px solid var(--border-subtle)', animation: 'fadeIn 0.2s ease', marginTop: 4 }}>
+                      <div style={{ minWidth: 0, overflow: 'hidden' }}>
+                        <span style={{ color: 'var(--text-dim)' }}>Phone:</span> <br/>
+                        <span style={{ fontWeight: 700, display: 'block', color: (user.phone && (user.phone.includes(':') || user.phone.length > 25)) ? 'var(--text-muted)' : 'inherit' }}>
+                          {user.phone && (user.phone.includes(':') || user.phone.length > 25) ? '🔒 Protected' : (user.phone || '---')}
+                        </span>
+                      </div>
+                      <div>
+                        <span style={{ color: 'var(--text-dim)' }}>Active:</span> <br/>
+                        <span style={{ fontWeight: 700, color: (user.last_seen && (Date.now() - new Date(user.last_seen).getTime() < 5 * 60 * 1000)) ? '#10b981' : 'inherit' }}>
+                          {user.last_seen ? (
+                            (Date.now() - new Date(user.last_seen).getTime() < 5 * 60 * 1000) ? '🟢 Online ឥឡូវនេះ' : new Date(user.last_seen).toLocaleString()
+                          ) : (
+                            user.last_updated ? new Date(user.last_updated).toLocaleDateString() : '---'
+                          )}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
       </div>

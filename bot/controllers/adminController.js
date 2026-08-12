@@ -268,20 +268,29 @@ const adminController = {
       const limit = Math.min(Math.max(parseInt(req.query.limit) || 100, 1), 500);
       const offset = Math.max(parseInt(req.query.offset) || 0, 0);
       const customers = await adminService.getCustomers(limit, offset);
-      res.json({ success: true, customers });
+      res.json({ success: true, customers: customers || [] });
     } catch (err) {
-      res.status(500).json({ success: false, error: err.message });
+      console.error('🔴 adminController.getCustomers Error:', err);
+      res.json({ success: true, customers: [], error: err.message });
     }
   },
 
   deleteCustomer: async (req, res) => {
     try {
-      const userRepository = require('../repositories/userRepository');
-      // Prevent deleting the SuperAdmin
-      if (Number(req.params.id) === Number(process.env.SUPERADMIN_ID)) {
-        return res.status(400).json({ success: false, error: 'Cannot delete SuperAdmin' });
+      const userId = parseInt(req.params.id, 10);
+      if (isNaN(userId) || userId <= 0) {
+        return res.status(400).json({ success: false, error: 'User ID មិនត្រឹមត្រូវ' });
       }
-      await userRepository.deleteUser(req.params.id);
+      const userRepository = require('../repositories/userRepository');
+      const targetUser = await userRepository.findById(userId);
+      if (!targetUser) {
+        return res.status(404).json({ success: false, error: 'រកមិនឃើញគណនីនេះទេ' });
+      }
+      // Prevent deleting Admin or SuperAdmin
+      if (targetUser.role === 'admin' || userId === Number(process.env.SUPERADMIN_ID)) {
+        return res.status(400).json({ success: false, error: 'មិនអាចលុបគណនី Admin បានទេ!' });
+      }
+      await userRepository.deleteUser(userId);
       res.json({ success: true });
     } catch (err) {
       res.status(500).json({ success: false, error: err.message });
@@ -290,12 +299,20 @@ const adminController = {
 
   banCustomer: async (req, res) => {
     try {
-      const userRepository = require('../repositories/userRepository');
-      // Prevent banning the SuperAdmin
-      if (Number(req.params.id) === Number(process.env.SUPERADMIN_ID)) {
-        return res.status(400).json({ success: false, error: 'Cannot ban SuperAdmin' });
+      const userId = parseInt(req.params.id, 10);
+      if (isNaN(userId) || userId <= 0) {
+        return res.status(400).json({ success: false, error: 'User ID មិនត្រឹមត្រូវ' });
       }
-      const updated = await userRepository.updateBanStatus(req.params.id, req.body.is_banned);
+      const userRepository = require('../repositories/userRepository');
+      const targetUser = await userRepository.findById(userId);
+      if (!targetUser) {
+        return res.status(404).json({ success: false, error: 'រកមិនឃើញគណនីនេះទេ' });
+      }
+      // Prevent banning Admin or SuperAdmin
+      if (targetUser.role === 'admin' || userId === Number(process.env.SUPERADMIN_ID)) {
+        return res.status(400).json({ success: false, error: 'មិនអាចផ្អាកគណនី Admin បានទេ!' });
+      }
+      const updated = await userRepository.updateBanStatus(userId, req.body.isBanned ?? req.body.is_banned);
       res.json({ success: true, user: updated });
     } catch (err) {
       console.error('🔴 Admin Ban Customer Error:', err.message);
@@ -305,16 +322,20 @@ const adminController = {
 
   updateCustomerRole: async (req, res) => {
     try {
+      const userId = parseInt(req.params.id, 10);
+      if (isNaN(userId) || userId <= 0) {
+        return res.status(400).json({ success: false, error: 'User ID មិនត្រឹមត្រូវ' });
+      }
       const userRepository = require('../repositories/userRepository');
       const { role } = req.body;
       if (!['user', 'staff', 'admin'].includes(role)) {
         return res.status(400).json({ success: false, error: 'Invalid role' });
       }
       // Prevent changing SuperAdmin role
-      if (Number(req.params.id) === Number(process.env.SUPERADMIN_ID)) {
+      if (userId === Number(process.env.SUPERADMIN_ID)) {
         return res.status(400).json({ success: false, error: 'Cannot modify SuperAdmin role' });
       }
-      const updated = await userRepository.updateRole(req.params.id, role);
+      const updated = await userRepository.updateRole(userId, role);
       res.json({ success: true, user: updated });
     } catch (err) {
       res.status(500).json({ success: false, error: err.message });
@@ -345,21 +366,79 @@ const adminController = {
   updateOrderStatus: async (req, res) => {
     try {
       const adminService = require('../services/adminService');
+      const orderRepository = require('../repositories/orderRepository');
+
+      // 🛡️ Prevent Duplicate Notification: If status is already updated, don't send Telegram notification again
+      const existingOrder = await orderRepository.findById(req.body.orderId);
+      if (existingOrder && existingOrder.status === req.body.status) {
+        return res.json({ success: true, order: existingOrder, skippedDuplicate: true });
+      }
+
+      // 📦 Stock Restoration Handling on Cancellation
+      if (existingOrder && existingOrder.status !== 'cancelled' && req.body.status === 'cancelled') {
+        try {
+          let items = [];
+          if (typeof existingOrder.items === 'string') items = JSON.parse(existingOrder.items);
+          else if (Array.isArray(existingOrder.items)) items = existingOrder.items;
+
+          if (items.length > 0) {
+            await productRepository.restoreStockBatch(items);
+            console.log(`📦 Restored stock for cancelled order #${existingOrder.order_code || existingOrder.id}`);
+          }
+        } catch (stkErr) {
+          console.error('🔴 Stock restoration error on order cancellation:', stkErr.message);
+        }
+      }
+
       const updated = await adminService.updateOrderStatus(req.body.orderId, req.body.status, req.body.trackingNumber);
       
       // 🚀 Feature 1: Telegram Bot Notifications (Async Fire-and-Forget to prevent UI lag/timeout)
       try {
         const bot = require('../config/telegram');
         const statusMap = {
-          'paid': 'បានបង់ប្រាក់រូចរាល់ ✅',
-          'processing': 'កំពុងរៀបចំ 📦',
-          'shipped': 'កំពុងដឹកជញ្ជូន 🚚'
+          'paid': 'បានបង់ប្រាក់រួចរាល់ ✅',
+          'processing': 'កំពុងរៀបចំអីវ៉ាន់ 📦',
+          'shipped': 'ប្រគល់ជូនអ្នកដឹកជញ្ជូន 🚚',
+          'delivered': 'បានដល់ដៃអតិថិជន 🎉',
+          'cancelled': 'បោះបង់ ❌'
         };
         const statusText = statusMap[updated.status] || updated.status;
         const displayCode = updated.order_code || updated.id;
-        let msg = `សួស្តីបង! ការកម្ម៉ង់របស់បងលេខ \`${displayCode}\` ត្រូវបានប្តូរស្ថានភាពទៅជា៖ *${statusText}*`;
-        if (req.body.trackingNumber) {
-          msg += `\nលេខ Tracking របស់បងគឺ៖ \`${req.body.trackingNumber}\``;
+
+        let itemListText = '';
+        try {
+          const items = typeof updated.items === 'string' ? JSON.parse(updated.items) : (updated.items || []);
+          itemListText = items.map(it => `• ${it.name || it.product_name || 'ទំនិញ'} x${it.quantity || 1} ($${((it.price || 0) * (it.quantity || 1)).toFixed(2)})`).join('\n');
+        } catch (e) {}
+
+        const orderDateStr = new Date(updated.created_at || Date.now()).toLocaleString('en-GB', {
+          timeZone: 'Asia/Phnom_Penh',
+          hour12: true
+        });
+
+        let msg = `សួស្តីបង! ការកម្ម៉ង់របស់បងលេខសម្គាល់៖ \`${displayCode}\`\n`;
+        msg += `ការបរិច្ឆេទទិញ ${orderDateStr}\n\n`;
+        if (itemListText) {
+          msg += `🛍️ *ទំនិញដែលបានទិញ៖*\n${itemListText}\n\n`;
+        }
+        msg += `💰 *តម្លៃសរុប៖* $${parseFloat(updated.total || 0).toFixed(2)}\n`;
+
+        if (updated.phone) {
+          msg += `📞 *លេខទូរស័ព្ទ៖* \`${updated.phone}\`\n`;
+        }
+        const fullAddr = [updated.address, updated.province].filter(Boolean).join(', ');
+        if (fullAddr) {
+          msg += `📍 *អាសយដ្ឋាន៖* ${fullAddr}\n`;
+        }
+        if (updated.note) {
+          msg += `📝 *ចំណាំ៖* ${updated.note}\n`;
+        }
+
+        msg += `\n📌 *ត្រូវបានប្តូរស្ថានភាពទៅជា៖*  *${statusText}*`;
+
+        const trackingNum = updated.tracking_number || req.body.trackingNumber;
+        if (trackingNum) {
+          msg += `\n\n🚚 *លេខ Tracking ៖* \`${trackingNum}\``;
         }
         
         // Fire and forget — DO NOT AWAIT

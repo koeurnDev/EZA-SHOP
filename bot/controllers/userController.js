@@ -71,16 +71,18 @@ const userController = {
     }
   },
 
-  // 🟢 Ping: silently update last_seen for the current user
+  // 🟢 Ping: silently update last_seen, profile photo, and name for the current user
   ping: async (req, res) => {
     try {
       const userId = getResolvedUserId(req);
       if (!userId) return res.json({ success: true }); // Graceful no-op
 
-      const tgUser = req.tgUser || req.user;
-      const userName = tgUser?.first_name || tgUser?.username || null;
+      const tgUser = req.tgUser || req.user || {};
+      const userName = [tgUser.first_name, tgUser.last_name].filter(Boolean).join(' ') || tgUser.username || null;
+      const photoUrl = tgUser.photo_url || null;
+      const username = tgUser.username || null;
 
-      await userRepository.updateLastSeen(String(userId), userName);
+      await userRepository.updateLastSeen(String(userId), userName, photoUrl, username);
       res.json({ success: true });
     } catch (err) {
       // Non-critical — always return 200 so frontend doesn't retry aggressively

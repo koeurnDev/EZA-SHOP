@@ -99,6 +99,16 @@ const DeliveryForm = ({ formData, setFormData, onPhoneChange, t, lang, validatio
                     </div>
                  )}
               </div>
+
+              <div 
+                className={`carrier-option-card ${formData.deliveryCompany === 'grab' ? 'active' : ''}`}
+                onClick={() => setFormData(prev => ({ ...prev, deliveryCompany: 'grab' }))}
+              >
+                 <div className="carrier-check">{formData.deliveryCompany === 'grab' ? '✓' : ''}</div>
+                 <div className="vet-logo-fallback" style={{ background: '#00b14f', color: '#fff', borderRadius: 8, padding: '4px 8px', fontWeight: 900, fontSize: 12 }}>
+                    🛵 Grab
+                 </div>
+              </div>
            </div>
         </div>
 

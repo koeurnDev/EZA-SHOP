@@ -96,12 +96,23 @@ export const TelegramProvider = ({ children }) => {
       
       {/* Custom Confirm Fallback */}
       {confirmData.show && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(3px)' }}>
-          <div className="animate-in" style={{ background: 'white', padding: '25px', borderRadius: '16px', width: '85%', maxWidth: '320px', textAlign: 'center', boxShadow: '0 10px 30px rgba(0,0,0,0.2)' }}>
-            <p style={{ margin: '0 0 25px 0', fontSize: '16px', color: '#111', fontWeight: '500', lineHeight: '1.4' }}>{confirmData.message}</p>
-            <div style={{ display: 'flex', gap: '10px' }}>
-              <button onClick={() => { setConfirmData({ show: false }); if(confirmData.callback) confirmData.callback(false); }} style={{ flex: 1, padding: '12px', background: '#f1f5f9', color: '#475569', border: 'none', borderRadius: '10px', fontWeight: 'bold', fontSize: '14px', cursor: 'pointer' }}>Cancel</button>
-              <button onClick={() => { setConfirmData({ show: false }); if(confirmData.callback) confirmData.callback(true); }} style={{ flex: 1, padding: '12px', background: 'var(--color-primary, #000)', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: 'bold', fontSize: '14px', cursor: 'pointer' }}>OK</button>
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.7)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(8px)', padding: '20px' }}>
+          <div className="animate-in" style={{ background: 'var(--bg-surface, #1e1e24)', border: '1px solid var(--border-subtle, rgba(255,255,255,0.18))', padding: '28px 24px', borderRadius: '24px', width: '90%', maxWidth: '340px', textAlign: 'center', boxShadow: '0 25px 60px rgba(0,0,0,0.6)' }}>
+            <div style={{ fontSize: '36px', marginBottom: '14px' }}>❓</div>
+            <p style={{ margin: '0 0 24px 0', fontSize: '15px', color: 'var(--text-bold, #ffffff)', fontWeight: '700', lineHeight: '1.6', whiteSpace: 'pre-line' }}>{confirmData.message}</p>
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button 
+                onClick={() => { setConfirmData({ show: false }); if(confirmData.callback) confirmData.callback(false); }} 
+                style={{ flex: 1, padding: '12px 16px', background: 'var(--bg-soft, rgba(255,255,255,0.08))', color: 'var(--text-bold, #ffffff)', border: '1px solid var(--border-subtle, rgba(255,255,255,0.15))', borderRadius: '14px', fontWeight: '800', fontSize: '14px', cursor: 'pointer', transition: 'all 0.2s ease' }}
+              >
+                បោះបង់
+              </button>
+              <button 
+                onClick={() => { setConfirmData({ show: false }); if(confirmData.callback) confirmData.callback(true); }} 
+                style={{ flex: 1.2, padding: '12px 16px', background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)', color: '#ffffff', border: 'none', borderRadius: '14px', fontWeight: '900', fontSize: '14px', cursor: 'pointer', boxShadow: '0 4px 14px rgba(239, 68, 68, 0.3)', transition: 'all 0.2s ease' }}
+              >
+                យល់ព្រម
+              </button>
             </div>
           </div>
         </div>
@@ -109,10 +120,16 @@ export const TelegramProvider = ({ children }) => {
 
       {/* Custom Alert Fallback */}
       {alertData.show && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(3px)' }}>
-          <div className="animate-in" style={{ background: 'white', padding: '25px', borderRadius: '16px', width: '85%', maxWidth: '320px', textAlign: 'center', boxShadow: '0 10px 30px rgba(0,0,0,0.2)' }}>
-            <p style={{ margin: '0 0 25px 0', fontSize: '16px', color: '#111', fontWeight: '500', lineHeight: '1.4' }}>{alertData.message}</p>
-            <button onClick={() => setAlertData({ show: false })} style={{ width: '100%', padding: '12px', background: 'var(--color-primary, #000)', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: 'bold', fontSize: '14px', cursor: 'pointer' }}>OK</button>
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.7)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(8px)', padding: '20px' }}>
+          <div className="animate-in" style={{ background: 'var(--bg-surface, #1e1e24)', border: '1px solid var(--border-subtle, rgba(255,255,255,0.18))', padding: '28px 24px', borderRadius: '24px', width: '90%', maxWidth: '340px', textAlign: 'center', boxShadow: '0 25px 60px rgba(0,0,0,0.6)' }}>
+            <div style={{ fontSize: '36px', marginBottom: '14px' }}>✨</div>
+            <p style={{ margin: '0 0 24px 0', fontSize: '15px', color: 'var(--text-bold, #ffffff)', fontWeight: '700', lineHeight: '1.6', whiteSpace: 'pre-line' }}>{alertData.message}</p>
+            <button 
+              onClick={() => setAlertData({ show: false })} 
+              style={{ width: '100%', padding: '12px 16px', background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)', color: '#ffffff', border: 'none', borderRadius: '14px', fontWeight: '900', fontSize: '14px', cursor: 'pointer', boxShadow: '0 4px 14px rgba(59, 130, 246, 0.3)', transition: 'all 0.2s ease' }}
+            >
+              យល់ព្រម
+            </button>
           </div>
         </div>
       )}

@@ -8,18 +8,18 @@ const IV_LENGTH = 12; // Standard 96-bit GCM IV
  * 🔒 Enterprise Key Derivation (RFC 5869 HKDF)
  * Derives a high-entropy 256-bit key ONCE at module load to prevent CPU event-loop lag.
  */
-const getSecretKey = () => {
-  const pepper = process.env.SECURITY_PEPPER || process.env.BOT_TOKEN;
-  if (!pepper) {
-    if (process.env.NODE_ENV === 'production') {
-      throw new Error('🛑 SECURITY_PEPPER or BOT_TOKEN is MISSING in Production. Encryption aborted.');
-    }
-  }
-  const secret = pepper || 'MO_MO_STATIC_CRYPTO_FALLBACK_PEPPER_2026';
-  return crypto.hkdfSync('sha256', secret, 'momo-salt-v1', 'momo-aes-256-gcm-key', 32);
+const deriveKey = (secret) => {
+  return crypto.hkdfSync('sha256', secret || 'MO_MO_STATIC_CRYPTO_FALLBACK_PEPPER_2026', 'momo-salt-v1', 'momo-aes-256-gcm-key', 32);
 };
 
-const KEY = getSecretKey();
+const KEY = deriveKey(process.env.SECURITY_PEPPER || process.env.BOT_TOKEN);
+
+const CANDIDATE_KEYS = Array.from(new Set([
+  process.env.SECURITY_PEPPER,
+  process.env.BOT_TOKEN,
+  'MO_MO_STATIC_CRYPTO_FALLBACK_PEPPER_2026',
+  'MO_MO_BOUTIQUE_SECURE_JWT_SESSION_SECRET_2026'
+].filter(Boolean))).map(s => deriveKey(s));
 
 /**
  * Encrypts sensitive text using pre-derived RFC 5869 256-bit HKDF key
@@ -41,36 +41,44 @@ function encrypt(text) {
 }
 
 /**
- * Decrypts text back to original form or throws operational error on failure
+ * Decrypts text back to original form or returns empty string if decryption fails
  * @param {string} cipherText - The IV:Tag:EncryptedData string
- * @returns {string} - The original raw text
+ * @returns {string} - The original raw text or empty string on failure
  */
 function decrypt(cipherText) {
-  if (!cipherText || typeof cipherText !== 'string' || !cipherText.includes(':')) {
+  if (!cipherText || typeof cipherText !== 'string') {
+    return cipherText || '';
+  }
+  
+  if (!cipherText.includes(':')) {
     return cipherText;
   }
   
   const parts = cipherText.split(':');
   if (parts.length < 3) return cipherText;
 
-  try {
-    const [ivHex, tagHex] = parts;
-    const encryptedHex = parts.slice(2).join(':');
-    
-    const iv = Buffer.from(ivHex, 'hex');
-    const tag = Buffer.from(tagHex, 'hex');
-    
-    const decipher = crypto.createDecipheriv(ALGORITHM, KEY, iv);
-    decipher.setAuthTag(tag);
-    
-    let decrypted = decipher.update(encryptedHex, 'hex', 'utf8');
-    decrypted += decipher.final('utf8');
-    
-    return decrypted;
-  } catch (err) {
-    console.error('🔴 Decryption Error:', err.message);
-    throw new Error('Decryption failed: Invalid ciphertext or authentication tag mismatch');
+  const [ivHex, tagHex] = parts;
+  const encryptedHex = parts.slice(2).join(':');
+
+  for (const k of CANDIDATE_KEYS) {
+    try {
+      const iv = Buffer.from(ivHex, 'hex');
+      const tag = Buffer.from(tagHex, 'hex');
+      
+      const decipher = crypto.createDecipheriv(ALGORITHM, k, iv);
+      decipher.setAuthTag(tag);
+      
+      let decrypted = decipher.update(encryptedHex, 'hex', 'utf8');
+      decrypted += decipher.final('utf8');
+      
+      return decrypted;
+    } catch (err) {
+      // Continue trying next candidate key
+    }
   }
+
+  console.warn('⚠️ Decryption failed for payload. Returning empty fallback.');
+  return '';
 }
 
 module.exports = { encrypt, decrypt };

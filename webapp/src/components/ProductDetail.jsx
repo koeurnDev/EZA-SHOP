@@ -386,18 +386,26 @@ const ProductDetail = ({ product, allProducts = [], onAdd, onClose, onBuyNow, ac
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                         {uniqueColors.map(c => {
                           const isSelected = selectedColor === c;
+                          const colorMatches = variants.filter(v => v.color === c && (!selectedSize || v.size === selectedSize));
+                          const colorStock = colorMatches.reduce((sum, v) => sum + (parseInt(v.stock) || 0), 0);
+                          const isColorDisabled = colorStock <= 0;
+
                           return (
                             <button
                               key={c}
-                              onClick={() => setSelectedColor(isSelected ? null : c)}
+                              disabled={isColorDisabled}
+                              onClick={() => !isColorDisabled && setSelectedColor(isSelected ? null : c)}
                               style={{
                                 padding: '6px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: 'bold',
                                 border: isSelected ? '2px solid var(--primary-accent)' : '1px solid var(--border-subtle)',
-                                background: isSelected ? 'rgba(0,0,0,0.03)' : '#fff',
-                                color: isSelected ? 'var(--primary-accent)' : 'var(--text-main)'
+                                background: isSelected ? 'rgba(0,0,0,0.03)' : 'var(--bg-card, #fff)',
+                                color: isSelected ? 'var(--primary-accent)' : isColorDisabled ? 'var(--text-muted)' : 'var(--text-main)',
+                                opacity: isColorDisabled ? 0.45 : 1,
+                                textDecoration: isColorDisabled ? 'line-through' : 'none',
+                                cursor: isColorDisabled ? 'not-allowed' : 'pointer'
                               }}
                             >
-                              {c}
+                              {c} {isColorDisabled ? (lang === 'kh' ? '(អស់)' : '(Out)') : ''}
                             </button>
                           );
                         })}
@@ -410,18 +418,26 @@ const ProductDetail = ({ product, allProducts = [], onAdd, onClose, onBuyNow, ac
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                         {uniqueSizes.map(s => {
                           const isSelected = selectedSize === s;
+                          const sizeMatches = variants.filter(v => v.size === s && (!selectedColor || v.color === selectedColor));
+                          const sizeStock = sizeMatches.reduce((sum, v) => sum + (parseInt(v.stock) || 0), 0);
+                          const isSizeDisabled = sizeStock <= 0;
+
                           return (
                             <button
                               key={s}
-                              onClick={() => setSelectedSize(isSelected ? null : s)}
+                              disabled={isSizeDisabled}
+                              onClick={() => !isSizeDisabled && setSelectedSize(isSelected ? null : s)}
                               style={{
                                 padding: '6px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: 'bold',
                                 border: isSelected ? '2px solid var(--primary-accent)' : '1px solid var(--border-subtle)',
-                                background: isSelected ? 'rgba(0,0,0,0.03)' : '#fff',
-                                color: isSelected ? 'var(--primary-accent)' : 'var(--text-main)'
+                                background: isSelected ? 'rgba(0,0,0,0.03)' : 'var(--bg-card, #fff)',
+                                color: isSelected ? 'var(--primary-accent)' : isSizeDisabled ? 'var(--text-muted)' : 'var(--text-main)',
+                                opacity: isSizeDisabled ? 0.45 : 1,
+                                textDecoration: isSizeDisabled ? 'line-through' : 'none',
+                                cursor: isSizeDisabled ? 'not-allowed' : 'pointer'
                               }}
                             >
-                              {s}
+                              {s} {isSizeDisabled ? (lang === 'kh' ? '(អស់)' : '(Out)') : ''}
                             </button>
                           );
                         })}
@@ -583,7 +599,7 @@ const ProductDetail = ({ product, allProducts = [], onAdd, onClose, onBuyNow, ac
               className={`pd-heart-btn ${isFavorited ? 'active' : ''}`}
               onClick={(e) => { e.stopPropagation(); if (typeof onToggleWishlist === 'function') onToggleWishlist(); }}
             >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill={isFavorited ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill={isFavorited ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l8.82-8.82 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
               </svg>
             </button>

@@ -35,7 +35,7 @@ const bot = new Telegraf(process.env.BOT_TOKEN, telegrafOptions);
 
 // 1. Start Command
 bot.start((ctx) => {
-  ctx.reply(`សួស្តី ${escapeMarkdown(ctx.from.first_name)}! សូមស្វាគមន៍មកកាន់ MO MO Boutique 🛍️\n\nសូមចុចប៊ូតុងខាងក្រោមដើម្បីចូលមើលទំនិញថ្មីៗបាទ៖`, 
+  ctx.reply(`សួស្តី ${escapeMarkdown(ctx.from.first_name)}! សូមស្វាគមន៍មកកាន់ MO MO Boutique 🛍️\n\nសូមចុចប៊ូតុងខាងក្រោមដើម្បីចូលមើលទំនិញថ្មីៗ`, 
     Markup.inlineKeyboard([
       [Markup.button.webApp('Shop Now 🛍️', process.env.WEBAPP_URL)],
       [Markup.button.callback('មើលការកម្ម៉ង់ / Orders 📦', 'view_orders')]
@@ -43,8 +43,16 @@ bot.start((ctx) => {
   );
 });
 
-// 2. Order History Command
-bot.command('orders', async (ctx) => {
+const statusMapText = {
+  'paid': 'បានបង់ប្រាក់រួចរាល់ ✅',
+  'processing': 'កំពុងរៀបចំអីវ៉ាន់ 📦',
+  'shipped': 'ប្រគល់ជូនអ្នកដឹកជញ្ជូន 🚚',
+  'delivered': 'បានដល់ដៃអតិថិជន 🎉',
+  'cancelled': 'បានបោះបង់ ❌',
+  'pending': 'រង់ចាំការបង់ប្រាក់ ⏳'
+};
+
+const sendOrderHistory = async (ctx) => {
   try {
     const userId = ctx.from.id.toString();
     const orders = await pool.query(
@@ -57,25 +65,130 @@ bot.command('orders', async (ctx) => {
     }
 
     let msg = '📦 *ការកម្ម៉ង់ ៥ ចុងក្រោយរបស់បង៖*\n\n';
-    orders.rows.forEach(o => {
-      const date = new Date(o.created_at).toLocaleDateString('km-KH');
-      const statusIcon = o.status === 'paid' ? '✅' : o.status === 'shipped' ? '🚚' : o.status === 'processing' ? '📦' : o.status === 'pending' ? '⏳' : '❌';
-      const statusText = o.status === 'paid' ? 'បានបង់ប្រាក់' : o.status === 'shipped' ? 'កំពុងដឹកជញ្ជូន' : o.status === 'processing' ? 'កំពុងរៀបចំ' : o.status === 'pending' ? 'រង់ចាំការបង់ប្រាក់' : 'បានលុប';
-      const displayCode = escapeMarkdown(o.order_code || o.id);
-      
-      msg += `${statusIcon} *\`${displayCode}\`*\n`;
-      msg += `   ↳ ស្ថានភាព: ${statusText}\n`;
-      msg += `   ↳ ថ្ងៃទី: ${date} | សរុប: $${o.total}\n\n`;
+    const inlineButtons = [];
+
+    orders.rows.forEach((o, index) => {
+      const date = new Date(o.created_at).toLocaleString('en-GB', { timeZone: 'Asia/Phnom_Penh', hour12: true });
+      const statusText = statusMapText[o.status] || o.status;
+      const displayCode = o.order_code || o.id;
+      const displayCodeEscaped = escapeMarkdown(displayCode);
+
+      msg += `${index + 1}️⃣ 🆔 *\`${displayCodeEscaped}\`*\n`;
+      msg += `   📌 ស្ថានភាព: *${statusText}*\n`;
+      msg += `   💰 តម្លៃសរុប: *$${parseFloat(o.total || 0).toFixed(2)}*\n`;
+      if (o.tracking_number) {
+        msg += `   🚚 Tracking: \`${escapeMarkdown(o.tracking_number)}\`\n`;
+      }
+      msg += `   🕒 ថ្ងៃទី: ${date}\n\n`;
+
+      inlineButtons.push([
+        Markup.button.callback(`🔍 ឆែក #${displayCode.slice(-6)} (${statusText})`, `track_order_${displayCode}`)
+      ]);
     });
 
-    ctx.reply(msg, { parse_mode: 'Markdown' });
+    msg += '👇 ចុចប៊ូតុងខាងក្រោមដើម្បីឆែកមើលព័ត៌មានលម្អិត៖';
+
+    await ctx.reply(msg, {
+      parse_mode: 'Markdown',
+      ...Markup.inlineKeyboard(inlineButtons)
+    });
   } catch (err) {
-    console.error('🔴 Bot Command Error:', err.message);
-    ctx.reply('សុំទោស! មានបញ្ហាក្នុងការទាញយកទិន្នន័យ។');
+    console.error('🔴 Bot Orders Error:', err.message);
+    await ctx.reply('សុំទោស! មានបញ្ហាក្នុងការទាញយកទិន្នន័យ។');
+  }
+};
+
+// 2. Order History Command & Actions
+bot.command('orders', sendOrderHistory);
+bot.action('view_orders', sendOrderHistory);
+
+// 🔍 Track Specific Order Action
+bot.action(/^track_order_(.+)$/, async (ctx) => {
+  try {
+    const orderCode = ctx.match[1];
+    const telegramUserId = ctx.from.id.toString();
+
+    const orders = await pool.query(
+      'SELECT * FROM orders WHERE (order_code = $1 OR id::text = $1) AND user_id = $2',
+      [orderCode, telegramUserId]
+    );
+
+    if (orders.rows.length === 0) {
+      return ctx.answerCbQuery('រកមិនឃើញទិន្នន័យការកម្ម៉ង់នេះទេ ❌', { show_alert: true });
+    }
+
+    const order = orders.rows[0];
+    const statusText = statusMapText[order.status] || order.status;
+    const displayCode = escapeMarkdown(order.order_code || order.id);
+    const dateStr = new Date(order.created_at).toLocaleString('en-GB', { timeZone: 'Asia/Phnom_Penh', hour12: true });
+
+    let itemsText = '';
+    try {
+      const items = typeof order.items === 'string' ? JSON.parse(order.items) : (order.items || []);
+      itemsText = items.map(it => `• ${escapeMarkdown(it.name || it.product_name || 'ទំនិញ')} x${it.quantity || 1} ($${((it.price || 0) * (it.quantity || 1)).toFixed(2)})`).join('\n');
+    } catch (e) {}
+
+    let detailMsg = `🔍 *ព័ត៌មានលម្អិតអំពីការកម្ម៉ង់*\n\n`;
+    detailMsg += `🆔 លេខសម្គាល់៖ \`${displayCode}\`\n`;
+    if (order.user_name) {
+      detailMsg += `👤 អតិថិជន៖ *${escapeMarkdown(order.user_name)}*\n`;
+    }
+    detailMsg += `📌 ស្ថានភាព៖ *${statusText}*\n`;
+    if (order.tracking_number) {
+      detailMsg += `🚚 លេខ Tracking ៖ \`${escapeMarkdown(order.tracking_number)}\`\n`;
+    }
+    detailMsg += `🕒 ថ្ងៃទីកម្ម៉ង់៖ ${dateStr}\n\n`;
+
+    if (itemsText) {
+      detailMsg += `🛍️ *ទំនិញដែលបានទិញ៖*\n${itemsText}\n\n`;
+    }
+
+    if (order.subtotal && Number(order.subtotal) > 0) {
+      detailMsg += `💵 តម្លៃទំនិញ៖ $${parseFloat(order.subtotal).toFixed(2)}\n`;
+    }
+    if (order.discount_amount && Number(order.discount_amount) > 0) {
+      detailMsg += `🎟️ បញ្ចុះតម្លៃ៖ -$${parseFloat(order.discount_amount).toFixed(2)}\n`;
+    }
+    if (order.delivery_fee !== undefined && order.delivery_fee !== null) {
+      const feeVal = Number(order.delivery_fee);
+      detailMsg += `🚚 ថ្លៃដឹកជញ្ជូន៖ ${feeVal === 0 ? 'ឥតគិតថ្លៃ 🎁' : `$${feeVal.toFixed(2)}`}\n`;
+    }
+    detailMsg += `💰 *តម្លៃសរុប៖* *$${parseFloat(order.total || 0).toFixed(2)}*\n`;
+
+    if (order.payment_method) {
+      detailMsg += `💳 *វិធីសាស្ត្របង់ប្រាក់៖* ${escapeMarkdown(order.payment_method)}\n`;
+    }
+
+    detailMsg += `\n`;
+    if (order.phone) {
+      detailMsg += `📞 *លេខទូរស័ព្ទ៖* \`${escapeMarkdown(order.phone)}\`\n`;
+    }
+    const fullAddress = [order.address, order.province].filter(Boolean).map(escapeMarkdown).join(', ');
+    if (fullAddress) {
+      detailMsg += `📍 *អាសយដ្ឋាន៖* ${fullAddress}\n`;
+    }
+    if (order.delivery_company) {
+      detailMsg += `🚚 *ក្រុមហ៊ុនដឹកជញ្ជូន៖* ${escapeMarkdown(order.delivery_company)}\n`;
+    }
+    if (order.note) {
+      detailMsg += `📝 *ចំណាំ៖* ${escapeMarkdown(order.note)}\n`;
+    }
+
+    const buttons = [];
+    if (process.env.WEBAPP_URL) {
+      buttons.push([Markup.button.webApp('🛍️ បើកមើលក្នុងហាង (Open App)', process.env.WEBAPP_URL)]);
+    }
+
+    await ctx.reply(detailMsg, {
+      parse_mode: 'Markdown',
+      ...(buttons.length > 0 ? Markup.inlineKeyboard(buttons) : {})
+    });
+    await ctx.answerCbQuery();
+  } catch (err) {
+    console.error('Track Order Error:', err.message);
+    await ctx.answerCbQuery('មានបញ្ហាក្នុងការទាញយកទិន្នន័យ', { show_alert: true });
   }
 });
-
-bot.action('view_orders', (ctx) => ctx.reply('សូមវាយពាក្យ /orders ដើម្បីមើលប្រវត្តិរូបបងបាទ។'));
 
 // 3. Approve Order (Admin Inline Action)
 bot.action(/^approve_order_(.+)$/, async (ctx) => {

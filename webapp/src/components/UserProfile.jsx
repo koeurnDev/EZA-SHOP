@@ -30,6 +30,12 @@ const UserProfile = ({ user, setView, BACKEND_URL, onViewInvoice, t, lang, toggl
     fetchProfile();
   }, [user?.id]);
 
+  const sanitizeText = (val) => {
+    if (!val || typeof val !== 'string') return '';
+    if (val.includes(':') || val.length > 40 || /^[0-9a-fA-F:]{30,}$/.test(val)) return '';
+    return val;
+  };
+
   const fetchProfile = () => {
     if (!user?.id) return;
     const tgInitData = window.Telegram?.WebApp?.initData || '';
@@ -39,9 +45,11 @@ const UserProfile = ({ user, setView, BACKEND_URL, onViewInvoice, t, lang, toggl
     .then(res => res.json())
     .then(data => {
       if (data.success && data.profile) {
-        setDbProfile(data.profile);
-        setEditPhone(data.profile.phone || '');
-        setEditAddress(data.profile.address || '');
+        const cleanPhone = sanitizeText(data.profile.phone);
+        const cleanAddr = sanitizeText(data.profile.address);
+        setDbProfile({ ...data.profile, phone: cleanPhone, address: cleanAddr });
+        setEditPhone(cleanPhone);
+        setEditAddress(cleanAddr);
       }
     })
     .catch(err => console.error('Failed to fetch profile:', err));
@@ -62,7 +70,9 @@ const UserProfile = ({ user, setView, BACKEND_URL, onViewInvoice, t, lang, toggl
       });
       const data = await res.json();
       if (data.success && data.profile) {
-        setDbProfile(data.profile);
+        const cleanPhone = sanitizeText(data.profile.phone);
+        const cleanAddr = sanitizeText(data.profile.address);
+        setDbProfile({ ...data.profile, phone: cleanPhone, address: cleanAddr });
         setIsEditingProfile(false);
         const tg = window.Telegram?.WebApp;
         if (tg?.HapticFeedback) {
@@ -204,11 +214,11 @@ const UserProfile = ({ user, setView, BACKEND_URL, onViewInvoice, t, lang, toggl
             <div style={{ display: 'grid', gap: 12 }}>
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: 14, lineHeight: '1.5' }}>
                 <span style={{ opacity: 0.6, marginTop: 2 }}>📞</span> 
-                <span style={{ fontWeight: 700, color: 'var(--text-main)' }}>{dbProfile.phone || (lang === 'kh' ? 'មិនទាន់មាន' : 'Not set')}</span>
+                <span style={{ fontWeight: 700, color: 'var(--text-main)' }}>{sanitizeText(dbProfile.phone) || (lang === 'kh' ? 'មិនទាន់មាន' : 'Not set')}</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: 14, lineHeight: '1.5' }}>
                 <span style={{ opacity: 0.6, marginTop: 2 }}>📍</span> 
-                <span style={{ fontWeight: 700, color: 'var(--text-main)' }}>{dbProfile.address || (lang === 'kh' ? 'មិនទាន់មាន' : 'Not set')}</span>
+                <span style={{ fontWeight: 700, color: 'var(--text-main)' }}>{sanitizeText(dbProfile.address) || (lang === 'kh' ? 'មិនទាន់មាន' : 'Not set')}</span>
               </div>
             </div>
           ) : (

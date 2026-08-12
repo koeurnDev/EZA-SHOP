@@ -72,7 +72,13 @@ const ProductGrid = () => {
   const displayed = useMemo(() => filtered.slice(0, limit), [filtered, limit]);
   const hasMore = filtered.length > limit;
 
-  const featured = useMemo(() => (products || []).filter(p => p.stock > 0).slice(0, 3), [products]);
+  const featured = useMemo(() => {
+    const list = (products || []).filter(p => p.stock > 0);
+    const marked = list.filter(p => p.is_featured);
+    if (marked.length >= 10) return marked.slice(0, 10);
+    const combined = [...marked, ...list.filter(p => !p.is_featured)];
+    return combined.slice(0, 10);
+  }, [products]);
   const hasActiveFilters = filters?.minPrice || filters?.maxPrice || (filters?.sort && filters.sort !== 'newest');
   const showFeatured = searchTerm === '' && selectedCategory === 'all' && !hasActiveFilters && featured.length > 0;
 

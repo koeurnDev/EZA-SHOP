@@ -151,23 +151,27 @@ const PurchaseHistory = ({ setView, BACKEND_URL }) => {
                  </div>
                )}
 
-               {order.receipt_url && (
-                 <div className="premium-card" style={{ background: 'rgba(16, 185, 129, 0.05)', border: '1px dashed rgba(16, 185, 129, 0.2)', padding: 10, borderRadius: 14, marginBottom: 15 }}>
-                    <div style={{ fontSize: 9, fontWeight: 800, color: '#10b981', textTransform: 'uppercase', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 5 }}>
-                       <span>🧾</span> វិក្កយបត្រដែលបានបញ្ជូន
-                    </div>
-                    <div style={{ width: '100%', borderRadius: 8, overflow: 'hidden' }}>
-                       <img src={order.receipt_url} alt="Receipt" style={{ width: '100%', maxHeight: '150px', objectFit: 'contain', cursor: 'pointer' }} onClick={() => {
-                          const tg = window.Telegram?.WebApp;
-                          if (tg?.openLink) {
-                            tg.openLink(order.receipt_url);
-                          } else {
-                            window.open(order.receipt_url, '_blank');
-                          }
-                       }} />
-                    </div>
-                 </div>
-               )}
+                {order.status === 'pending' ? (
+                  <div className="premium-card" style={{ background: 'rgba(245, 158, 11, 0.08)', border: '1px dashed rgba(245, 158, 11, 0.3)', padding: '10px 14px', borderRadius: 14, marginBottom: 15, fontSize: 12, fontWeight: 800, color: '#f59e0b', textAlign: 'center' }}>
+                    ⏳ កំពុងរង់ចាំការបញ្ជាក់ការបង់ប្រាក់ពីហាង...
+                  </div>
+                ) : order.receipt_url && (
+                  <div className="premium-card" style={{ background: 'rgba(16, 185, 129, 0.05)', border: '1px dashed rgba(16, 185, 129, 0.2)', padding: 10, borderRadius: 14, marginBottom: 15 }}>
+                     <div style={{ fontSize: 9, fontWeight: 800, color: '#10b981', textTransform: 'uppercase', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 5 }}>
+                        <span>🧾</span> វិក្កយបត្រផ្លូវការដែលបានបញ្ជាក់ (Official Receipt)
+                     </div>
+                     <div style={{ width: '100%', borderRadius: 8, overflow: 'hidden' }}>
+                        <img src={order.receipt_url} alt="Receipt" style={{ width: '100%', maxHeight: '150px', objectFit: 'contain', cursor: 'pointer' }} onClick={() => {
+                           const tg = window.Telegram?.WebApp;
+                           if (tg?.openLink) {
+                             tg.openLink(order.receipt_url);
+                           } else {
+                             window.open(order.receipt_url, '_blank');
+                           }
+                        }} />
+                     </div>
+                  </div>
+                )}
 
                <div className="history-footer" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div style={{ fontSize: 11, fontWeight: 700, opacity: 0.6, color: 'var(--text-muted)' }}>TOTAL SPENT</div>

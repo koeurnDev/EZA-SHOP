@@ -220,6 +220,50 @@ const productRepository = {
     return Object.values(productsById);
   },
 
+  restoreStockBatch: async (items, clientParam = null) => {
+    const dbClient = clientParam || pool;
+    const ids = Array.from(new Set(items.map(i => parseInt(i.id, 10)).filter(Boolean)));
+    if (ids.length === 0) return [];
+
+    const res = await dbClient.query(
+      `SELECT id, name, stock, variants FROM products WHERE id = ANY($1::int[]) FOR UPDATE`,
+      [ids]
+    );
+
+    const productsById = {};
+    for (const p of res.rows) {
+      productsById[p.id] = { ...p, variants: safeJsonParse(p.variants, []) };
+    }
+
+    for (const item of items) {
+      const p = productsById[item.id];
+      if (!p) continue;
+      const qty = parseInt(item.quantity) || 1;
+
+      if (item.variant) {
+        const v = p.variants.find(v => v.color === item.variant.color && v.size === item.variant.size);
+        if (v) {
+          v.stock = (parseInt(v.stock) || 0) + qty;
+        }
+      }
+      p.stock = (parseInt(p.stock) || 0) + qty;
+    }
+
+    await Promise.all(
+      Object.values(productsById).map(p =>
+        dbClient.query(
+          `UPDATE products SET stock = $1, variants = $2::jsonb WHERE id = $3`,
+          [p.stock, JSON.stringify(p.variants), p.id]
+        )
+      )
+    );
+    
+    cacheService.clearPattern('products:*').catch(() => {});
+    cacheService.delete('system:init:data').catch(() => {});
+    
+    return Object.values(productsById);
+  },
+
   addStock: async (id, qty) => {
     const numericId = parseInt(id, 10);
     const res = await pool.query(

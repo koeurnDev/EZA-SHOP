@@ -68,6 +68,33 @@ const settingsRepository = {
     return await cacheService.getOrFetch(
       CACHE_KEYS.categories,
       async () => {
+        const defaults = [
+          '👗 សម្លៀកបំពាក់ (Clothes)',
+          '👠 ស្បែកជើង (Shoes)',
+          '👜 កាបូប & គ្រឿងលម្អ (Bags & Accessories)',
+          '💄 គ្រឿងសំអាង (Beauty & Skincare)'
+        ];
+
+        try {
+          // Delete old test categories
+          await pool.query('DELETE FROM categories WHERE name NOT IN ($1, $2, $3, $4)', defaults);
+          for (const d of defaults) {
+            await pool.query('INSERT INTO categories (name) VALUES ($1) ON CONFLICT (name) DO NOTHING', [d]);
+          }
+
+          // Remap legacy products to standard categories
+          await pool.query("UPDATE products SET category = '💄 គ្រឿងសំអាង (Beauty & Skincare)' WHERE category ILIKE '%ទឹកអប់%' OR category ILIKE '%perfume%' OR category ILIKE '%lotion%' OR category ILIKE '%សាប៊ូ%' OR category ILIKE '%shampoo%'");
+          await pool.query("UPDATE products SET category = '👗 សម្លៀកបំពាក់ (Clothes)' WHERE category NOT IN ($1, $2, $3, $4) AND category NOT ILIKE '%គ្រឿងសំអាង%'", defaults);
+
+          // 🚀 Invalidate all product & init caches so /api/init returns cleaned product categories
+          await cacheService.clearPattern('products:*').catch(() => {});
+          await cacheService.delete('system:init:data').catch(() => {});
+          await cacheService.delete('app:initial_data').catch(() => {});
+          await cacheService.delete('admin:dashboard_data').catch(() => {});
+        } catch (err) {
+          console.error('⚠️ Category cleanup error:', err.message);
+        }
+
         const res = await pool.query('SELECT * FROM categories ORDER BY id ASC');
         return res.rows;
       },

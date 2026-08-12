@@ -14,23 +14,28 @@ const userRepository = {
   },
 
   findAll: async (limit = 100, offset = 0) => {
-    // 🛡️ Self-Healing: Ensure role, is_banned, and is_winback_reminded columns exist
-    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS role TEXT DEFAULT 'user'`).catch(() => {});
-    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS is_banned BOOLEAN DEFAULT false`).catch(() => {});
-    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS is_winback_reminded BOOLEAN DEFAULT false`).catch(() => {});
-    
-    const safeLimit = Math.min(Math.max(parseInt(limit) || 100, 1), 500);
-    const safeOffset = Math.max(parseInt(offset) || 0, 0);
+    try {
+      // 🛡️ Self-Healing: Ensure role, is_banned, and is_winback_reminded columns exist
+      await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS role TEXT DEFAULT 'user'`).catch(() => {});
+      await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS is_banned BOOLEAN DEFAULT false`).catch(() => {});
+      await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS is_winback_reminded BOOLEAN DEFAULT false`).catch(() => {});
+      
+      const safeLimit = Math.min(Math.max(parseInt(limit) || 100, 1), 500);
+      const safeOffset = Math.max(parseInt(offset) || 0, 0);
 
-    const res = await pool.query(
-      'SELECT * FROM users ORDER BY last_seen DESC NULLS LAST, last_updated DESC LIMIT $1 OFFSET $2',
-      [safeLimit, safeOffset]
-    );
-    return res.rows.map(user => {
-      user.phone = decrypt(user.phone);
-      user.address = decrypt(user.address);
-      return user;
-    });
+      const res = await pool.query(
+        'SELECT * FROM users WHERE user_id IS NOT NULL AND user_id > 0 ORDER BY last_seen DESC NULLS LAST, last_updated DESC LIMIT $1 OFFSET $2',
+        [safeLimit, safeOffset]
+      );
+      return res.rows.map(user => {
+        try { user.phone = decrypt(user.phone); } catch (e) {}
+        try { user.address = decrypt(user.address); } catch (e) {}
+        return user;
+      });
+    } catch (err) {
+      console.error('🔴 Error in userRepository.findAll:', err.message);
+      return [];
+    }
   },
 
   getAllIds: async () => {
@@ -153,23 +158,27 @@ const userRepository = {
   },
 
   // 🟢 Track user activity: upsert user with last_seen = NOW()
-  updateLastSeen: async (userId, userName) => {
+  updateLastSeen: async (userId, userName, photoUrl, username) => {
     try {
-      // 🛡️ Self-Healing: Ensure last_seen column exists
+      // 🛡️ Self-Healing: Ensure last_seen, user_name, photo_url, and username columns exist
       await pool.query(`
         ALTER TABLE users ADD COLUMN IF NOT EXISTS last_seen TIMESTAMPTZ;
         ALTER TABLE users ADD COLUMN IF NOT EXISTS user_name TEXT;
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS photo_url TEXT;
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS username TEXT;
       `).catch(() => {});
 
       const dummyEmail = `tg_${userId}@momo.local`;
       await pool.query(
-        `INSERT INTO users (user_id, user_name, email, phone, address, loyalty_points, last_seen, last_updated)
-         VALUES ($1, $2, $3, '', '', 0, NOW(), NOW())
+        `INSERT INTO users (user_id, user_name, photo_url, username, email, phone, address, loyalty_points, last_seen, last_updated)
+         VALUES ($1, $2, $3, $4, $5, '', '', 0, NOW(), NOW())
          ON CONFLICT (user_id) DO UPDATE SET
            last_seen = NOW(),
            last_updated = NOW(),
-           user_name = COALESCE(EXCLUDED.user_name, users.user_name)`,
-        [userId, userName || null, dummyEmail]
+           user_name = COALESCE(EXCLUDED.user_name, users.user_name),
+           photo_url = COALESCE(EXCLUDED.photo_url, users.photo_url),
+           username = COALESCE(EXCLUDED.username, users.username)`,
+        [userId, userName || null, photoUrl || null, username || null, dummyEmail]
       );
     } catch (err) {
       // Non-critical — don't throw, just log
