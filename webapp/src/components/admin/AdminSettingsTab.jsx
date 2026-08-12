@@ -1,6 +1,8 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import DarkSelect from './DarkSelect';
 import { useUser } from '../../context/UserContext';
+import { getDeliveryRuleSummary, isAlwaysFreeDelivery, parseDeliverySetting } from '../../utils/deliveryUtils';
+import { DEMO_SOCIAL_LINKS, normalizeSocialLink } from '../../utils/socialLinkUtils';
 
 const AdminSettingsTab = React.memo(({
   shopStatus, showConfirm, setShopStatus, updateSettingValue,
@@ -16,8 +18,60 @@ const AdminSettingsTab = React.memo(({
   socialIg, setSocialIg,
   socialTt, setSocialTt,
   socialEmail, setSocialEmail,
+  socialWa, setSocialWa,
+  shopPhone, setShopPhone,
+  shopAddress, setShopAddress,
+  shopHours, setShopHours,
+  settingsReady = false,
 }) => {
-  const { t } = useUser();
+  const { t, lang } = useUser();
+
+  const feeIsZero = isAlwaysFreeDelivery(deliveryFee);
+  const deliveryRuleSummary = useMemo(
+    () => getDeliveryRuleSummary(deliveryFee, deliveryThreshold, lang),
+    [deliveryFee, deliveryThreshold, lang]
+  );
+
+  const persistSocialField = (key, type, rawValue, setter) => {
+    const normalized = normalizeSocialLink(type, rawValue);
+    setter(normalized);
+    updateSettingValue(key, normalized);
+  };
+
+  const persistDeliveryField = (key, rawValue, fallback) => {
+    const normalized = String(parseDeliverySetting(rawValue, fallback));
+    if (key === 'delivery_fee') setDeliveryFee(normalized);
+    else setDeliveryThreshold(normalized);
+    updateSettingValue(key, normalized);
+  };
+
+  const demoSeededRef = useRef(false);
+  useEffect(() => {
+    if (!import.meta.env.DEV || !settingsReady || demoSeededRef.current) return;
+    const hasAny = [socialFb, socialTg, socialIg, socialTt, socialEmail, shopPhone].some(Boolean);
+    if (hasAny) return;
+
+    demoSeededRef.current = true;
+    const demos = [
+      { key: 'social_fb', type: 'url', value: DEMO_SOCIAL_LINKS.social_fb, setter: setSocialFb },
+      { key: 'social_tg', type: 'telegram', value: DEMO_SOCIAL_LINKS.social_tg, setter: setSocialTg },
+      { key: 'social_ig', type: 'url', value: DEMO_SOCIAL_LINKS.social_ig, setter: setSocialIg },
+      { key: 'social_tt', type: 'url', value: DEMO_SOCIAL_LINKS.social_tt, setter: setSocialTt },
+      { key: 'social_email', type: 'email', value: DEMO_SOCIAL_LINKS.social_email, setter: setSocialEmail },
+      { key: 'social_wa', type: 'whatsapp', value: DEMO_SOCIAL_LINKS.social_wa, setter: setSocialWa },
+    ];
+    demos.forEach(({ key, type, value, setter }) => {
+      const normalized = normalizeSocialLink(type, value);
+      setter(normalized);
+      updateSettingValue(key, normalized);
+    });
+    setShopPhone(DEMO_SOCIAL_LINKS.shop_phone);
+    setShopAddress(DEMO_SOCIAL_LINKS.shop_address);
+    setShopHours(DEMO_SOCIAL_LINKS.shop_hours);
+    updateSettingValue('shop_phone', DEMO_SOCIAL_LINKS.shop_phone);
+    updateSettingValue('shop_address', DEMO_SOCIAL_LINKS.shop_address);
+    updateSettingValue('shop_hours', DEMO_SOCIAL_LINKS.shop_hours);
+  }, [settingsReady, socialFb, socialTg, socialIg, socialTt, socialEmail, shopPhone, setSocialFb, setSocialTg, setSocialIg, setSocialTt, setSocialEmail, setSocialWa, setShopPhone, setShopAddress, setShopHours, updateSettingValue]);
 
   const SHOP_STATUS_OPTIONS = useMemo(() => [
     { value: 'open', label: `🟢 ${t('admin_open')}` },
@@ -58,22 +112,27 @@ const AdminSettingsTab = React.memo(({
           </div>
         </div>
 
-        <div className="admin-responsive-grid" style={{ gap: 16, marginBottom: 22 }}>
+        <div className="admin-responsive-grid" style={{ gap: 16, marginBottom: 16 }}>
           <div>
             <label style={{ display: 'block', fontSize: 12, fontWeight: 900, marginBottom: 8, color: 'var(--text-bold)' }}>{t('admin_delivery_fee') || 'ថ្លៃសេវាដឹកជញ្ជូន'}</label>
             <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
               <span style={{ position: 'absolute', left: 14, fontSize: 15, fontWeight: 900, color: 'var(--text-muted)', zIndex: 2 }}>$</span>
               <input 
                 className="input-glass-admin" 
-                type="number"
-                step="0.01"
+                type="text"
+                inputMode="decimal"
                 style={{ paddingLeft: 38, width: '100%', fontSize: 14, fontWeight: 800 }} 
                 placeholder="1.50" 
                 value={deliveryFee} 
-                onChange={e => setDeliveryFee(e.target.value)} 
+                onChange={e => setDeliveryFee(e.target.value.replace(/[^0-9.]/g, ''))}
+                onBlur={() => persistDeliveryField('delivery_fee', deliveryFee, 0)}
               />
             </div>
-            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6, opacity: 0.8 }}>ឧទាហរណ៍៖ 1.50 (ដាក់ 0 ប្រសិនបើដឹកហ្វ្រីគ្រប់ order)</div>
+            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6, opacity: 0.8 }}>
+              {lang === 'kh'
+                ? 'ឧទាហរណ៍៖ 1.50 · ដាក់ 0 ប្រសិនបើដឹកហ្វ្រីគ្រប់ order'
+                : 'Example: 1.50 · Use 0 for free delivery on every order'}
+            </div>
           </div>
 
           <div>
@@ -82,30 +141,39 @@ const AdminSettingsTab = React.memo(({
               <span style={{ position: 'absolute', left: 14, fontSize: 15, fontWeight: 900, color: 'var(--text-muted)', zIndex: 2 }}>$</span>
               <input 
                 className="input-glass-admin" 
-                type="number"
-                step="1"
+                type="text"
+                inputMode="decimal"
                 style={{ paddingLeft: 38, width: '100%', fontSize: 14, fontWeight: 800 }} 
                 placeholder="50.00" 
                 value={deliveryThreshold} 
-                onChange={e => setDeliveryThreshold(e.target.value)} 
+                onChange={e => setDeliveryThreshold(e.target.value.replace(/[^0-9.]/g, ''))}
+                onBlur={() => persistDeliveryField('delivery_threshold', deliveryThreshold, 50)}
               />
             </div>
-            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6, opacity: 0.8 }}>ទិញអស់ចាប់ពី ${deliveryThreshold || '50'} ឡើងទៅ នឹងទទួលបានការដឹកហ្វ្រី</div>
+            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6, opacity: 0.8 }}>
+              {feeIsZero
+                ? (lang === 'kh'
+                  ? 'ដឹកហ្វ្រីគ្រប់ order រួចហើយ · threshold នឹងដំណើរការពេលដាក់ថ្លៃដឹក > 0'
+                  : 'Delivery is free for every order · threshold applies once fee is above 0')
+                : (lang === 'kh'
+                  ? `ទិញ $${parseDeliverySetting(deliveryThreshold, 50).toFixed(0)}+ ដឹកហ្វ្រី · ក្រោមនេះគិត $${parseDeliverySetting(deliveryFee, 1.5).toFixed(2)}`
+                  : `Free delivery on $${parseDeliverySetting(deliveryThreshold, 50).toFixed(0)}+ · Below that, charge $${parseDeliverySetting(deliveryFee, 1.5).toFixed(2)}`)}
+            </div>
           </div>
         </div>
 
-        <button 
-          style={{ 
-            width: '100%', padding: '13px 20px', borderRadius: 14, border: 'none',
-            background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-            color: '#ffffff', fontWeight: 900, fontSize: 14, cursor: 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-            boxShadow: '0 4px 14px rgba(16, 185, 129, 0.3)', transition: 'all 0.2s ease'
-          }}
-          onClick={() => { updateSettingValue('delivery_fee', deliveryFee); updateSettingValue('delivery_threshold', deliveryThreshold); }}
-        >
-          💾 {t('admin_save_settings') || 'រក្សាទុកការកំណត់'}
-        </button>
+        <div style={{
+          padding: '12px 14px',
+          borderRadius: 12,
+          background: 'rgba(16, 185, 129, 0.08)',
+          border: '1px solid rgba(16, 185, 129, 0.18)',
+          fontSize: 12,
+          fontWeight: 800,
+          color: '#10b981',
+          lineHeight: 1.5
+        }}>
+          ✓ {deliveryRuleSummary}
+        </div>
       </div>
 
       {/* Banners + Logo */}
@@ -234,12 +302,16 @@ const AdminSettingsTab = React.memo(({
           </div>
           <div>
             <label style={{ display: 'block', fontSize: 11, fontWeight: 900, marginBottom: 8, opacity: 0.7 }}>ព័ត៌មានគណនី</label>
-            <textarea className="input-glass-admin" style={{ height: 120, fontSize: 12 }} placeholder="ឧទាហរណ៍៖ ABA: 000 111 222 (NAME)" value={paymentInfo} onChange={e => setPaymentInfo(e.target.value)} />
+            <textarea
+              className="input-glass-admin"
+              style={{ height: 120, fontSize: 12 }}
+              placeholder="ឧទាហរណ៍៖ ABA: 000 111 222 (NAME)"
+              value={paymentInfo}
+              onChange={e => setPaymentInfo(e.target.value)}
+              onBlur={e => updateSettingValue('payment_info', e.target.value)}
+            />
           </div>
         </div>
-        <button className="ticket-btn-primary" onClick={() => updateSettingValue('payment_info', paymentInfo)}>
-          💾 រក្សាទុកព័ត៌មានបង់ប្រាក់
-        </button>
       </div>
 
       {/* Receipt */}
@@ -251,23 +323,37 @@ const AdminSettingsTab = React.memo(({
             <div style={{ fontSize: 12, opacity: 0.6 }}>កំណត់ឈ្មោះ និងអក្សររត់ពីក្រោមលើវិក្កយបត្រ</div>
           </div>
         </div>
-        <div className="admin-responsive-grid" style={{ gap: 16, marginBottom: 15 }}>
+        <div className="admin-responsive-grid" style={{ gap: 16 }}>
           <div>
             <label style={{ display: 'block', fontSize: 11, fontWeight: 900, marginBottom: 8, opacity: 0.7 }}>ឈ្មោះហាង</label>
-            <input className="input-glass-admin" value={receiptShopName} onChange={e => setReceiptShopName(e.target.value)} />
+            <input
+              className="input-glass-admin"
+              value={receiptShopName}
+              onChange={e => setReceiptShopName(e.target.value)}
+              onBlur={e => updateSettingValue('receipt_shop_name', e.target.value)}
+            />
           </div>
           <div>
             <label style={{ display: 'block', fontSize: 11, fontWeight: 900, marginBottom: 8, opacity: 0.7 }}>អក្សររត់ពីក្រោម</label>
-            <input className="input-glass-admin" value={receiptSubtitle} onChange={e => setReceiptSubtitle(e.target.value)} />
+            <input
+              className="input-glass-admin"
+              value={receiptSubtitle}
+              onChange={e => setReceiptSubtitle(e.target.value)}
+              onBlur={e => updateSettingValue('receipt_subtitle', e.target.value)}
+            />
           </div>
         </div>
-        <div style={{ marginBottom: 15 }}>
+        <div style={{ marginTop: 16 }}>
           <label style={{ display: 'block', fontSize: 11, fontWeight: 900, marginBottom: 8, opacity: 0.7 }}>កំណត់ចំណាំហាង</label>
-          <textarea className="input-glass-admin" rows="2" value={receiptNote} onChange={e => setReceiptNote(e.target.value)} placeholder="សូមអរគុណសម្រាប់ការគាំទ្រ!" />
+          <textarea
+            className="input-glass-admin"
+            rows="2"
+            value={receiptNote}
+            onChange={e => setReceiptNote(e.target.value)}
+            onBlur={e => updateSettingValue('receipt_note', e.target.value)}
+            placeholder="សូមអរគុណសម្រាប់ការគាំទ្រ!"
+          />
         </div>
-        <button className="ticket-btn-primary" onClick={() => { updateSettingValue('receipt_shop_name', receiptShopName); updateSettingValue('receipt_subtitle', receiptSubtitle); updateSettingValue('receipt_note', receiptNote); }}>
-          💾 រក្សាទុកវិក្កយបត្រ
-        </button>
       </div>
       {/* Social Media & Contact Links */}
       <div className="glass-card-luxury">
@@ -276,29 +362,122 @@ const AdminSettingsTab = React.memo(({
           <div style={{ flex: 1 }}>
             <div style={{ fontWeight: 950, fontSize: 16 }}>បណ្ដាញសង្គម / ទំនាក់ទំនង</div>
             <div style={{ fontSize: 13, opacity: 0.6, marginTop: 4 }}>ភ្ជាប់បណ្ដាញសង្គមដើម្បីអោយអតិថិជនងាយស្រួលទាក់ទង</div>
+            {(socialFb || socialTg || socialIg || socialTt || socialEmail) && (
+              <div style={{ fontSize: 11, color: '#10b981', marginTop: 6, fontWeight: 800 }}>
+                ✓ {lang === 'kh' ? 'បានភ្ជាប់ — នឹងបង្ហាញក្នុង My Account' : 'Linked — visible on My Account'}
+              </div>
+            )}
           </div>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <div>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 800, marginBottom: 6, opacity: 0.8 }}>Facebook URL</label>
-            <input className="input-glass-admin" placeholder="https://facebook.com/..." value={socialFb} onChange={e => setSocialFb(e.target.value)} onBlur={e => updateSettingValue('social_fb', e.target.value)} />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 800, marginBottom: 6, opacity: 0.8 }}>លេខទូរស័ព្ទ / Phone</label>
+              <input
+                className="input-glass-admin"
+                type="text"
+                inputMode="tel"
+                placeholder="012 345 678"
+                value={shopPhone}
+                onChange={e => setShopPhone(e.target.value)}
+                onBlur={() => updateSettingValue('shop_phone', shopPhone.trim())}
+              />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 800, marginBottom: 6, opacity: 0.8 }}>ម៉ោងបើក / Hours</label>
+              <input
+                className="input-glass-admin"
+                type="text"
+                placeholder="8:00 AM – 9:00 PM"
+                value={shopHours}
+                onChange={e => setShopHours(e.target.value)}
+                onBlur={() => updateSettingValue('shop_hours', shopHours.trim())}
+              />
+            </div>
           </div>
           <div>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 800, marginBottom: 6, opacity: 0.8 }}>Telegram Username / Link</label>
-            <input className="input-glass-admin" placeholder="https://t.me/..." value={socialTg} onChange={e => setSocialTg(e.target.value)} onBlur={e => updateSettingValue('social_tg', e.target.value)} />
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 800, marginBottom: 6, opacity: 0.8 }}>ទីតាំង / Address</label>
+            <input
+              className="input-glass-admin"
+              type="text"
+              placeholder="Phnom Penh, Cambodia"
+              value={shopAddress}
+              onChange={e => setShopAddress(e.target.value)}
+              onBlur={() => updateSettingValue('shop_address', shopAddress.trim())}
+            />
           </div>
           <div>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 800, marginBottom: 6, opacity: 0.8 }}>Instagram URL</label>
-            <input className="input-glass-admin" placeholder="https://instagram.com/..." value={socialIg} onChange={e => setSocialIg(e.target.value)} onBlur={e => updateSettingValue('social_ig', e.target.value)} />
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 800, marginBottom: 6, opacity: 0.8 }}>Facebook</label>
+            <input
+              className="input-glass-admin"
+              type="text"
+              inputMode="url"
+              placeholder="https://facebook.com/..."
+              value={socialFb}
+              onChange={e => setSocialFb(e.target.value)}
+              onBlur={() => persistSocialField('social_fb', 'url', socialFb, setSocialFb)}
+            />
           </div>
           <div>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 800, marginBottom: 6, opacity: 0.8 }}>TikTok URL</label>
-            <input className="input-glass-admin" placeholder="https://tiktok.com/..." value={socialTt} onChange={e => setSocialTt(e.target.value)} onBlur={e => updateSettingValue('social_tt', e.target.value)} />
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 800, marginBottom: 6, opacity: 0.8 }}>Telegram</label>
+            <input
+              className="input-glass-admin"
+              type="text"
+              inputMode="url"
+              placeholder="@username ឬ https://t.me/..."
+              value={socialTg}
+              onChange={e => setSocialTg(e.target.value)}
+              onBlur={() => persistSocialField('social_tg', 'telegram', socialTg, setSocialTg)}
+            />
           </div>
           <div>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 800, marginBottom: 6, opacity: 0.8 }}>Email Address</label>
-            <input className="input-glass-admin" placeholder="contact@example.com" value={socialEmail} onChange={e => setSocialEmail(e.target.value)} onBlur={e => updateSettingValue('social_email', e.target.value)} />
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 800, marginBottom: 6, opacity: 0.8 }}>Instagram</label>
+            <input
+              className="input-glass-admin"
+              type="text"
+              inputMode="url"
+              placeholder="https://instagram.com/..."
+              value={socialIg}
+              onChange={e => setSocialIg(e.target.value)}
+              onBlur={() => persistSocialField('social_ig', 'url', socialIg, setSocialIg)}
+            />
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 800, marginBottom: 6, opacity: 0.8 }}>TikTok</label>
+            <input
+              className="input-glass-admin"
+              type="text"
+              inputMode="url"
+              placeholder="https://tiktok.com/..."
+              value={socialTt}
+              onChange={e => setSocialTt(e.target.value)}
+              onBlur={() => persistSocialField('social_tt', 'url', socialTt, setSocialTt)}
+            />
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 800, marginBottom: 6, opacity: 0.8 }}>WhatsApp</label>
+            <input
+              className="input-glass-admin"
+              type="text"
+              inputMode="tel"
+              placeholder="85512345678"
+              value={socialWa}
+              onChange={e => setSocialWa(e.target.value)}
+              onBlur={() => persistSocialField('social_wa', 'whatsapp', socialWa, setSocialWa)}
+            />
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 800, marginBottom: 6, opacity: 0.8 }}>Email</label>
+            <input
+              className="input-glass-admin"
+              type="text"
+              inputMode="email"
+              placeholder="contact@example.com"
+              value={socialEmail}
+              onChange={e => setSocialEmail(e.target.value)}
+              onBlur={() => persistSocialField('social_email', 'email', socialEmail, setSocialEmail)}
+            />
           </div>
         </div>
       </div>

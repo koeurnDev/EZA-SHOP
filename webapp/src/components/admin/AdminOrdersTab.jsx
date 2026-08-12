@@ -1,13 +1,133 @@
 import React, { useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import DarkSelect from './DarkSelect';
 import { useUser } from '../../context/UserContext';
 import { useTelegram } from '../../context/TelegramContext';
+import { getOptimizedThumbUrl, resolveItemImageUrl } from '../../utils/imageUtils';
+import { extractOrderItemSpecs, formatSpecsForCopy, getVariantLabels } from '../../utils/orderItemUtils';
+
+const BADGE_THEMES = {
+  size: { bg: 'rgba(59,130,246,0.15)', color: '#3b82f6' },
+  color: { bg: 'rgba(236,72,153,0.15)', color: '#ec4899' },
+  weight: { bg: 'rgba(16,185,129,0.15)', color: '#10b981' },
+  height: { bg: 'rgba(168,85,247,0.15)', color: '#a855f7' },
+  variant: { bg: 'rgba(245,158,11,0.15)', color: '#f59e0b' }
+};
+
+const OrderItemVariantBadges = ({ item, lang = 'kh', style = {} }) => {
+  const specs = extractOrderItemSpecs(item);
+  const labels = getVariantLabels(lang, {
+    category: item?.category || '',
+    productName: item?.name || item?.product_name || '',
+    sizeValue: specs.size
+  });
+  const rows = [
+    ['size', specs.size],
+    ['color', specs.color],
+    ['weight', specs.weight],
+    ['height', specs.height],
+    ['variant', specs.variant && !specs.size && !specs.color ? specs.variant : '']
+  ].filter(([, value]) => value);
+
+  if (!rows.length) return null;
+
+  return (
+    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 4, ...style }}>
+      {rows.map(([key, value]) => {
+        const theme = BADGE_THEMES[key];
+        return (
+          <span
+            key={key}
+            style={{
+              background: theme.bg,
+              color: theme.color,
+              padding: '2px 7px',
+              borderRadius: 6,
+              fontSize: 10,
+              fontWeight: 900,
+              whiteSpace: 'nowrap'
+            }}
+          >
+            {labels[key]}: {value}
+          </span>
+        );
+      })}
+    </div>
+  );
+};
+
+const PackCheckbox = ({ checked }) => (
+  <span
+    aria-hidden="true"
+    style={{
+      width: 18,
+      height: 18,
+      borderRadius: 5,
+      border: `2px solid ${checked ? '#10b981' : '#cbd5e1'}`,
+      background: checked ? '#10b981' : '#fff',
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      flexShrink: 0,
+      color: '#fff',
+      fontSize: 11,
+      fontWeight: 900,
+      lineHeight: 1
+    }}
+  >
+    {checked ? '✓' : ''}
+  </span>
+);
+
+const OrderItemThumb = ({ item, productById }) => {
+  const [imgFailed, setImgFailed] = React.useState(false);
+  const name = item?.name || item?.product_name || '';
+  const initial = name ? name.charAt(0).toUpperCase() : '📦';
+  const rawUrl = resolveItemImageUrl(item, productById);
+  const src = rawUrl ? getOptimizedThumbUrl(rawUrl, 80) : '';
+  const showPhoto = src && !imgFailed;
+
+  return (
+    <div
+      style={{
+        width: 40,
+        height: 40,
+        borderRadius: 8,
+        flexShrink: 0,
+        overflow: 'hidden',
+        background: showPhoto ? 'var(--bg-soft)' : 'linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontSize: 14,
+        fontWeight: 900,
+        color: '#64748b',
+        border: '1px solid var(--border-subtle)'
+      }}
+    >
+      {showPhoto ? (
+        <img
+          src={src}
+          alt=""
+          referrerPolicy="no-referrer"
+          loading="eager"
+          decoding="async"
+          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+          onError={() => setImgFailed(true)}
+        />
+      ) : (
+        initial
+      )}
+    </div>
+  );
+};
 
 const AdminOrdersTab = React.memo(({
   orders, searchTerm, orderFilter, setOrderFilter,
   localSearchTerm, setLocalSearchTerm,
   updateStatus, setPrintingOrder, statusTags,
-  trackingNumbers = {}, setTrackingNumbers
+  trackingNumbers = {}, setTrackingNumbers,
+  products = []
 }) => {
   const { t, lang } = useUser();
   const { showPopup, showAlert, tg } = useTelegram();
@@ -53,16 +173,59 @@ const AdminOrdersTab = React.memo(({
     setCheckedItems(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
+  const productById = useMemo(() => {
+    const map = new Map();
+    (products || []).forEach(p => {
+      if (p?.id != null) map.set(String(p.id), p);
+    });
+    return map;
+  }, [products]);
+
   const ORDER_FILTER_OPTIONS = useMemo(() => [
-    { value: 'active_pack', label: `🔥 ត្រូវរៀបចំ (${counts.toPack})` },
-    { value: 'all', label: `${t('admin_filter_all')} (${counts.total})` },
+    { value: 'all', label: `📦 ${t('admin_filter_all')} (${counts.total})` },
     { value: 'pending', label: `⌛ ${t('admin_filter_pending')} (${counts.pending})` },
-    { value: 'paid', label: `✅ ${t('admin_filter_paid')}` },
-    { value: 'processing', label: `📦 ${t('admin_filter_preparing')}` },
+    { value: 'processing', label: `📦 ${t('admin_filter_preparing')} (${counts.toPack})` },
     { value: 'shipped', label: `🚚 ${t('admin_filter_shipped')} (${counts.shipped})` },
     { value: 'cancelled', label: `❌ ${t('admin_filter_cancelled')}` },
-    { value: 'active', label: `🚀 ${t('admin_active_orders')}` },
   ], [t, counts]);
+
+  const ORDER_STATUS_OPTIONS = useMemo(() => [
+    { value: 'pending', label: lang === 'kh' ? 'រង់ចាំការបញ្ជាក់' : 'Awaiting confirmation' },
+    { value: 'paid', label: lang === 'kh' ? 'កំពុងរៀបចំ' : 'Preparing' },
+    { value: 'processing', label: lang === 'kh' ? 'កំពុងរៀបចំ' : 'Preparing' },
+    { value: 'shipped', label: lang === 'kh' ? 'ប្រគល់ជូនអ្នកដឹក' : 'Handed to courier' },
+    { value: 'cancelled', label: lang === 'kh' ? 'បោះបង់' : 'Cancelled' }
+  ], [lang]);
+
+  const getOrderStatusLabel = (status) => {
+    if (lang === 'kh') {
+      if (status === 'pending') return 'រង់ចាំការបញ្ជាក់';
+      if (['paid', 'processing'].includes(status)) return 'កំពុងរៀបចំ';
+      if (['shipped', 'delivering', 'delivered'].includes(status)) return 'ប្រគល់ជូនអ្នកដឹក';
+      if (status === 'cancelled') return 'បោះបង់';
+    }
+    const key = status === 'delivered' ? 'shipped' : (status === 'paid' ? 'processing' : status);
+    return ORDER_STATUS_OPTIONS.find(opt => opt.value === key)?.label || status;
+  };
+
+  const getOrderStatusClass = (status) => {
+    if (['paid', 'processing'].includes(status)) return 'admin-status-select--processing';
+    if (['shipped', 'delivering', 'delivered'].includes(status)) return 'admin-status-select--shipped';
+    if (status === 'cancelled') return 'admin-status-select--cancelled';
+    return 'admin-status-select--pending';
+  };
+
+  const isTerminalOrderStatus = (status) => ['shipped', 'delivering', 'delivered', 'cancelled'].includes(status);
+
+  const getStatusChangeOptions = (currentStatus) => {
+    const transitions = {
+      pending: ['paid', 'cancelled'],
+      paid: ['processing', 'cancelled'],
+      processing: ['shipped', 'cancelled'],
+    };
+    const allowed = transitions[currentStatus] || [];
+    return ORDER_STATUS_OPTIONS.filter(opt => allowed.includes(opt.value));
+  };
 
   const filtered = useMemo(() => {
     const list = orders.filter(o => {
@@ -74,13 +237,10 @@ const AdminOrdersTab = React.memo(({
 
       if (!matchesCourier) return false;
 
-      if (orderFilter === 'active_pack') return matchesSearch && ['paid', 'processing'].includes(o.status);
       if (orderFilter === 'pending') return matchesSearch && o.status === 'pending';
-      if (orderFilter === 'paid') return matchesSearch && o.status === 'paid';
-      if (orderFilter === 'processing') return matchesSearch && o.status === 'processing';
+      if (orderFilter === 'processing') return matchesSearch && ['paid', 'processing'].includes(o.status);
       if (orderFilter === 'shipped') return matchesSearch && (o.status === 'shipped' || o.status === 'delivering');
       if (orderFilter === 'cancelled') return matchesSearch && o.status === 'cancelled';
-      if (orderFilter === 'active') return matchesSearch && ['paid', 'processing', 'shipped', 'delivering'].includes(o.status);
       if (orderFilter === 'all' && !searchTerm) return o.status !== 'pending';
       return matchesSearch;
     });
@@ -104,28 +264,29 @@ const AdminOrdersTab = React.memo(({
 
       items.forEach(it => {
         const name = it.name || it.product_name || 'ទំនិញ';
-        const size = it.selectedSize || it.size || '';
-        const color = it.selectedColor || it.color || '';
-        const weight = it.selectedWeight || it.weight || it.kilo || it.weight_kg || '';
-        const height = it.selectedHeight || it.height || '';
-        const variant = it.selectedVariant || it.variant || it.option || '';
+        const specs = extractOrderItemSpecs(it);
+        const { size, color, weight, height, variant } = specs;
         const qty = Number(it.quantity) || 1;
 
         const key = `${name}_${size}_${color}_${weight}_${height}_${variant}`;
         if (!map[key]) {
-          map[key] = { name, size, color, weight, height, variant, totalQty: 0 };
+          map[key] = {
+            name, ...specs, totalQty: 0,
+            id: it.id,
+            image: resolveItemImageUrl(it, productById)
+          };
         }
         map[key].totalQty += qty;
         totalItemsCount += qty;
       });
     });
     return { list: Object.values(map), totalItemsCount };
-  }, [filtered]);
+  }, [filtered, productById]);
 
   return (
     <div className="tab-pane-animate">
       {/* 🔍 Search & Clean Filter Bar */}
-      <div style={{ marginBottom: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div style={{ marginBottom: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
         {/* Row 1: Search Input */}
         <div style={{ position: 'relative', width: '100%' }}>
           <input
@@ -145,7 +306,7 @@ const AdminOrdersTab = React.memo(({
           )}
         </div>
 
-        {/* Row 2: Status & Courier Select Dropdowns */}
+        {/* Row 2: Status & courier dropdowns */}
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <div style={{ flex: 1, minWidth: 150 }}>
             <DarkSelect
@@ -167,113 +328,108 @@ const AdminOrdersTab = React.memo(({
           )}
         </div>
 
-        {/* Row 3: Quick Action Chips */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, overflowX: 'auto', paddingBottom: 4 }}>
-          <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'nowrap' }}>
-            <button
-              onClick={() => {
-                setOrderFilter('active_pack');
-                setCourierFilter('all');
-              }}
-              style={{
-                padding: '6px 12px', borderRadius: 20, fontSize: 11, fontWeight: 900, cursor: 'pointer', border: 'none',
-                background: orderFilter === 'active_pack' && courierFilter === 'all' ? 'linear-gradient(135deg, #f59e0b, #d97706)' : 'var(--bg-soft)',
-                color: orderFilter === 'active_pack' && courierFilter === 'all' ? '#fff' : 'var(--text-bold)',
-                whiteSpace: 'nowrap'
-              }}>
-              🔥 ត្រូវរៀបចំ ({counts.toPack})
-            </button>
-
+        {/* Row 3: Quick actions */}
+        <div className="admin-order-actions-row">
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
             {grabCount > 0 && (
               <button
+                type="button"
+                className="admin-action-pill"
                 onClick={() => {
-                  setOrderFilter('active_pack');
+                  setOrderFilter('processing');
                   setCourierFilter(prev => prev === 'grab' ? 'all' : 'grab');
                 }}
                 style={{
-                  padding: '6px 12px', borderRadius: 20, fontSize: 11, fontWeight: 900, cursor: 'pointer',
                   border: courierFilter === 'grab' ? 'none' : '1px solid #00b14f',
                   background: courierFilter === 'grab' ? '#00b14f' : 'rgba(0,177,79,0.12)',
-                  color: courierFilter === 'grab' ? '#fff' : '#00b14f', whiteSpace: 'nowrap'
-                }}>
+                  color: courierFilter === 'grab' ? '#fff' : '#00b14f',
+                }}
+              >
                 🛵 Grab ({grabCount})
               </button>
             )}
 
             <button
+              type="button"
+              className="admin-action-pill"
               onClick={() => setShowPickList(true)}
               style={{
-                padding: '6px 12px', borderRadius: 20, fontSize: 11, fontWeight: 900, cursor: 'pointer', border: '1px solid #10b981',
-                background: 'rgba(16,185,129,0.15)', color: '#10b981', whiteSpace: 'nowrap'
-              }}>
+                border: '1px solid #10b981',
+                background: 'rgba(16,185,129,0.15)',
+                color: '#10b981',
+              }}
+            >
               📋 យកអីវ៉ាន់ពីឃ្លាំង ({batchPickSummary.totalItemsCount})
             </button>
           </div>
 
-          {/* Sort Direction Button */}
           <button
+            type="button"
+            className="admin-action-pill"
             onClick={() => setSortDirection(prev => prev === 'newest' ? 'oldest' : 'newest')}
             style={{
-              padding: '6px 10px', borderRadius: 10, fontSize: 10, fontWeight: 900, cursor: 'pointer',
+              padding: '6px 10px',
+              borderRadius: 10,
+              fontSize: 10,
               background: sortDirection === 'oldest' ? 'rgba(245,158,11,0.2)' : 'var(--bg-soft)',
               color: sortDirection === 'oldest' ? '#f59e0b' : 'var(--text-muted)',
               border: sortDirection === 'oldest' ? '1px solid #f59e0b' : '1px solid var(--border-subtle)',
-              whiteSpace: 'nowrap', flexShrink: 0
-            }}>
+            }}
+          >
             {sortDirection === 'oldest' ? '⚠️ ចាស់មុន' : '⬇️ ថ្មីមុន'}
           </button>
         </div>
       </div>
 
-      {/* 📦 Modal: Aggregated Warehouse Pick List */}
-      {showPickList && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-          <div className="glass-card-luxury animate-up" style={{ width: '100%', maxWidth: 420, maxHeight: '85vh', overflowY: 'auto', background: 'var(--bg-surface, #1e1e24)', border: '1px solid var(--border-subtle, rgba(255,255,255,0.18))', color: 'var(--text-bold, #ffffff)', padding: 24, borderRadius: 24, boxShadow: '0 25px 60px rgba(0,0,0,0.6)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, borderBottom: '1px solid var(--border-subtle, rgba(255,255,255,0.1))', paddingBottom: 12 }}>
-              <div style={{ fontSize: 16, fontWeight: 950, color: 'var(--text-bold, #ffffff)' }}>📦 បញ្ជីសរុបទំនិញត្រូវយកពីឃ្លាំង</div>
-              <button onClick={() => setShowPickList(false)} style={{ border: 'none', background: 'var(--bg-soft, rgba(255,255,255,0.1))', color: 'var(--text-bold, #ffffff)', borderRadius: '50%', width: 32, height: 32, fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
-            </div>
-            
-            <div style={{ fontSize: 13, color: 'var(--text-muted, rgba(255,255,255,0.7))', marginBottom: 16, lineHeight: 1.5 }}>
-              សរុបទំនិញទាំង <strong style={{ color: 'var(--text-bold, #ffffff)' }}>{filtered.length}</strong> ការកុម្ម៉ង់ដែលកំពុង Filter (<strong style={{ color: '#3b82f6' }}>{batchPickSummary.totalItemsCount} មុខ</strong>) សម្រាប់ Staff ទៅដកពីឃ្លាំងក្នុងពេលតែមួយ៖
+      {showPickList && createPortal(
+        <div className="admin-dashboard-overhaul admin-picklist-modal-overlay" onClick={() => setShowPickList(false)}>
+          <div className="admin-picklist-modal-sheet" onClick={(e) => e.stopPropagation()}>
+            <div className="admin-picklist-modal-header">
+              <div className="admin-picklist-modal-title">📦 បញ្ជីសរុបទំនិញត្រូវយកពីឃ្លាំង</div>
+              <button type="button" className="admin-picklist-modal-close" onClick={() => setShowPickList(false)} aria-label="Close">✕</button>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
+            <div className="admin-picklist-modal-desc">
+              សរុបទំនិញទាំង <strong>{filtered.length}</strong> ការកុម្ម៉ង់ដែលកំពុង Filter (<strong>{batchPickSummary.totalItemsCount} មុខ</strong>) សម្រាប់ Staff ទៅដកពីឃ្លាំងក្នុងពេលតែមួយ៖
+            </div>
+
+            <div className="admin-picklist-modal-list">
               {batchPickSummary.list.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '25px 0', color: 'var(--text-muted)' }}>គ្មានទំនិញត្រូវដកពីឃ្លាំងទេ</div>
+                <div className="admin-picklist-modal-empty">គ្មានទំនិញត្រូវដកពីឃ្លាំងទេ</div>
               ) : (
                 batchPickSummary.list.map((it, idx) => (
-                  <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-soft, rgba(255,255,255,0.05))', padding: '12px 14px', borderRadius: 14, border: '1px solid var(--border-subtle, rgba(255,255,255,0.08))' }}>
-                    <div>
-                      <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-bold, #ffffff)' }}>• {it.name}</div>
-                      <div style={{ fontSize: 11, opacity: 0.85, marginTop: 4, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                        {it.size && <span style={{ background: 'rgba(59,130,246,0.15)', color: '#3b82f6', padding: '1px 6px', borderRadius: 4, fontWeight: 900 }}>Size: {it.size}</span>}
-                        {it.color && <span style={{ background: 'rgba(236,72,153,0.15)', color: '#ec4899', padding: '1px 6px', borderRadius: 4, fontWeight: 900 }}>Color: {it.color}</span>}
-                        {it.weight && <span style={{ background: 'rgba(16,185,129,0.15)', color: '#10b981', padding: '1px 6px', borderRadius: 4, fontWeight: 900 }}>Weight: {it.weight}</span>}
-                        {it.height && <span style={{ background: 'rgba(168,85,247,0.15)', color: '#a855f7', padding: '1px 6px', borderRadius: 4, fontWeight: 900 }}>Height: {it.height}</span>}
-                        {it.variant && !it.size && !it.color && <span style={{ background: 'rgba(245,158,11,0.15)', color: '#f59e0b', padding: '1px 6px', borderRadius: 4, fontWeight: 900 }}>Opt: {it.variant}</span>}
+                  <div key={idx} className="admin-picklist-modal-item">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0 }}>
+                      <OrderItemThumb item={it} productById={productById} />
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-bold)' }}>{it.name}</div>
+                        <OrderItemVariantBadges item={it} lang={lang} />
                       </div>
                     </div>
-                    <div style={{ fontSize: 16, fontWeight: 950, color: '#d4af37', background: 'rgba(212,175,55,0.18)', padding: '6px 12px', borderRadius: 10, border: '1px solid rgba(212,175,55,0.3)' }}>
-                      x{it.totalQty}
-                    </div>
+                    <div className="admin-picklist-modal-qty">x{it.totalQty}</div>
                   </div>
                 ))
               )}
             </div>
 
             <button
+              type="button"
+              className="admin-picklist-modal-copy"
               onClick={() => {
                 const text = `📦 បញ្ជីសរុបទំនិញត្រូវដកពីឃ្លាំង (${batchPickSummary.totalItemsCount} មុខ):\n` +
-                  batchPickSummary.list.map(i => `• ${i.name}${i.size ? ` [Size: ${i.size}]` : ''}${i.color ? ` [Color: ${i.color}]` : ''}${i.weight ? ` [Weight: ${i.weight}]` : ''}${i.height ? ` [Height: ${i.height}]` : ''}${i.variant ? ` [Opt: ${i.variant}]` : ''} => x${i.totalQty}`).join('\n');
+                  batchPickSummary.list.map(i => {
+                    const specs = extractOrderItemSpecs(i);
+                    return `• ${i.name}${formatSpecsForCopy(specs, lang, { category: i.category, productName: i.name })} => x${i.totalQty}`;
+                  }).join('\n');
                 navigator.clipboard.writeText(text);
-                if (showAlert) showAlert("បាន Copy បញ្ជីសរុបទំនិញឃ្លាំង ជោគជ័យ!");
+                if (showAlert) showAlert('បាន Copy បញ្ជីសរុបទំនិញឃ្លាំង ជោគជ័យ!');
               }}
-              style={{ width: '100%', height: 44, borderRadius: 14, background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)', color: '#fff', border: 'none', fontWeight: 900, cursor: 'pointer', boxShadow: '0 4px 14px rgba(59, 130, 246, 0.35)', fontSize: 14 }}>
+            >
               📋 Copy បញ្ជីដកពីឃ្លាំង
             </button>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {filtered.map(o => {
@@ -295,7 +451,7 @@ const AdminOrdersTab = React.memo(({
         const cleanUserName = (o.user_name || '').replace(/\s*-\s*$/, '').trim() || (lang === 'kh' ? 'អតិថិជន' : 'Customer');
 
         return (
-          <div key={o.id} className="glass-card-luxury" style={{ marginBottom: 15, padding: 15, borderLeft: isLeftover ? '4px solid #ef4444' : hasMultipleOrders ? '4px solid #f59e0b' : 'none' }}>
+          <div key={o.id} className="glass-card-luxury admin-order-card" style={{ borderLeft: isLeftover ? '4px solid #ef4444' : hasMultipleOrders ? '4px solid #f59e0b' : 'none' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                 <span className="ticket-id-luxury" style={{ fontWeight: 900 }}>#{o.order_code || o.id}</span>
@@ -311,32 +467,24 @@ const AdminOrdersTab = React.memo(({
                 )}
               </div>
 
-              {/* Status Change Selector Dropdown */}
-              <select
-                value={o.status === 'delivered' ? 'shipped' : o.status}
-                onChange={(e) => updateStatus(o.id, e.target.value)}
-                style={{
-                  fontSize: 11,
-                  fontWeight: 900,
-                  padding: '5px 10px',
-                  borderRadius: 10,
-                  border: '1px solid var(--border-subtle)',
-                  background: o.status === 'paid' ? 'rgba(16, 185, 129, 0.15)' : o.status === 'processing' ? 'rgba(59, 130, 246, 0.15)' : ['shipped', 'delivering', 'delivered'].includes(o.status) ? 'rgba(168, 85, 247, 0.15)' : o.status === 'cancelled' ? 'rgba(239, 68, 68, 0.15)' : 'var(--bg-soft)',
-                  color: o.status === 'paid' ? '#10b981' : o.status === 'processing' ? '#3b82f6' : ['shipped', 'delivering', 'delivered'].includes(o.status) ? '#a855f7' : o.status === 'cancelled' ? '#ef4444' : 'var(--text-bold)',
-                  cursor: 'pointer',
-                  outline: 'none'
-                }}
-              >
-                <option value="pending" style={{ background: 'var(--bg-surface)', color: 'var(--text-bold)' }}>⌛ រង់ចាំបង់ប្រាក់</option>
-                <option value="paid" style={{ background: 'var(--bg-surface)', color: 'var(--text-bold)' }}>✅ បានបង់ប្រាក់</option>
-                <option value="processing" style={{ background: 'var(--bg-surface)', color: 'var(--text-bold)' }}>📦 កំពុងរៀបចំ</option>
-                <option value="shipped" style={{ background: 'var(--bg-surface)', color: 'var(--text-bold)' }}>🚚 បានប្រគល់ឱ្យអ្នកដឹក</option>
-                <option value="cancelled" style={{ background: 'var(--bg-surface)', color: 'var(--text-bold)' }}>❌ លុបចោល</option>
-              </select>
+              {isTerminalOrderStatus(o.status) ? (
+                <span className={`admin-order-status-badge ${getOrderStatusClass(o.status)}`}>
+                  {getOrderStatusLabel(o.status)}
+                </span>
+              ) : (
+                <DarkSelect
+                  style={{ minWidth: 118, maxWidth: 140, flexShrink: 0 }}
+                  value={o.status}
+                  onChange={(val) => updateStatus(o.id ?? o.order_code, val)}
+                  options={getStatusChangeOptions(o.status)}
+                  selectedLabel={getOrderStatusLabel(o.status)}
+                  triggerClassName={getOrderStatusClass(o.status)}
+                />
+              )}
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
-              <div style={{ flex: 1, minWidth: 0, paddingRight: 10 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+              <div style={{ flex: 1, minWidth: 0, paddingRight: 8 }}>
                 <div style={{ fontWeight: 800, fontSize: 14, color: 'var(--text-bold)' }}>{cleanUserName}</div>
                 {o.phone && (
                   <div style={{ fontSize: 11, marginTop: 4, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
@@ -370,21 +518,21 @@ const AdminOrdersTab = React.memo(({
                 )}
                 {o.delivery_company && <div style={{ fontSize: 11, opacity: 0.85, marginTop: 4, color: 'var(--text-main)' }}>🚚 ក្រុមហ៊ុនដឹក៖ <strong>{o.delivery_company}</strong></div>}
                 {o.note && (
-                  <div style={{ fontSize: 11, color: '#d97706', background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: 6, padding: '4px 8px', fontWeight: 800, marginTop: 6 }}>
-                    📝 ចំណាំ៖ {o.note}
+                  <div style={{ fontSize: 11, color: '#d97706', background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: 6, padding: '4px 8px', fontWeight: 800, marginTop: 4 }}>
+                    ចំណាំ៖ {o.note}
                   </div>
                 )}
-                <div style={{ fontSize: 10, opacity: 0.6, marginTop: 4, color: 'var(--text-muted)' }}>🕒 {timeLabel}</div>
+                <div style={{ fontSize: 10, opacity: 0.6, marginTop: 3, color: 'var(--text-muted)' }}>{timeLabel}</div>
               </div>
-              <div style={{ fontSize: 18, fontWeight: 950, textAlign: 'right', color: 'var(--text-bold)', flexShrink: 0 }}>${parseFloat(o.total).toFixed(2)}</div>
+              <div style={{ fontSize: 17, fontWeight: 950, textAlign: 'right', color: 'var(--text-bold)', flexShrink: 0 }}>${parseFloat(o.total).toFixed(2)}</div>
             </div>
 
             {/* 🛍️ Staff Packing Items List with Checkboxes & Badges */}
             {items.length > 0 && (
-              <div style={{ background: 'var(--bg-soft)', borderRadius: 12, padding: '10px 12px', marginBottom: 12, border: '1px solid var(--border-subtle)' }}>
-                <div style={{ fontSize: 12, fontWeight: 900, color: 'var(--text-bold)', marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span>📦 បញ្ជីទំនិញ ({items.length} មុខ)</span>
-                  <span style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 600 }}>ចុច ☑️ ពេលរៀបចំរួច</span>
+              <div style={{ background: 'var(--bg-soft)', borderRadius: 10, padding: '8px 10px', marginBottom: 10, border: '1px solid var(--border-subtle)' }}>
+                <div style={{ fontSize: 11, fontWeight: 900, color: 'var(--text-bold)', marginBottom: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                  <span>បញ្ជីទំនិញ ({items.length} មុខ)</span>
+                  <span style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 600 }}>ចុចពេលរៀបចំរួច</span>
                 </div>
                 {items.map((it, idx) => {
                   const itemKey = `${o.id}_${idx}`;
@@ -394,41 +542,20 @@ const AdminOrdersTab = React.memo(({
                       key={idx} 
                       onClick={() => toggleCheckItem(o.id, idx)}
                       style={{ 
-                        fontSize: 12, fontWeight: 800, display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5, padding: '6px 8px', borderRadius: 8, cursor: 'pointer',
+                        fontSize: 12, fontWeight: 800, display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4, padding: '5px 6px', borderRadius: 8, cursor: 'pointer',
                         background: isChecked ? 'rgba(16,185,129,0.15)' : 'rgba(255,255,255,0.03)',
                         border: '1px solid ' + (isChecked ? 'rgba(16,185,129,0.3)' : 'transparent'),
                         textDecoration: isChecked ? 'line-through' : 'none',
                         opacity: isChecked ? 0.7 : 1,
                         transition: 'all 0.2s ease'
                       }}>
-                      <span style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                        <span style={{ fontSize: 14 }}>{isChecked ? '✅' : '⬜'}</span>
-                        <span style={{ color: 'var(--text-bold)' }}>{it.name || it.product_name}</span>
-                        {(it.selectedSize || it.size) && (
-                          <span style={{ background: 'rgba(59,130,246,0.15)', color: '#3b82f6', padding: '1px 6px', borderRadius: 4, fontSize: 10, fontWeight: 900 }}>
-                            Size: {it.selectedSize || it.size}
-                          </span>
-                        )}
-                        {(it.selectedColor || it.color) && (
-                          <span style={{ background: 'rgba(236,72,153,0.15)', color: '#ec4899', padding: '1px 6px', borderRadius: 4, fontSize: 10, fontWeight: 900 }}>
-                            Color: {it.selectedColor || it.color}
-                          </span>
-                        )}
-                        {(it.selectedWeight || it.weight || it.kilo || it.weight_kg) && (
-                          <span style={{ background: 'rgba(16,185,129,0.15)', color: '#10b981', padding: '1px 6px', borderRadius: 4, fontSize: 10, fontWeight: 900 }}>
-                            Weight: {it.selectedWeight || it.weight || it.kilo || it.weight_kg}
-                          </span>
-                        )}
-                        {(it.selectedHeight || it.height) && (
-                          <span style={{ background: 'rgba(168,85,247,0.15)', color: '#a855f7', padding: '1px 6px', borderRadius: 4, fontSize: 10, fontWeight: 900 }}>
-                            Height: {it.selectedHeight || it.height}
-                          </span>
-                        )}
-                        {(it.selectedVariant || it.variant || it.option) && !(it.selectedSize || it.size) && !(it.selectedColor || it.color) && (
-                          <span style={{ background: 'rgba(245,158,11,0.15)', color: '#f59e0b', padding: '1px 6px', borderRadius: 4, fontSize: 10, fontWeight: 900 }}>
-                            Opt: {it.selectedVariant || it.variant || it.option}
-                          </span>
-                        )}
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 0 }}>
+                        <PackCheckbox checked={isChecked} />
+                        <OrderItemThumb item={it} productById={productById} />
+                        <span style={{ flex: 1, minWidth: 0 }}>
+                          <span style={{ color: 'var(--text-bold)', display: 'block', fontSize: 12 }}>{it.name || it.product_name}</span>
+                          <OrderItemVariantBadges item={it} lang={lang} style={{ marginTop: 2 }} />
+                        </span>
                       </span>
                       <span style={{ fontWeight: 900, color: isChecked ? '#10b981' : '#ec4899', fontSize: 13 }}>x{it.quantity || 1}</span>
                     </div>
@@ -477,41 +604,82 @@ const AdminOrdersTab = React.memo(({
               </div>
             )}
 
-            <div className="button-group-pro" style={{ flexWrap: 'wrap', gap: 8 }}>
-              {['paid', 'processing', 'shipped'].includes(o.status) && setTrackingNumbers && (
-                <div style={{ width: '100%', marginBottom: 6 }}>
+            <div className="button-group-pro admin-order-actions" style={{ flexWrap: 'wrap', gap: 6 }}>
+              {['shipped', 'delivering', 'delivered'].includes(o.status) ? (
+                <div className="admin-order-actions--shipped-only">
+                  {setTrackingNumbers && (
+                    <input
+                      type="text"
+                      className="input-glass-admin admin-order-tracking"
+                      placeholder={t('admin_tracking_no')}
+                      value={trackingNumbers[o.id] !== undefined ? trackingNumbers[o.id] : (o.tracking_number || '')}
+                      onChange={(e) => setTrackingNumbers(prev => ({ ...prev, [o.id]: e.target.value }))}
+                    />
+                  )}
+                  <button className="icon-btn-admin admin-order-print" aria-label="Print Order" onClick={() => {
+                    if (tg && ['android', 'ios'].includes(tg.platform) && showPopup) {
+                      showPopup({
+                        title: 'ជម្រើស Print / Copy ស្លឹកកុម្ម៉ង់',
+                        message: 'Telegram មិនអនុញ្ញាតឱ្យ Print ផ្ទាល់ទេ។ សូមជ្រើសរើស:',
+                        buttons: [
+                          { id: 'copy', type: 'default', text: 'ចម្លងអត្ថបទរៀបចំអីវ៉ាន់ (Copy Slip)' },
+                          { id: 'browser', type: 'default', text: 'បើក Print ពេញលេញក្នុង Browser' },
+                          { type: 'cancel' }
+                        ]
+                      }, (buttonId) => {
+                        if (buttonId === 'copy') {
+                          try {
+                            const itemsText = items.map(i => {
+                              const specs = extractOrderItemSpecs(i);
+                              return `- ${i.name || i.product_name} x${i.quantity || 1}${formatSpecsForCopy(specs, lang, { category: i.category, productName: i.name || i.product_name })}`;
+                            }).join('\n');
+                            const text = `📋 ស្លឹកកុម្ម៉ង់រៀបចំអីវ៉ាន់\nលេខកូដ: ${o.order_code || o.id}\nអតិថិជន: ${cleanUserName}\nទូរស័ព្ទ: ${o.phone}\nទីតាំង: ${fullAddr || '—'}\nក្រុមហ៊ុនដឹក: ${o.delivery_company || '—'}\nចំណាំ: ${o.note || 'គ្មាន'}\n----------------\n${itemsText}\n----------------\nសរុប: $${parseFloat(o.total).toFixed(2)}`;
+                            navigator.clipboard.writeText(text);
+                            showAlert("បានចម្លងស្លឹកកុម្ម៉ង់ (Copy Slip) ជោគជ័យ!");
+                          } catch (e) {
+                            console.error(e);
+                            showAlert("មានបញ្ហាក្នុងការចម្លង!");
+                          }
+                        } else if (buttonId === 'browser') {
+                          showAlert("ដើម្បី Print ជាវិក្កយបត្រពេញលេញ:\n1. ចុច (⋮) → Open in browser\n2. ចុច Print");
+                        }
+                      });
+                    } else {
+                      if (setPrintingOrder) setPrintingOrder(o);
+                      setTimeout(() => window.print(), 300);
+                    }
+                  }}>Print</button>
+                </div>
+              ) : (
+                <>
+              {['paid', 'processing'].includes(o.status) && setTrackingNumbers && (
+                <div style={{ width: '100%', marginBottom: 4 }}>
                   <input
                     type="text"
-                    className="input-glass-admin"
-                    style={{ width: '100%', fontSize: 12, padding: '8px 12px' }}
-                    placeholder={t('admin_tracking_no') || '🚚 លេខ Tracking (មិនបាច់បំពេញក៏បាន)'}
+                    className="input-glass-admin admin-order-tracking"
+                    placeholder={t('admin_tracking_no')}
                     value={trackingNumbers[o.id] !== undefined ? trackingNumbers[o.id] : (o.tracking_number || '')}
                     onChange={(e) => setTrackingNumbers(prev => ({ ...prev, [o.id]: e.target.value }))}
                   />
                 </div>
               )}
               {o.status === 'pending' && (
-                <button className="ticket-btn-primary" style={{ flex: 1, padding: '12px', fontSize: 13, fontWeight: 900 }} onClick={() => updateStatus(o.id, 'paid')}>
-                  1. 💰 បញ្ជាក់ការបង់ប្រាក់
+                <button className="ticket-btn-primary admin-order-btn" onClick={() => updateStatus(o.id ?? o.order_code, 'paid')}>
+                  1. បញ្ជាក់ការបង់
                 </button>
               )}
               {o.status === 'paid' && (
-                <button className="ticket-btn-primary" style={{ flex: 1, padding: '12px', fontSize: 13, fontWeight: 900, background: 'linear-gradient(135deg, #3b82f6, #1d4ed8)' }} onClick={() => updateStatus(o.id, 'processing')}>
-                  2. 📦 កំពុងរៀបចំអីវ៉ាន់
+                <button className="ticket-btn-primary admin-order-btn admin-order-btn--blue" onClick={() => updateStatus(o.id ?? o.order_code, 'processing')}>
+                  2. កំពុងរៀបចំ
                 </button>
               )}
               {o.status === 'processing' && (
-                <button className="ticket-btn-primary" style={{ flex: 1, padding: '12px', fontSize: 13, fontWeight: 900, background: 'linear-gradient(135deg, #8b5cf6, #6d28d9)' }} onClick={() => updateStatus(o.id, 'shipped')}>
-                  3. 🚚 ប្រគល់អីវ៉ាន់ឱ្យអ្នកដឹក
+                <button className="ticket-btn-primary admin-order-btn admin-order-btn--purple" onClick={() => updateStatus(o.id ?? o.order_code, 'shipped')}>
+                  3. ប្រគល់ជូនអ្នកដឹក
                 </button>
               )}
-              {['shipped', 'delivering', 'delivered'].includes(o.status) && (
-                <div style={{ flex: 1, padding: '10px 14px', borderRadius: 12, background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.3)', color: '#10b981', fontSize: 13, fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-                  ✅ បានប្រគល់ឱ្យអ្នកដឹកជញ្ជូនរួចរាល់
-                </div>
-              )}
-              {['paid', 'processing', 'shipped', 'delivering', 'delivered'].includes(o.status) && (
-                <button className="icon-btn-admin" style={{ flexShrink: 0, width: 42, height: 42, borderRadius: 12 }} aria-label="Print Order" onClick={() => {
+              {['paid', 'processing'].includes(o.status) && (
+                <button className="icon-btn-admin admin-order-print" aria-label="Print Order" onClick={() => {
                   if (tg && ['android', 'ios'].includes(tg.platform) && showPopup) {
                     showPopup({
                       title: 'ជម្រើស Print / Copy ស្លឹកកុម្ម៉ង់',
@@ -524,7 +692,10 @@ const AdminOrdersTab = React.memo(({
                     }, (buttonId) => {
                       if (buttonId === 'copy') {
                         try {
-                          const itemsText = items.map(i => `- ${i.name || i.product_name} x${i.quantity || 1}${(i.selectedSize || i.size) ? ` [Size: ${i.selectedSize || i.size}]` : ''}${(i.selectedColor || i.color) ? ` [Color: ${i.color}]` : ''}`).join('\n');
+                          const itemsText = items.map(i => {
+                            const specs = extractOrderItemSpecs(i);
+                            return `- ${i.name || i.product_name} x${i.quantity || 1}${formatSpecsForCopy(specs, lang, { category: i.category, productName: i.name || i.product_name })}`;
+                          }).join('\n');
                           const text = `📋 ស្លឹកកុម្ម៉ង់រៀបចំអីវ៉ាន់\nលេខកូដ: ${o.order_code || o.id}\nអតិថិជន: ${cleanUserName}\nទូរស័ព្ទ: ${o.phone}\nទីតាំង: ${fullAddr || '—'}\nក្រុមហ៊ុនដឹក: ${o.delivery_company || '—'}\nចំណាំ: ${o.note || 'គ្មាន'}\n----------------\n${itemsText}\n----------------\nសរុប: $${parseFloat(o.total).toFixed(2)}`;
                           navigator.clipboard.writeText(text);
                           showAlert("បានចម្លងស្លឹកកុម្ម៉ង់ (Copy Slip) ជោគជ័យ! អាច Send ទៅក្រុមការងារ ឬរៀបចំអីវ៉ាន់បាន។");
@@ -540,7 +711,9 @@ const AdminOrdersTab = React.memo(({
                     if (setPrintingOrder) setPrintingOrder(o);
                     setTimeout(() => window.print(), 300);
                   }
-                }}>🖨️</button>
+                }}>Print</button>
+              )}
+                </>
               )}
             </div>
           </div>

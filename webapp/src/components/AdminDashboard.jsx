@@ -4,6 +4,7 @@ import { useTelegram } from '../context/TelegramContext';
 import { useUser } from '../context/UserContext';
 import { useQuery } from '../hooks/useQuery';
 import { useApi } from '../hooks/useApi';
+import useScrollHideBar from '../hooks/useScrollHideBar';
 import { useShopDispatch } from '../context/ShopContext';
 import ProductDetail from './ProductDetail';
 import { compressImage } from '../utils/imageUtils';
@@ -39,7 +40,7 @@ const AdminDashboard = ({
   theme
 }) => {
   const { tg, initData, showAlert: tgShowAlert } = useTelegram();
-  const { t } = useUser();
+  const { t, lang } = useUser();
   const { fetchWithRetry } = useApi();
   const { refetchData: refetchShopData, mutateShopData } = useShopDispatch();
   const headers = useMemo(() => ({ 'X-TG-Data': initData || '' }), [initData]);
@@ -123,6 +124,10 @@ const AdminDashboard = ({
   const [socialIg, setSocialIg] = useState('');
   const [socialTt, setSocialTt] = useState('');
   const [socialEmail, setSocialEmail] = useState('');
+  const [socialWa, setSocialWa] = useState('');
+  const [shopPhone, setShopPhone] = useState('');
+  const [shopAddress, setShopAddress] = useState('');
+  const [shopHours, setShopHours] = useState('');
 
   // Debounce search terms for performance
   useEffect(() => {
@@ -139,8 +144,8 @@ const AdminDashboard = ({
     if (settingsData?.success) {
       const s = settingsData.settings;
       setShopStatus(s.shop_status || 'open');
-      setDeliveryThreshold(s.delivery_threshold || '50');
-      setDeliveryFee(s.delivery_fee || '1.50');
+      setDeliveryThreshold('delivery_threshold' in s ? String(s.delivery_threshold) : '50');
+      setDeliveryFee('delivery_fee' in s ? String(s.delivery_fee) : '1.50');
       setPromoText(s.promo_text || '');
       setPromoBannerUrl(s.promo_banner_url || '');
       setShopLogoUrl(s.shop_logo_url || '');
@@ -154,6 +159,10 @@ const AdminDashboard = ({
       setSocialIg(s.social_ig || '');
       setSocialTt(s.social_tt || '');
       setSocialEmail(s.social_email || '');
+      setSocialWa(s.social_wa || '');
+      setShopPhone(s.shop_phone || '');
+      setShopAddress(s.shop_address || '');
+      setShopHours(s.shop_hours || '');
     }
   }, [settingsData]);
 
@@ -238,30 +247,53 @@ const AdminDashboard = ({
   const updatingStatusRef = useRef(new Set());
 
   const updateStatus = async (orderId, status) => {
-    if (updatingStatusRef.current.has(orderId)) return;
-    updatingStatusRef.current.add(orderId);
+    const normalizedId = String(orderId);
+    if (updatingStatusRef.current.has(normalizedId)) return;
+    updatingStatusRef.current.add(normalizedId);
 
-    const trackingNumber = trackingNumbers[orderId] || '';
+    const trackingNumber = trackingNumbers[orderId] ?? trackingNumbers[normalizedId] ?? '';
 
-    // 🚀 Optimistic UI Update: update the local state immediately
-    mutateDashboard(prev => {
-      if (!prev || !prev.orders) return prev;
-      return {
-        ...prev,
-        orders: prev.orders.map(o => o.id === orderId ? { ...o, status } : o)
-      };
-    });
+    const applyOrderPatch = (patch) => {
+      mutateDashboard(prev => {
+        if (!prev?.orders) return prev;
+        return {
+          ...prev,
+          orders: prev.orders.map(o => (
+            String(o.id) === normalizedId || String(o.order_code || '') === normalizedId
+              ? { ...o, ...patch }
+              : o
+          ))
+        };
+      });
+    };
 
-    fetchWithRetry(`${BACKEND_URL}/api/admin/orders/status`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...headers },
-      body: JSON.stringify({ orderId, status, trackingNumber })
-    }).then((res) => {
-      if (res && !res.success) {
-        // Rollback on failure (simplified by just refetching)
+    // Optimistic UI update
+    applyOrderPatch({ status });
+
+    try {
+      const res = await fetchWithRetry(`${BACKEND_URL}/api/admin/orders/status`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...headers },
+        body: JSON.stringify({ orderId: normalizedId, status, trackingNumber })
+      });
+
+      if (!res?.success) {
         refetchData(true);
-        return showAlert('បរាជ័យ: ' + (res.error || 'មានបញ្ហាប្រព័ន្ធ'));
+        showAlert('បរាជ័យ: ' + (res?.error || 'មានបញ្ហាប្រព័ន្ធ'));
+        return;
       }
+
+      const payload = res.data;
+      if (!payload?.success) {
+        refetchData(true);
+        showAlert('បរាជ័យ: ' + (payload?.error || 'មានបញ្ហាប្រព័ន្ធ'));
+        return;
+      }
+
+      if (payload.order) {
+        applyOrderPatch(payload.order);
+      }
+
       setToastMessage('បច្ចុប្បន្នភាពជោគជ័យ!');
       setShowSuccessToast(true);
       setTimeout(() => setShowSuccessToast(false), 2500);
@@ -271,16 +303,15 @@ const AdminDashboard = ({
       setTrackingNumbers(prev => {
         const next = { ...prev };
         delete next[orderId];
+        delete next[normalizedId];
         return next;
       });
-      // Background refetch to ensure total consistency without loader
+    } catch (err) {
       refetchData(true);
-    }).catch(err => {
-      refetchData(true); // Rollback
       showAlert('បរាជ័យ: ' + err.message);
-    }).finally(() => {
-      updatingStatusRef.current.delete(orderId);
-    });
+    } finally {
+      updatingStatusRef.current.delete(normalizedId);
+    }
   };
 
   const showAlert = (msg) => {
@@ -628,14 +659,40 @@ const AdminDashboard = ({
     }
   };
 
-  const statusTags = {
-    'pending': { label: 'រង់ចាំបង់', color: 'var(--text-main)', icon: '⏳' },
-    'paid': { label: 'បង់រួច', color: 'var(--text-main)', icon: '✅' },
-    'processing': { label: 'រៀបចំអីវ៉ាន់', color: 'var(--text-main)', icon: '📦' },
-    'shipped': { label: 'អីវ៉ាន់បានចេញ', color: 'var(--text-main)', icon: '✨' },
-    'delivering': { label: 'ប្រគល់ឱ្យដឹកជញ្ជូន', color: 'var(--text-main)', icon: '🚚' },
-    'delivered': { label: 'បានដល់ដៃ', color: 'var(--text-main)', icon: '🏠' }
+  const handleScanBrokenImages = () => {
+    showConfirm('ស្កេនរូប Cloudinary 404? រូបបាត់នឹង clear ពី DB — re-upload ក្នុង Admin។', async () => {
+      try {
+        const res = await fetchWithRetry(`${BACKEND_URL}/api/admin/products/scan-images`, {
+          method: 'POST',
+          headers: { ...headers, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ clearDb: true }),
+        });
+        if (res.success) {
+          const broken = res.data?.broken?.length ?? 0;
+          showAlert(broken
+            ? `រកឃើញ ${broken} រូបបាត់ — cleared។ Re-upload ក្នុង Products tab។`
+            : '✅ រូបទាំងអស់ OK!');
+          refetchDashboard();
+        } else {
+          showAlert(res.error || 'Scan failed');
+        }
+      } catch (err) {
+        showAlert('Scan failed: ' + err.message);
+      }
+    }, '🖼️');
   };
+
+  const statusTags = {
+    'pending': { label: 'រង់ចាំការបញ្ជាក់', color: 'var(--text-main)', icon: '⏳' },
+    'paid': { label: 'កំពុងរៀបចំ', color: 'var(--text-main)', icon: '📦' },
+    'processing': { label: 'កំពុងរៀបចំ', color: 'var(--text-main)', icon: '📦' },
+    'shipped': { label: 'ប្រគល់ជូនអ្នកដឹក', color: 'var(--text-main)', icon: '🚚' },
+    'delivering': { label: 'ប្រគល់ជូនអ្នកដឹក', color: 'var(--text-main)', icon: '🚚' },
+    'delivered': { label: 'ប្រគល់ជូនអ្នកដឹក', color: 'var(--text-main)', icon: '🚚' },
+    'cancelled': { label: 'បោះបង់', color: 'var(--text-main)', icon: '❌' }
+  };
+
+  const chromeVisible = useScrollHideBar({ enabled: true, resetKey: activeTab });
 
   return (
     <>
@@ -649,42 +706,43 @@ const AdminDashboard = ({
         t={t} 
         lang={tg?.language_code === 'en' ? 'en' : 'kh'} 
       />}
-      <div className="admin-dashboard-overhaul animate-in no-print" style={{ paddingBottom: 100 }}>
-        
-        <div className="admin-header-luxury">
-          <div>
-            <h2 className="admin-title-pro">⚙️ {t('admin_title')}</h2>
-            <div className="live-status-pill">
-              <div className="live-dot-pulse"></div>
-              <span style={{ fontSize: 9, fontWeight: 950, color: 'var(--text-main)', textTransform: 'uppercase', letterSpacing: 1.2 }}>{t('admin_live_status')}</span>
+      <div className="admin-dashboard-overhaul animate-in no-print">
+        <div className={`admin-sticky-chrome${chromeVisible ? '' : ' admin-sticky-chrome--hidden'}`}>
+          <div className="admin-header-luxury">
+            <div className="admin-header-brand">
+              <span className="admin-header-icon" aria-hidden="true">⚙️</span>
+              <h2 className="admin-title-pro">
+                <span className="admin-title-kh">{lang === 'kh' ? 'គ្រប់គ្រង' : 'Manage'}</span>
+                <span className="admin-title-accent"> MO-MO</span>
+              </h2>
+            </div>
+            <div className="admin-header-actions">
+              <button onClick={() => refetchData(false)} className="icon-btn-admin" aria-label="Refresh Data" title={t('admin_refresh')}>🔄</button>
+              <button onClick={() => setView('home')} className="back-btn-pill">← {t('admin_logout')}</button>
             </div>
           </div>
-          <div style={{ display: 'flex', gap: 10 }}>
-            <button onClick={() => refetchData(false)} className="icon-btn-admin" aria-label="Refresh Data" title={t('admin_refresh')}>🔄</button>
-            <button onClick={() => setView('home')} className="back-btn-pill">← {t('admin_logout')}</button>
+
+          <div className="admin-nav-luxury-grid">
+            {[
+              ...(userRole === 'admin' ? [{ id: 'overview', label: t('admin_tab_overview') }] : []),
+              { id: 'orders', label: t('admin_tab_orders') },
+              { id: 'products', label: t('admin_tab_products') },
+              { id: 'broadcast', label: t('admin_tab_broadcast') },
+              { id: 'faqs', label: t('admin_tab_faqs') },
+              ...(userRole === 'admin' ? [
+                { id: 'customers', label: t('admin_tab_customers') },
+                { id: 'coupons', label: t('admin_tab_coupons') },
+                { id: 'settings', label: t('admin_tab_settings') }
+              ] : [])
+            ].map(tab => (
+              <button key={tab.id} className={`nav-pill-btn ${activeTab === tab.id ? 'active' : ''}`} onClick={() => setActiveTab(tab.id)}>
+                {tab.label}
+              </button>
+            ))}
           </div>
         </div>
 
-        <div className="admin-nav-luxury-grid">
-          {[
-            ...(userRole === 'admin' ? [{ id: 'overview', label: `📊 ${t('admin_tab_overview')}` }] : []),
-            { id: 'orders', label: `🎫 ${t('admin_tab_orders')}` },
-            { id: 'products', label: `🛍️ ${t('admin_tab_products')}` },
-            { id: 'broadcast', label: `📢 ${t('admin_tab_broadcast')}` },
-            { id: 'faqs', label: `❓ ${t('admin_tab_faqs')}` },
-            ...(userRole === 'admin' ? [
-              { id: 'customers', label: `👥 អតិថិជន` },
-              { id: 'coupons', label: `🎟️ Coupons` },
-              { id: 'settings', label: `⚙️ ${t('admin_tab_settings')}` }
-            ] : [])
-          ].map(tab => (
-            <button key={tab.id} className={`nav-pill-btn ${activeTab === tab.id ? 'active' : ''}`} onClick={() => setActiveTab(tab.id)}>
-              {tab.label}
-            </button>
-          ))}
-        </div>
-
-                <div style={{ padding: '0 15px' }}>
+        <div className="admin-tab-content">
           {activeTab === 'overview' && (
             <AdminOverviewTab
               BACKEND_URL={BACKEND_URL}
@@ -707,6 +765,7 @@ const AdminDashboard = ({
           {activeTab === 'orders' && (
             <AdminOrdersTab
               orders={orders}
+              products={products}
               searchTerm={searchTerm}
               orderFilter={orderFilter}
               setOrderFilter={setOrderFilter}
@@ -733,6 +792,7 @@ const AdminDashboard = ({
               visibleProductLimit={visibleProductLimit}
               setVisibleProductLimit={setVisibleProductLimit}
               handleDeleteProduct={handleDeleteProduct}
+              onScanBrokenImages={handleScanBrokenImages}
             />
           )}
 
@@ -795,6 +855,15 @@ const AdminDashboard = ({
               setSocialTt={setSocialTt}
               socialEmail={socialEmail}
               setSocialEmail={setSocialEmail}
+              socialWa={socialWa}
+              setSocialWa={setSocialWa}
+              shopPhone={shopPhone}
+              setShopPhone={setShopPhone}
+              shopAddress={shopAddress}
+              setShopAddress={setShopAddress}
+              shopHours={shopHours}
+              setShopHours={setShopHours}
+              settingsReady={Boolean(settingsData?.success && !dashboardLoading)}
             />
           )}
 

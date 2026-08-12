@@ -1,16 +1,30 @@
 import React, { useState, useRef, useMemo, useEffect, useCallback } from 'react';
 
 // 🖤 Shared Charcoal Dropdown — React.memo + ARIA + keyboard nav
-const DarkSelect = React.memo(({ value, onChange, options, style = {}, placeholder }) => {
+const DarkSelect = React.memo(({ value, onChange, options, style = {}, placeholder, selectedLabel, triggerStyle = {}, triggerClassName = '', menuClassName = '' }) => {
   const [open, setOpen] = useState(false);
+  const [dropUp, setDropUp] = useState(false);
+  const [hoveredValue, setHoveredValue] = useState(null);
   const ref = useRef(null);
   const selected = useMemo(() => options.find(o => o.value === value), [options, value]);
+  const displayLabel = selected?.label || selectedLabel || placeholder || 'រើស...';
+  const isFormTrigger = triggerClassName.includes('admin-form-select-trigger');
 
   useEffect(() => {
     const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, []);
+
+  useEffect(() => {
+    if (!open) setHoveredValue(null);
+  }, [open]);
+
+  useEffect(() => {
+    if (!open || !ref.current) return;
+    const rect = ref.current.getBoundingClientRect();
+    setDropUp(window.innerHeight - rect.bottom < 230);
+  }, [open]);
 
   const handleKeyDown = useCallback((e) => {
     if (e.key === 'Escape') setOpen(false);
@@ -33,48 +47,75 @@ const DarkSelect = React.memo(({ value, onChange, options, style = {}, placehold
         aria-expanded={open}
         onKeyDown={handleKeyDown}
         onClick={() => setOpen(o => !o)}
-        className="input-glass-admin"
-        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', textAlign: 'left', background: 'var(--bg-soft)' }}
+        className={[
+          'admin-dark-select-trigger',
+          open ? 'admin-dark-select-trigger--open' : '',
+          triggerClassName
+        ].filter(Boolean).join(' ')}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          cursor: 'pointer',
+          textAlign: 'left',
+          ...(isFormTrigger ? {} : {
+            background: 'var(--bg-soft)',
+            fontSize: 11,
+            fontWeight: 900,
+            padding: '6px 10px',
+            borderRadius: 10,
+            minHeight: 34
+          }),
+          ...triggerStyle
+        }}
       >
         <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {selected ? selected.label : (placeholder || 'រើស...')}
+          {displayLabel}
         </span>
-        <span style={{ marginLeft: 8, opacity: 0.5, transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>▼</span>
+        <span style={{ marginLeft: 8, opacity: 0.5, transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', fontSize: 10 }}>▼</span>
       </button>
       {open && (
         <ul
           role="listbox"
           aria-label="dropdown options"
+          onMouseLeave={() => setHoveredValue(null)}
+          className={['admin-dark-select-menu', menuClassName].filter(Boolean).join(' ')}
           style={{
-            listStyle: 'none', margin: 0, padding: 0,
-            position: 'absolute', top: 'calc(100% + 6px)', left: 0, right: 0, zIndex: 9999,
-            background: 'var(--bg-midnight)', border: '1px solid var(--border-subtle)',
-            borderRadius: 14, overflowY: 'auto', overflowX: 'hidden', maxHeight: 220,
-            boxShadow: 'var(--admin-shadow)'
+            listStyle: 'none', margin: 0, padding: isFormTrigger ? undefined : 4,
+            position: 'absolute',
+            ...(dropUp ? { bottom: 'calc(100% + 6px)', top: 'auto' } : { top: 'calc(100% + 6px)', bottom: 'auto' }),
+            left: 0, right: 0, zIndex: 9999,
+            ...(isFormTrigger ? {} : {
+              background: 'var(--bg-surface, #ffffff)',
+              border: '1px solid var(--border-subtle)',
+              borderRadius: 12,
+              overflowY: 'auto',
+              overflowX: 'hidden',
+              maxHeight: 220,
+              boxShadow: '0 12px 32px rgba(0,0,0,0.18)'
+            })
           }}
         >
-          {options.map(opt => (
+          {options.map(opt => {
+            const isSelected = opt.value === value;
+            const isHovered = hoveredValue === opt.value && !isSelected;
+            return (
             <li
               key={opt.value}
               role="option"
-              aria-selected={opt.value === value}
+              aria-selected={isSelected}
               onClick={(e) => { e.preventDefault(); onChange(opt.value); setOpen(false); }}
-              style={{
-                padding: '12px 16px', cursor: 'pointer',
-                background: opt.value === value ? 'rgba(128,128,128,0.1)' : 'transparent',
-                color: 'var(--text-bold)',
-                borderBottom: '1px solid var(--border-subtle)',
-                transition: 'background 0.15s',
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis'
-              }}
-              onMouseEnter={e => e.currentTarget.style.background = 'rgba(128,128,128,0.08)'}
-              onMouseLeave={e => e.currentTarget.style.background = opt.value === value ? 'rgba(128,128,128,0.12)' : 'transparent'}
+              onMouseEnter={() => setHoveredValue(opt.value)}
+              className={[
+                'admin-dark-select-option',
+                isSelected ? 'admin-dark-select-option--selected' : '',
+                isHovered ? 'admin-dark-select-option--hover' : ''
+              ].filter(Boolean).join(' ')}
             >
               {opt.label}
             </li>
-          ))}
+            );
+          })}
         </ul>
       )}
     </div>

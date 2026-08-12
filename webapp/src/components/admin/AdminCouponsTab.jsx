@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useQuery } from '../../hooks/useQuery';
 import { useApi } from '../../hooks/useApi';
 import { useTelegram } from '../../context/TelegramContext';
+import DarkSelect from './DarkSelect';
 
 const AdminCouponsTab = ({ BACKEND_URL }) => {
   const { initData, showAlert, showConfirm } = useTelegram();
@@ -81,7 +82,7 @@ const AdminCouponsTab = ({ BACKEND_URL }) => {
     <div className="tab-pane-animate">
       <div className="glass-card-luxury" style={{ padding: '20px', boxSizing: 'border-box' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', marginBottom: '20px', gap: '10px' }}>
-          <h3 style={{ fontSize: 16, fontWeight: 900, color: 'var(--text-bold)', margin: 0 }}>🎫 គ្រប់គ្រងប័ណ្ណបញ្ចុះតម្លៃ (Coupons)</h3>
+          <h3 style={{ fontSize: 16, fontWeight: 900, color: 'var(--text-bold)', margin: 0 }}>🎫 គ្រប់គ្រងប័ណ្ណបញ្ចុះតម្លៃ</h3>
           <button 
             onClick={() => setIsAdding(!isAdding)}
             style={{ 
@@ -104,8 +105,8 @@ const AdminCouponsTab = ({ BACKEND_URL }) => {
       {isAdding && (
         <form onSubmit={handleSubmit} style={{ background: 'var(--bg-soft)', padding: '20px', borderRadius: '18px', marginBottom: '24px', border: '1px solid var(--border-subtle)' }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px' }}>
-            <div>
-              <label className="admin-form-label">កូដបញ្ចុះតម្លៃ (Code)</label>
+            <div style={{ minWidth: 0 }}>
+              <label className="admin-form-label">កូដបញ្ចុះតម្លៃ</label>
               <input 
                 className="admin-form-input" 
                 placeholder="ឧ. VIP10" 
@@ -114,18 +115,21 @@ const AdminCouponsTab = ({ BACKEND_URL }) => {
                 required
               />
             </div>
-            <div>
+            <div style={{ minWidth: 0 }}>
               <label className="admin-form-label">ប្រភេទបញ្ចុះតម្លៃ</label>
-              <select 
-                className="admin-form-input"
+              <DarkSelect
                 value={formData.type}
-                onChange={e => setFormData({...formData, type: e.target.value})}
-              >
-                <option value="percent" style={{ background: 'var(--bg-surface)', color: 'var(--text-bold)' }}>ភាគរយ (%)</option>
-                <option value="fixed" style={{ background: 'var(--bg-surface)', color: 'var(--text-bold)' }}>ទឹកប្រាក់ ($)</option>
-              </select>
+                onChange={(val) => setFormData({ ...formData, type: val })}
+                style={{ width: '100%' }}
+                triggerClassName="admin-form-select-trigger"
+                menuClassName="admin-form-select-menu"
+                options={[
+                  { value: 'percent', label: 'ភាគរយ' },
+                  { value: 'fixed', label: 'ទឹកប្រាក់' }
+                ]}
+              />
             </div>
-            <div>
+            <div style={{ minWidth: 0 }}>
               <label className="admin-form-label">ចំនួនបញ្ចុះ</label>
               <input 
                 className="admin-form-input" 
@@ -137,8 +141,8 @@ const AdminCouponsTab = ({ BACKEND_URL }) => {
                 required
               />
             </div>
-            <div>
-              <label className="admin-form-label">ចំនួនដងអាចប្រើបាន (Usage Limit)</label>
+            <div style={{ minWidth: 0 }}>
+              <label className="admin-form-label">ចំនួនដងប្រើបាន</label>
               <input 
                 className="admin-form-input" 
                 type="number" 
@@ -158,7 +162,7 @@ const AdminCouponsTab = ({ BACKEND_URL }) => {
               style={{ width: 18, height: 18, accentColor: '#ec4899', cursor: 'pointer' }}
             />
             <label htmlFor="isAuto" style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--text-bold)', cursor: 'pointer' }}>
-              បញ្ចុះតម្លៃដោយស្វ័យប្រវត្តិ (មិនបាច់វាយកូដ)
+              បញ្ចុះតម្លៃដោយស្វ័យប្រវត្តិ — មិនបាច់វាយកូដ
             </label>
           </div>
 

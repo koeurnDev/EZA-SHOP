@@ -275,6 +275,23 @@ const adminController = {
     }
   },
 
+  getCustomerAvatar: async (req, res) => {
+    try {
+      const userId = parseInt(req.params.id, 10);
+      if (isNaN(userId) || userId <= 0) {
+        return res.status(400).end();
+      }
+      const telegramAvatarService = require('../services/telegramAvatarService');
+      const streamed = await telegramAvatarService.streamAvatar(userId, res);
+      if (!streamed && !res.headersSent) {
+        res.status(404).end();
+      }
+    } catch (err) {
+      console.warn('⚠️ getCustomerAvatar:', err.message);
+      if (!res.headersSent) res.status(404).end();
+    }
+  },
+
   deleteCustomer: async (req, res) => {
     try {
       const userId = parseInt(req.params.id, 10);
@@ -369,7 +386,7 @@ const adminController = {
       const orderRepository = require('../repositories/orderRepository');
 
       // 🛡️ Prevent Duplicate Notification: If status is already updated, don't send Telegram notification again
-      const existingOrder = await orderRepository.findById(req.body.orderId);
+      const existingOrder = await orderRepository.findByIdOrCode(req.body.orderId);
       if (existingOrder && existingOrder.status === req.body.status) {
         return res.json({ success: true, order: existingOrder, skippedDuplicate: true });
       }
@@ -391,6 +408,9 @@ const adminController = {
       }
 
       const updated = await adminService.updateOrderStatus(req.body.orderId, req.body.status, req.body.trackingNumber);
+      if (!updated) {
+        return res.status(404).json({ success: false, error: 'Order not found' });
+      }
       
       // 🚀 Feature 1: Telegram Bot Notifications (Async Fire-and-Forget to prevent UI lag/timeout)
       try {
@@ -546,7 +566,19 @@ const adminController = {
       console.error('🔴 getOnlineUsers Error:', err.message);
       res.status(500).json({ success: false, error: err.message });
     }
-  }
+  },
+
+  scanBrokenImages: async (req, res) => {
+    try {
+      const imageHealthService = require('../services/imageHealthService');
+      const clearDb = req.body?.clearDb !== false;
+      const result = await imageHealthService.scanAndRepairProducts({ clearDb });
+      res.json({ success: true, ...result });
+    } catch (err) {
+      console.error('🔴 scanBrokenImages Error:', err.message);
+      res.status(500).json({ success: false, error: err.message });
+    }
+  },
 };
 
 module.exports = adminController;

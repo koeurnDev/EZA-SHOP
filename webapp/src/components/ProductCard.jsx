@@ -1,7 +1,6 @@
 import React, { useState, memo } from 'react';
 import { getDiscountedPrice } from '../utils/discountUtils';
 import { useUser } from '../context/UserContext';
-import { useTelegram } from '../context/TelegramContext';
 import { formatCategory } from '../utils/langUtils';
 import { useShopDispatch } from '../context/ShopContext';
 
@@ -10,8 +9,8 @@ const ProductCard = memo(({
   variant = 'grid'
 }) => {
   const { t, lang } = useUser();
-  const { tg } = useTelegram();
   const [isAdded, setIsAdded] = useState(false);
+  const [isPressing, setIsPressing] = useState(false);
   const [isFavorited, setIsFavorited] = useState(false);
   const { showToast } = useShopDispatch();
 
@@ -25,12 +24,20 @@ const ProductCard = memo(({
   const handleQuickAdd = (e) => {
     e.stopPropagation();
     if (isOutOfStock) return;
-    if (tg?.isVersionAtLeast?.('6.1') && tg.HapticFeedback) {
-      tg.HapticFeedback.impactOccurred('medium');
-    }
     setIsAdded(true);
     onAdd(product, e);
     setTimeout(() => setIsAdded(false), 2000);
+  };
+
+  const handlePressStart = (e) => {
+    e.stopPropagation();
+    if (isOutOfStock) return;
+    setIsPressing(true);
+  };
+
+  const handlePressEnd = (e) => {
+    e.stopPropagation();
+    setIsPressing(false);
   };
 
   const getOptimizedImage = (url) => {
@@ -88,7 +95,6 @@ const ProductCard = memo(({
           className="standard-card-img"
           loading="lazy"
           decoding="async"
-          crossOrigin="anonymous"
         />
       </div>
       
@@ -97,12 +103,17 @@ const ProductCard = memo(({
         <h3 className="standard-card-title" style={{ margin: 0 }}>{product.name}</h3>
         <div className="standard-card-bottom" style={{ marginTop: 0 }}>
           <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <span className="standard-card-price" style={isDiscounted ? { color: '#ef4444' } : {}}>${finalPrice}</span>
-            {isDiscounted && <span style={{ textDecoration: 'line-through', fontSize: '11px', color: '#999', marginTop: '-2px' }}>${product.price}</span>}
+            <span className="standard-card-price">${finalPrice}</span>
+            {isDiscounted && <span style={{ textDecoration: 'line-through', fontSize: '11px', color: 'var(--text-muted)', marginTop: '-2px' }}>${product.price}</span>}
           </div>
           {!isOutOfStock && (
             <button 
-              className={`standard-add-btn ${isAdded ? 'added' : ''}`}
+              type="button"
+              className={`standard-add-btn${isAdded ? ' added' : ''}${isPressing ? ' pressing' : ''}`}
+              onPointerDown={handlePressStart}
+              onPointerUp={handlePressEnd}
+              onPointerLeave={handlePressEnd}
+              onPointerCancel={handlePressEnd}
               onClick={handleQuickAdd}
             >
               {isAdded ? (

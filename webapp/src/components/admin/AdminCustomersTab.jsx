@@ -1,5 +1,61 @@
 import React, { useState, useEffect } from 'react';
 import { useTelegram } from '../../context/TelegramContext';
+import { getCustomerAvatarSrc, getUiAvatarUrl } from '../../utils/avatarUtils';
+
+const CustomerAvatar = ({ user, backendUrl, initData }) => {
+  const [imgFailed, setImgFailed] = useState(false);
+  const initial = user.user_name ? user.user_name.charAt(0).toUpperCase() : '👤';
+  const fallback = getUiAvatarUrl(user.user_name || user.username, user.user_id);
+  const primarySrc = getCustomerAvatarSrc(user, backendUrl, initData);
+  const src = imgFailed ? fallback : primarySrc;
+
+  useEffect(() => {
+    setImgFailed(false);
+  }, [user.user_id, user.photo_url, primarySrc]);
+
+  return (
+    <div style={{
+      width: 40,
+      height: 40,
+      borderRadius: '50%',
+      background: 'var(--bg-soft)',
+      color: '#fff',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      fontWeight: 800,
+      fontSize: 15,
+      flexShrink: 0,
+      overflow: 'hidden',
+      boxShadow: '0 2px 6px rgba(0,0,0,0.1)'
+    }}>
+      {src ? (
+        <img
+          src={src}
+          alt=""
+          referrerPolicy="no-referrer"
+          loading="lazy"
+          decoding="async"
+          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+          onError={() => {
+            if (!imgFailed) setImgFailed(true);
+          }}
+        />
+      ) : (
+        <div style={{
+          width: '100%',
+          height: '100%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+        }}>
+          {initial}
+        </div>
+      )}
+    </div>
+  );
+};
 
 const AdminCustomersTab = ({ BACKEND_URL }) => {
   const { initData, showAlert, showConfirm } = useTelegram();
@@ -168,7 +224,7 @@ const AdminCustomersTab = ({ BACKEND_URL }) => {
         ) : filteredCustomers.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)' }}>រកមិនឃើញទេ</div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {filteredCustomers.map(user => {
               const isExpanded = expandedUser === user.user_id;
               return (
@@ -176,11 +232,11 @@ const AdminCustomersTab = ({ BACKEND_URL }) => {
                   key={user.user_id} 
                   style={{ 
                     background: 'var(--bg-soft)', 
-                    padding: 14, 
-                    borderRadius: 16, 
+                    padding: 12, 
+                    borderRadius: 14, 
                     display: 'flex', 
                     flexDirection: 'column',
-                    gap: isExpanded ? 12 : 0,
+                    gap: isExpanded ? 10 : 0,
                     position: 'relative',
                     transition: 'all 0.2s ease',
                     border: isExpanded ? '1px solid var(--border-subtle)' : '1px solid transparent'
@@ -192,41 +248,31 @@ const AdminCustomersTab = ({ BACKEND_URL }) => {
                       onClick={() => setExpandedUser(isExpanded ? null : user.user_id)}
                       style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, cursor: 'pointer', minWidth: 0 }}
                     >
-                      <div style={{ 
-                        width: 42, height: 42, 
-                        borderRadius: '50%', 
-                        background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)', 
-                        color: '#fff', 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        justifyContent: 'center',
-                        fontWeight: 800,
-                        fontSize: 16,
-                        flexShrink: 0,
-                        overflow: 'hidden',
-                        boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
-                      }}>
-                        {user.photo_url ? (
-                          <img 
-                            src={user.photo_url} 
-                            alt="" 
-                            crossOrigin="anonymous" 
-                            style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
-                            onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                          />
-                        ) : (
-                          user.user_name ? user.user_name.charAt(0).toUpperCase() : '👤'
-                        )}
-                      </div>
+                      <CustomerAvatar user={user} backendUrl={BACKEND_URL} initData={initData} />
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 14, fontWeight: 800, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                          <span>{user.user_name || `User ${String(user.user_id).slice(-4)}`}</span>
-                          {user.username && <span style={{ fontSize: 11, color: '#3b82f6', fontWeight: 700 }}>@{user.username}</span>}
-                          {user.role === 'admin' && <span style={{ fontSize: 10, background: '#ef4444', color: '#fff', padding: '2px 6px', borderRadius: 10 }}>Admin</span>}
-                          {user.role === 'staff' && <span style={{ fontSize: 10, background: '#3b82f6', color: '#fff', padding: '2px 6px', borderRadius: 10 }}>Staff</span>}
-                          {user.is_banned && <span style={{ fontSize: 10, background: '#000', color: '#fff', padding: '2px 6px', borderRadius: 10 }}>Banned 🚫</span>}
+                        <div style={{ 
+                          fontSize: 13, 
+                          fontWeight: 800, 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          gap: 5, 
+                          flexWrap: 'nowrap',
+                          overflow: 'hidden'
+                        }}>
+                          <span style={{ 
+                            whiteSpace: 'nowrap', 
+                            overflow: 'hidden', 
+                            textOverflow: 'ellipsis',
+                            maxWidth: '120px'
+                          }}>
+                            {user.user_name || `User ${String(user.user_id).slice(-4)}`}
+                          </span>
+                          {user.username && <span style={{ fontSize: 10, color: '#3b82f6', fontWeight: 700, flexShrink: 0 }}>@{user.username}</span>}
+                          {user.role === 'admin' && <span style={{ fontSize: 9, background: '#ef4444', color: '#fff', padding: '2px 5px', borderRadius: 8, flexShrink: 0 }}>Admin</span>}
+                          {user.role === 'staff' && <span style={{ fontSize: 9, background: '#3b82f6', color: '#fff', padding: '2px 5px', borderRadius: 8, flexShrink: 0 }}>Staff</span>}
+                          {user.is_banned && <span style={{ fontSize: 9, background: '#000', color: '#fff', padding: '2px 5px', borderRadius: 8, flexShrink: 0 }}>🚫</span>}
                         </div>
-                        <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>ID: {user.user_id || '---'}</div>
+                        <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>ID: {user.user_id || '---'}</div>
                       </div>
                       <span style={{ fontSize: 11, color: 'var(--text-muted)', padding: '0 4px', transition: 'transform 0.2s ease', transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)' }}>
                         ▼

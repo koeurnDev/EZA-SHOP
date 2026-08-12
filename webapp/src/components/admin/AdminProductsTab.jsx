@@ -4,7 +4,7 @@ import { useUser } from '../../context/UserContext';
 const AdminProductsTab = React.memo(({
   products, categories = [], productSearchTerm, localProductSearchTerm, setLocalProductSearchTerm,
   setIsAddingProduct, setEditingProduct, setEditFormData,
-  visibleProductLimit, setVisibleProductLimit, handleDeleteProduct
+  visibleProductLimit, setVisibleProductLimit, handleDeleteProduct, onScanBrokenImages
 }) => {
   const { t } = useUser();
   const [openMenu, setOpenMenu] = React.useState(null);
@@ -43,6 +43,20 @@ const AdminProductsTab = React.memo(({
         >
           ➕ {t('admin_add_product') || 'បន្ថែម'}
         </button>
+        {onScanBrokenImages && (
+          <button
+            type="button"
+            onClick={onScanBrokenImages}
+            title="Scan Cloudinary 404s"
+            style={{
+              flexShrink: 0, padding: '10px 12px', borderRadius: 12,
+              border: '1px solid var(--border-subtle)', background: 'var(--bg-soft)',
+              color: 'var(--text-main)', fontWeight: 800, fontSize: 12, cursor: 'pointer',
+            }}
+          >
+            🖼️ Scan
+          </button>
+        )}
       </div>
 
       {/* Category chips row — no dropdown, no overlap */}

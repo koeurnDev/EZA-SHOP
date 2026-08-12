@@ -279,12 +279,13 @@ class CacheService {
     return null;
   }
 
-  // STATS
+  // GET STATS
   getStats() {
     return {
-      redisAvailable: this.isRedisAvailable(),
-      fallbackSize: this.fallbackCache.size,
-      maxFallbackSize: this.maxFallbackSize
+      redisTcp: !!(redisClient?.isOpen),
+      redisRest: !!redisRest,
+      memoryEntries: this.fallbackCache.size,
+      tier: redisClient?.isOpen ? 'tcp' : (redisRest ? 'rest' : 'memory'),
     };
   }
 }

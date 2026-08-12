@@ -101,13 +101,14 @@ const PromoBanner = ({ threshold, promoText, promoBannerUrl, t, lang }) => {
                   onClick={() => handleBannerClick(banner)}
                 >
                   <img 
-                    src={banner.url.includes('upload/') ? banner.url.replace('upload/', 'upload/f_auto,q_auto:best,c_limit,w_1920/') : banner.url} 
+                    src={banner.url.includes('upload/')
+                      ? banner.url.replace('upload/', 'upload/f_auto,q_90,c_limit,w_1000/')
+                      : banner.url}
                     alt={`Banner ${idx + 1}`} 
                     className="ads-hero-img"
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                    crossOrigin="anonymous"
                     fetchpriority={idx === 0 ? "high" : "low"}
                     loading={idx === 0 ? "eager" : "lazy"}
+                    onError={(e) => { e.target.onerror = null; e.target.style.display = 'none'; }}
                   />
                 </div>
              ))}
@@ -124,7 +125,7 @@ const PromoBanner = ({ threshold, promoText, promoBannerUrl, t, lang }) => {
                        width: currentIndex === idx ? '18px' : '6px', 
                        height: '6px', 
                        borderRadius: '4px', 
-                       background: currentIndex === idx ? '#2F483A' : 'rgba(255,255,255,0.7)',
+                       background: currentIndex === idx ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.45)',
                        transition: 'all 0.3s ease',
                        cursor: 'pointer',
                        boxShadow: '0 1px 3px rgba(0,0,0,0.2)'

@@ -17,7 +17,7 @@ export const fetchUserOrders = (limit = 20, offset = 0) => {
 };
 
 export const submitReview = (reviewData) => {
-  return apiRequest('/api/orders/review', {
+  return apiRequest('/api/reviews', {
     method: 'POST',
     body: JSON.stringify(reviewData)
   });

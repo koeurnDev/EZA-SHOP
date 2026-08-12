@@ -6,6 +6,7 @@ const bot = require('./config/telegram');
 const paymentReconciler = require('./workers/paymentReconciler');
 const marketingAutomation = require('./workers/marketingAutomation');
 const winbackAutomation = require('./workers/winbackAutomation');
+const keepAliveWorker = require('./workers/keepAliveWorker');
 
 let isShuttingDown = false;
 
@@ -121,6 +122,11 @@ const startServer = async () => {
         paymentReconciler.start();
         marketingAutomation.start();
         winbackAutomation.start();
+        keepAliveWorker.start();
+
+        // Warm init cache on boot (first user gets fast response)
+        const adminService = require('./services/adminService');
+        adminService.getInitialData().catch(() => {});
       } else {
         console.log(`ℹ️ Worker Instance #${instanceId}: Skipping background cron startup (handled by Primary Instance #0).`);
       }

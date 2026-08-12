@@ -99,9 +99,9 @@ const ProductGrid = () => {
       {/* ✨ FEATURED ITEMS */}
       {showFeatured && (
         <div className="mb-6">
-           <div className="section-header px-5 pb-3 flex items-baseline gap-2.5">
-             <h2 className="text-lg font-black text-bold">{t('new')}</h2>
-             <span className="text-xs text-primary-accent font-black uppercase tracking-wider">{lang === 'kh' ? 'លេចធ្លោ ✨' : 'Featured ✨'}</span>
+           <div className="section-header section-header--compact px-5 pb-2 flex items-baseline gap-2">
+             <h2 className="product-section-title text-bold">{t('new')}</h2>
+             <span className="featured-section-badge text-xs font-semibold text-bold">{lang === 'kh' ? 'លេចធ្លោ ✨' : 'Featured ✨'}</span>
            </div>
           <div className="featured-slider flex overflow-x-auto gap-4 px-5 pb-5 no-scrollbar">
             {featured.map(fp => (
@@ -119,11 +119,11 @@ const ProductGrid = () => {
       )}
 
       {/* 🛍 MAIN GRID HEADER */}
-      <div className="section-header px-5 py-4 flex justify-between items-center">
-        <h2 className="text-2xl font-black text-bold" style={{ wordBreak: 'break-word', lineHeight: 1.1 }}>
+      <div className="section-header section-header--compact px-5 py-3 flex justify-between items-center">
+        <h2 className="product-section-title text-bold" style={{ wordBreak: 'break-word', lineHeight: 1.2 }}>
           {searchTerm ? `"${searchTerm}"` : selectedCategory === 'all' ? t('all') : selectedCategory === 'flash_sale' ? '⚡ Flash Sale' : formatCategory(selectedCategory, lang)}
         </h2>
-        <span className="text-sm font-semibold text-muted whitespace-nowrap" style={{ opacity: 0.85 }}>
+        <span className="product-section-count text-muted whitespace-nowrap">
           {filtered.length} {t('items')}
         </span>
       </div>
@@ -153,13 +153,14 @@ const ProductGrid = () => {
             </div>
             
             {hasMore && (
-              <div className="pb-10 pt-4 flex justify-center">
+              <div className="load-more-wrap">
                 <button 
+                  type="button"
                   onClick={handleShowMore}
-                  className="px-10 py-4 rounded-3xl font-black text-sm active:scale-95 transition-transform"
-                  style={{ background: 'var(--bg-soft)', color: 'var(--text-main)', border: '1px solid var(--border-subtle)' }}
+                  className="load-more-btn"
                 >
-                   📦 {t('view_all')} ({filtered.length - limit})
+                  {t('show_more')}
+                  <span className="load-more-count">{filtered.length - limit}</span>
                 </button>
               </div>
             )}

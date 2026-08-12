@@ -16,7 +16,6 @@ const CartItem = ({ item, updateQty, t, lang }) => {
           src={getOptimizedImg(item.image, 150) || '/favicon.png'} 
           onError={(e) => { e.target.onerror = null; e.target.src = '/favicon.png'; }}
           alt={item.name} 
-          crossOrigin="anonymous" 
           decoding="async"
           loading="lazy"
         />

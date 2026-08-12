@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import QRCode from 'qrcode';
 import html2canvas from 'html2canvas';
 import { useTelegram } from '../context/TelegramContext';
+import { getVariantUnitMode, getCapacityLabel } from '../utils/variantUnitUtils';
+import { isPaymentConfirmed } from '../utils/orderItemUtils';
 
 /**
  * 🎨 Success Animation (Luxury Checkmark)
@@ -28,7 +30,7 @@ const SuccessCheckmark = () => (
  * 🧾 High-Fidelity Invoice Modal
  * Matches the "Digital Parchment" luxury design.
  */
-const InvoiceModal = ({ order, onClose, paymentQrUrl, paymentInfo, BACKEND_URL, onPaymentSuccess, t, lang }) => {
+const InvoiceModal = ({ order, onClose, paymentQrUrl, paymentInfo, BACKEND_URL, onPaymentSuccess, onCartClear, t, lang }) => {
   const { switchInlineQuery, showAlert } = useTelegram();
   const [localOrder, setLocalOrder] = useState(order);
   const [timeLeft, setTimeLeft] = useState(300);
@@ -65,6 +67,7 @@ const InvoiceModal = ({ order, onClose, paymentQrUrl, paymentInfo, BACKEND_URL, 
           headers: { 'Content-Type': 'application/json', 'X-TG-Data': tgData },
           body: JSON.stringify({ orderCode: localOrder.order_code, receiptUrl: data.url })
         });
+        if (typeof onCartClear === 'function') onCartClear();
       } else {
         setReceiptUploaded(false);
         setUploadError(data.error || (lang === 'kh' ? 'មានបញ្ហាក្នុងការផ្ទុករូបភាព' : 'Upload failed'));
@@ -116,7 +119,7 @@ const InvoiceModal = ({ order, onClose, paymentQrUrl, paymentInfo, BACKEND_URL, 
 
   // 🕒 SERVER-SYNCED TIMER: Direct sync with Server's expires_in
   useEffect(() => {
-    if (orderStatus === 'paid' || isExpired) return;
+    if (isPaymentConfirmed(orderStatus) || isExpired || orderStatus === 'cancelled') return;
 
     // Use server's remaining time directly
     const initialRemaining = localOrder.expires_in !== undefined ? localOrder.expires_in : 300;
@@ -318,11 +321,21 @@ const InvoiceModal = ({ order, onClose, paymentQrUrl, paymentInfo, BACKEND_URL, 
           </div>
 
           {/* ── REF NUMBER ── */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(212,175,55,0.06)', border: '1px dashed #d4af37', borderRadius: 8, padding: '7px 12px', marginBottom: 12 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(212,175,55,0.06)', border: '1px dashed #d4af37', borderRadius: 8, padding: '7px 12px', marginBottom: 10 }}>
             <span style={{ fontSize: 10, fontWeight: 900, color: '#64748b', textTransform: 'uppercase', letterSpacing: 1 }}>{lang === 'kh' ? 'លេខកូដ' : 'Ref #'}</span>
             <span style={{ fontSize: 13, fontWeight: 950, color: '#d4af37', fontFamily: 'monospace', letterSpacing: 1.5 }}>
               {isDraft ? '...' : (localOrder.order_code || String(localOrder.id))}
             </span>
+          </div>
+
+          {/* ── THANK YOU ── */}
+          <div style={{ textAlign: 'center', marginBottom: 12, padding: '8px 4px 0', borderTop: '1px dashed #e2e8f0' }}>
+            <div style={{ fontSize: 14, fontWeight: 950, color: '#0f172a', marginTop: 10, marginBottom: 4 }}>
+              {t('thank_you')}
+            </div>
+            <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600, lineHeight: 1.55 }}>
+              {t('thank_you_order')}
+            </div>
           </div>
 
           {/* ── QR CODE ── */}
@@ -428,8 +441,8 @@ const InvoiceModal = ({ order, onClose, paymentQrUrl, paymentInfo, BACKEND_URL, 
         {isExpired ? (
           <div className="order-card-luxury animate-in" style={{ padding: '60px 30px 40px', textAlign: 'center', borderColor: '#fee2e2' }}>
             <div style={{ fontSize: '70px', marginBottom: '25px' }}>⏳</div>
-            <h2 style={{ fontSize: '24px', fontWeight: '950', color: '#0f172a', marginBottom: '12px' }}>{lang === 'kh' ? 'ការកុម្ម៉ង់ហួសពេល' : 'Order Expired'}</h2>
-            <p style={{ fontSize: '14px', color: '#64748b', marginBottom: 40 }}>{lang === 'kh' ? 'សុំទោស! រយៈពេលបង់ប្រាក់ ៥ នាទីត្រូវបានបញ្ជប់។ សូមសាកល្បងម្តងទៀត។' : 'Sorry! The 5-minute payment window has closed. Please try again.'}</p>
+            <h2 className="invoice-expired-title">{lang === 'kh' ? 'ការកុម្ម៉ង់ហួសពេល' : 'Order Expired'}</h2>
+            <p className="invoice-expired-text">{lang === 'kh' ? 'សុំទោស! រយៈពេលបង់ប្រាក់ ៥ នាទីត្រូវបានបញ្ជប់។ សូមសាកល្បងម្តងទៀត។' : 'Sorry! The 5-minute payment window has closed. Please try again.'}</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <button onClick={handleRefreshQR} className="detail-btn-buy-luxury" disabled={isVerifying}>
                 {isVerifying ? '...' : (lang === 'kh' ? '🔄 ធ្វើឱ្យ QR ថ្មី' : '🔄 Refresh QR')}
@@ -437,10 +450,21 @@ const InvoiceModal = ({ order, onClose, paymentQrUrl, paymentInfo, BACKEND_URL, 
               <button onClick={onClose} className="back-btn-pill" style={{ opacity: 0.7 }}>{lang === 'kh' ? 'បិទ' : 'Close'}</button>
             </div>
           </div>
-        ) : (orderStatus === 'paid' || orderStatus === 'processing' || orderStatus === 'shipped' || orderStatus === 'delivering' || orderStatus === 'delivered') ? (
+        ) : orderStatus === 'cancelled' ? (
+          <div className="order-card-luxury animate-in" style={{ padding: '50px 30px 40px', textAlign: 'center', borderColor: 'rgba(239, 68, 68, 0.2)' }}>
+            <div style={{ fontSize: '60px', marginBottom: '20px' }}>❌</div>
+            <h2 style={{ fontSize: '22px', fontWeight: '950', color: 'var(--text-bold)', marginBottom: '10px' }}>
+              {lang === 'kh' ? 'ការកម្ម៉ង់ត្រូវបានបោះបង់' : 'Order Cancelled'}
+            </h2>
+            <p style={{ fontSize: '14px', color: 'var(--text-muted)', marginBottom: 32, lineHeight: 1.5 }}>
+              {lang === 'kh' ? 'ការកម្ម៉ង់នេះមិនបានបញ្ជាក់ការបង់ប្រាក់ ដូច្នេះមិនមានវិក្កយបត្រ។' : 'Payment was not confirmed, so no receipt is available.'}
+            </p>
+            <button onClick={onClose} className="back-btn-pill">{lang === 'kh' ? 'បិទ' : 'Close'}</button>
+          </div>
+        ) : isPaymentConfirmed(orderStatus) ? (
           renderReceipt()
         ) : (
-          <div className="khqr-premium-box animate-up" style={{ background: '#ffffff', borderRadius: '24px', overflow: 'hidden', color: '#0f172a' }}>
+          <div className="khqr-premium-box animate-up">
             <div className="khqr-terminal-header">
               <div className="khqr-brand-tag">
                 <span style={{ background: '#fff', color: '#ea1c24', padding: '2px 8px', borderRadius: '6px', fontSize: '12px', fontWeight: 950 }}>KHQR</span>
@@ -454,20 +478,19 @@ const InvoiceModal = ({ order, onClose, paymentQrUrl, paymentInfo, BACKEND_URL, 
               </button>
             </div>
 
-            <div style={{ textAlign: 'center', padding: '16px 20px 20px' }}>
-              <div className="order-id-lux" style={{ letterSpacing: 2, fontSize: '11px', fontWeight: 800, color: '#64748b', marginBottom: '2px' }}>MO MO BOUTIQUE</div>
-              <div className="khqr-amount-lux" style={{ color: '#0f172a', margin: '0 0 10px 0' }}>${parseFloat(localOrder.total).toFixed(2)}</div>
+            <div className="khqr-body">
+              <div className="khqr-shop-name order-id-lux">MO MO BOUTIQUE</div>
+              <div className="khqr-amount-lux">${parseFloat(localOrder.total).toFixed(2)}</div>
 
-              {/* 📍 Quick Verification Info */}
-              <div style={{ fontSize: 11, fontWeight: 800, color: '#64748b', marginBottom: 14, background: '#f8fafc', border: '1px solid #f1f5f9', display: 'inline-block', padding: '4px 14px', borderRadius: '100px' }}>
+              <div className="khqr-meta-pill">
                 {localOrder.user_name} • {localOrder.phone}
               </div>
 
               {isDraft ? (
-                <div style={{ padding: '30px 20px', textAlign: 'center' }}>
+                <div className="khqr-preparing-wrap">
                   <div style={{ fontSize: '36px', marginBottom: '12px', animation: 'spin 2s linear infinite' }}>⏳</div>
-                  <div style={{ fontSize: '15px', fontWeight: 900, color: '#0f172a', marginBottom: '8px' }}>{lang === 'kh' ? 'កំពុងរៀបចំការកម្ម៉ង់...' : 'Preparing Order...'}</div>
-                  <div style={{ fontSize: '13px', color: '#64748b' }}>{lang === 'kh' ? 'សូមរង់ចាំបន្តិច ពេលកំពុងភ្ជាប់ទៅកាន់ប្រព័ន្ធ...' : 'Please wait while we connect to the system...'}</div>
+                  <div className="khqr-preparing-title">{lang === 'kh' ? 'កំពុងរៀបចំការកម្ម៉ង់...' : 'Preparing Order...'}</div>
+                  <div className="khqr-preparing-sub">{lang === 'kh' ? 'សូមរង់ចាំបន្តិច ពេលកំពុងភ្ជាប់ទៅកាន់ប្រព័ន្ធ...' : 'Please wait while we connect to the system...'}</div>
                 </div>
               ) : (
                 <>
@@ -479,11 +502,11 @@ const InvoiceModal = ({ order, onClose, paymentQrUrl, paymentInfo, BACKEND_URL, 
                         ) : paymentQrUrl ? (
                           <img src={paymentQrUrl} alt="KHQR" onContextMenu={(e) => e.preventDefault()} />
                         ) : (
-                          <div style={{ width: '200px', height: '200px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
+                          <div className="khqr-payment-details">
                             <div className="animate-in" style={{ textAlign: 'center', padding: '10px' }}>
                               <div style={{ fontSize: '32px', marginBottom: '8px' }}>🏦</div>
-                              <div style={{ fontSize: '12px', fontWeight: '950', color: '#0f172a', textTransform: 'uppercase', marginBottom: '6px' }}>{lang === 'kh' ? 'ព័ត៌មានបង់ប្រាក់' : 'Payment Details'}</div>
-                              <div style={{ fontSize: '12px', color: '#64748b', background: '#f8fafc', padding: '8px 12px', borderRadius: '10px', wordBreak: 'break-all' }}>
+                              <div className="khqr-payment-details-title">{lang === 'kh' ? 'ព័ត៌មានបង់ប្រាក់' : 'Payment Details'}</div>
+                              <div className="khqr-payment-details-body">
                                 {paymentInfo || 'ABA KHQR'}
                               </div>
                             </div>
@@ -491,24 +514,24 @@ const InvoiceModal = ({ order, onClose, paymentQrUrl, paymentInfo, BACKEND_URL, 
                         )}
                       </div>
 
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, color: timeLeft < 60 ? '#ef4444' : '#64748b', fontWeight: 950, fontSize: 16, marginBottom: 12 }}>
+                      <div className={`khqr-timer${timeLeft < 60 ? ' khqr-timer--urgent' : ''}`}>
                         <span style={{ opacity: 0.6 }}>⏳</span>
                         {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}
                       </div>
                     </>
                   ) : (
-                    <div className="animate-in" style={{ marginBottom: 16, textAlign: 'left', background: '#f8fafc', borderRadius: 16, padding: 14, border: '1px solid #f1f5f9' }}>
-                      <div style={{ fontSize: 13, fontWeight: 900, marginBottom: 10, borderBottom: '1px solid rgba(0,0,0,0.05)', paddingBottom: 8, color: '#0f172a' }}>
+                    <div className="khqr-summary-box animate-in">
+                      <div className="khqr-summary-title">
                         {lang === 'kh' ? '🛍️ សេចក្តីសង្ខេបការកម្ម៉ង់' : '🛍️ Order Summary'}
                       </div>
                       <div style={{ maxHeight: '160px', overflowY: 'auto' }}>
                         {items?.map((item, idx) => (
-                          <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, fontSize: 12, color: '#0f172a' }}>
+                          <div key={idx} className="khqr-summary-item">
                             <span style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                               <span>{item.name}</span>
-                              <span style={{ fontSize: 11, color: '#64748b' }}>
-                                {item.selectedSize ? ("Size: " + item.selectedSize + " ") : ''}
-                                {item.selectedColor ? ("Color: " + item.selectedColor + " ") : ''}
+                              <span className="khqr-summary-item-meta">
+                                {item.selectedSize ? `${getCapacityLabel(lang, getVariantUnitMode({ category: item.category, productName: item.name, variantSizes: [item.selectedSize] }))}: ${item.selectedSize} ` : ''}
+                                {item.selectedColor ? (`${lang === 'kh' ? 'ពណ៌' : 'Color'}: ${item.selectedColor} `) : ''}
                                 Qty: {item.quantity}
                               </span>
                             </span>
@@ -516,15 +539,15 @@ const InvoiceModal = ({ order, onClose, paymentQrUrl, paymentInfo, BACKEND_URL, 
                           </div>
                         ))}
                       </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 10, paddingTop: 10, borderTop: '1px dashed rgba(0,0,0,0.1)', fontSize: 15, fontWeight: 900, color: '#0f172a' }}>
+                      <div className="khqr-summary-total">
                         <span>{lang === 'kh' ? 'សរុប' : 'Total'}</span>
-                        <span style={{ color: '#0f172a' }}>${localOrder.total?.toFixed(2) || '0.00'}</span>
+                        <span>${localOrder.total?.toFixed(2) || '0.00'}</span>
                       </div>
                     </div>
                   )}
 
                   {!receiptUploaded ? (
-                    <div style={{ fontSize: '12px', color: '#0f172a', fontWeight: 800, marginBottom: 14, textAlign: 'center', lineHeight: 1.4, background: '#f8fafc', border: '1px solid #f1f5f9', padding: '10px 14px', borderRadius: 12 }}>
+                    <div className="khqr-info-box">
                       {lang === 'kh' ? 'សូមស្កេនបង់ប្រាក់ រួចថតអេក្រង់ (Screenshot) ផ្ញើទៅកាន់ Admin ដើម្បីបញ្ជាក់ការកម្ម៉ង់។' : 'Please scan to pay and send the screenshot to Admin to confirm.'}
                     </div>
                   ) : (
@@ -533,19 +556,19 @@ const InvoiceModal = ({ order, onClose, paymentQrUrl, paymentInfo, BACKEND_URL, 
                     </div>
                   )}
 
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <div className="khqr-actions">
                     {uploadError && (
                       <div style={{ fontSize: '12px', color: '#ef4444', fontWeight: 900, textAlign: 'center', background: 'rgba(239, 68, 68, 0.1)', padding: 8, borderRadius: 10 }}>
                         ⚠️ {uploadError}
                       </div>
                     )}
                     {!receiptUploaded && (
-                      <label className="detail-btn-buy-luxury" style={{ width: '100%', height: 46, borderRadius: 14, fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none', cursor: 'pointer', background: 'var(--primary-gradient)', color: '#fff', fontWeight: 800 }}>
+                      <label className="khqr-upload-btn">
                         {isUploadingReceipt ? (lang === 'kh' ? '⌛ កំពុងផ្ទុក...' : '⌛ Uploading...') : (lang === 'kh' ? '📥 ដាក់វិក្កយបត្របញ្ជាក់ទីនេះ' : 'Upload Receipt Here')}
                         <input type="file" accept="image/*" style={{ display: 'none' }} disabled={isUploadingReceipt || receiptUploaded} onChange={handleReceiptUpload} />
                       </label>
                     )}
-                    <button onClick={onClose} className="back-btn-pill" style={{ width: '100%', height: 44, borderRadius: 14, fontWeight: 'bold', background: '#f1f5f9', color: '#0f172a', fontSize: 13, border: 'none', cursor: 'pointer' }}>{lang === 'kh' ? 'បិទ' : 'Close'}</button>
+                    <button onClick={onClose} className="khqr-close-btn">{lang === 'kh' ? 'បិទ' : 'Close'}</button>
                   </div>
                 </>
               )}

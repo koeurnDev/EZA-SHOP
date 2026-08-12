@@ -6,6 +6,8 @@ import { useTelegram } from '../context/TelegramContext';
 import { calculateBestDiscount, getDiscountedPrice } from '../utils/discountUtils';
 import DeliveryForm from './DeliveryForm';
 import { formatCategory } from '../utils/langUtils';
+import { getVariantUnitMode, getCapacityIcon } from '../utils/variantUnitUtils';
+import { calculateDeliveryFee, formatDeliveryFeeLabel, isAlwaysFreeDelivery, parseDeliverySetting } from '../utils/deliveryUtils';
 import './ui/ModernCart.css';
 
 const CartPage = ({
@@ -24,8 +26,7 @@ const CartPage = ({
   const [validatedPromo, setValidatedPromo] = useState(null);
   const [promoLoading, setPromoLoading] = useState(false);
   const [promoError, setPromoError] = useState('');
-  const threshold = parseFloat(deliveryThreshold) || 50;
-  const fee = parseFloat(deliveryFee) || 0;
+  const threshold = parseDeliverySetting(deliveryThreshold, 50);
 
   const totalDiscount = useMemo(() => {
     return cart.reduce((sum, item) => {
@@ -58,9 +59,12 @@ const CartPage = ({
   }
   
   const subTotalAfterPromo = Math.max(0, subTotal - manualDiscount);
-  const isFreeDelivery = subTotalAfterPromo >= threshold;
-  const appliedFee = isFreeDelivery ? 0 : fee;
+  const appliedFee = calculateDeliveryFee(subTotalAfterPromo, deliveryFee, deliveryThreshold);
+  const isFreeDelivery = appliedFee <= 0;
   const finalTotal = subTotalAfterPromo + appliedFee;
+  const amountToFreeDelivery = !isAlwaysFreeDelivery(deliveryFee) && !isFreeDelivery
+    ? Math.max(0, threshold - subTotalAfterPromo)
+    : 0;
 
   const handleApplyPromo = async () => {
     if (!promoInput.trim()) return;
@@ -141,8 +145,8 @@ const CartPage = ({
         </div>
         <div className="flex flex-col items-center justify-center py-16">
           <div className="relative mb-8 flex justify-center items-center">
-             <div className="absolute bg-primary-accent opacity-20 blur-3xl rounded-full" style={{ width: '120px', height: '120px' }}></div>
-             <svg width="100" height="100" viewBox="0 0 24 24" fill="none" stroke="var(--primary-accent)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="relative z-10" style={{ filter: 'drop-shadow(0 8px 16px rgba(0,0,0,0.08))' }}>
+             <div className="absolute rounded-full opacity-20 blur-3xl" style={{ width: '120px', height: '120px', background: 'var(--text-bold)' }}></div>
+             <svg width="100" height="100" viewBox="0 0 24 24" fill="none" stroke="var(--text-bold)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="relative z-10" style={{ filter: 'drop-shadow(0 8px 16px rgba(0,0,0,0.08))' }}>
                 <circle cx="9" cy="21" r="1"></circle>
                 <circle cx="20" cy="21" r="1"></circle>
                 <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
@@ -194,7 +198,9 @@ const CartPage = ({
                       <img
                         src={item.image.includes('cloudinary') ? item.image.replace('upload/', 'upload/f_auto,q_auto,w_100/') : item.image}
                         alt="" className="w-full h-full object-cover rounded-[14px]"
-                        crossOrigin="anonymous"
+                        loading="lazy"
+                        decoding="async"
+                        onError={(e) => { e.target.onerror = null; e.target.src = '/favicon.png'; }}
                       />
                     </div>
                     <div className="cart-item-details">
@@ -207,7 +213,7 @@ const CartPage = ({
                         {item.variant && (
                           <span style={{ display: 'inline-block', marginLeft: '6px', padding: '2px 6px', background: 'rgba(0,0,0,0.05)', borderRadius: '4px', fontSize: '11px', fontWeight: 'bold' }}>
                             {item.variant.color && `🎨 ${item.variant.color} `}
-                            {item.variant.size && `📏 ${item.variant.size}`}
+                            {item.variant.size && `${getCapacityIcon(getVariantUnitMode({ category: item.category, productName: item.name, variantSizes: [item.variant.size] }))} ${item.variant.size}`}
                           </span>
                         )}
                       </p>
@@ -351,8 +357,17 @@ const CartPage = ({
 
           <div className="flex justify-between items-center text-[15px] font-bold mt-2">
             <div className="uppercase tracking-tight">{lang === 'kh' ? 'សេវាដឹកជញ្ជូន' : 'DELIVERY'}</div>
-            <div className="font-black tabular-nums">${appliedFee.toFixed(2)}</div>
+            <div className={`font-black tabular-nums ${isFreeDelivery ? 'text-[#059669]' : ''}`}>
+              {formatDeliveryFeeLabel(appliedFee, lang)}
+            </div>
           </div>
+          {amountToFreeDelivery > 0 && (
+            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginTop: 6 }}>
+              {lang === 'kh'
+                ? `ទិញបន្ថែម $${amountToFreeDelivery.toFixed(2)} ដើម្បីដឹកហ្វ្រី`
+                : `Add $${amountToFreeDelivery.toFixed(2)} more for free delivery`}
+            </div>
+          )}
         </div>
         <div className="flex justify-between items-center mb-6">
           <span className="text-lg font-black uppercase text-bold">{lang === 'kh' ? 'សរុប៖' : 'TOTAL:'}</span>

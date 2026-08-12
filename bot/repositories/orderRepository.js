@@ -39,6 +39,14 @@ const orderRepository = {
     return res.rows[0];
   },
 
+  findByIdOrCode: async (idOrCode, client = pool) => {
+    if (idOrCode == null || idOrCode === '') return null;
+    const byId = await client.query('SELECT * FROM orders WHERE id = $1', [idOrCode]);
+    if (byId.rows[0]) return byId.rows[0];
+    const byCode = await client.query('SELECT * FROM orders WHERE order_code = $1', [String(idOrCode)]);
+    return byCode.rows[0] || null;
+  },
+
   findByIdempotencyKey: async (userId, key) => {
     const res = await pool.query(
       'SELECT * FROM orders WHERE user_id = $1 AND idempotency_key = $2',
@@ -78,12 +86,15 @@ const orderRepository = {
     return res.rows;
   },
 
-  updateStatus: async (id, status, trackingNumber = null, client = pool) => {
+  updateStatus: async (idOrCode, status, trackingNumber = null, client = pool) => {
     await client.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS tracking_number VARCHAR(255)`).catch(() => {});
+
+    const existing = await orderRepository.findByIdOrCode(idOrCode, client);
+    if (!existing) return null;
     
     const res = await client.query(
       "UPDATE orders SET status = $1, tracking_number = COALESCE(NULLIF($2, ''), tracking_number) WHERE id = $3 RETURNING *",
-      [status, trackingNumber, id]
+      [status, trackingNumber, existing.id]
     );
     return res.rows[0];
   },
@@ -223,15 +234,15 @@ const orderRepository = {
   },
 
   hasPurchasedProduct: async (userId, productId) => {
-    // 🛡️ Security Check: Ensure user has a DELIVERED order containing this product ID
+    // 🛡️ Verified purchaser: order handed to courier or marked delivered
     const res = await pool.query(`
       SELECT 1 
       FROM orders, jsonb_array_elements(items::jsonb) AS item 
       WHERE user_id = $1 
-      AND status = 'delivered' 
-      AND item->>'id' = $2 
+      AND status IN ('shipped', 'delivering', 'delivered')
+      AND (item->>'id' = $2 OR item->>'product_id' = $2)
       LIMIT 1
-    `, [userId, String(productId)]);
+    `, [String(userId), String(productId)]);
     return res.rows.length > 0;
   }
 };

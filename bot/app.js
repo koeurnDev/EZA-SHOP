@@ -109,7 +109,15 @@ app.use(cors({
 
 // --- Routes ---
 app.get('/', (req, res) => res.send('MO-MO Boutique API Online! ✨'));
-app.get('/api/alive', (req, res) => res.json({ success: true, timestamp: new Date() }));
+app.get('/api/alive', async (req, res) => {
+  const cacheService = require('./services/cacheService');
+  res.json({
+    success: true,
+    timestamp: new Date().toISOString(),
+    uptime: Math.round(process.uptime()),
+    cache: cacheService.getStats(),
+  });
+});
 app.post('/api/v1/app-state', telemetryHandler);
 
 app.use('/api', globalLimiter);
@@ -163,6 +171,7 @@ app.get('/api/admin/summary', isSuperAdminOnly, adminController.getSummary);
 app.get('/api/admin/analytics', isSuperAdminOnly, adminController.getAnalytics);
 app.get('/api/admin/advanced-analytics', isSuperAdminOnly, analyticsController.getAdvancedAnalytics);
 app.get('/api/admin/dashboard', isStaffOrAdmin, (req, res) => adminController.getDashboardData(req, res)); // 🚀 Batch Endpoint (Ensuring visibility)
+app.post('/api/admin/products/scan-images', isStaffOrAdmin, adminController.scanBrokenImages);
 app.get('/api/admin/products', isStaffOrAdmin, adminController.getProducts);
 app.post('/api/admin/products', isStaffOrAdmin, validator.product, adminController.createProduct);
 app.put('/api/admin/products/:id', isStaffOrAdmin, validator.product, adminController.updateProduct);
@@ -186,6 +195,7 @@ app.get('/api/admin/coupons', isSuperAdminOnly, adminController.getCoupons);
 app.post('/api/admin/coupons', isSuperAdminOnly, validator.coupon, adminController.addCoupon);
 app.delete('/api/admin/coupons/:id', isSuperAdminOnly, adminController.deleteCoupon);
 app.get('/api/admin/customers', isSuperAdminOnly, adminController.getCustomers);
+app.get('/api/admin/avatar/:id', isStaffOrAdmin, adminController.getCustomerAvatar);
 app.delete('/api/admin/customers/:id', isSuperAdminOnly, adminController.deleteCustomer);
 app.put('/api/admin/customers/:id/ban', isSuperAdminOnly, adminController.banCustomer);
 app.put('/api/admin/customers/:id/role', isSuperAdminOnly, adminController.updateCustomerRole);

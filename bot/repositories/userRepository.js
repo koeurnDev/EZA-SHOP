@@ -166,6 +166,7 @@ const userRepository = {
         ALTER TABLE users ADD COLUMN IF NOT EXISTS user_name TEXT;
         ALTER TABLE users ADD COLUMN IF NOT EXISTS photo_url TEXT;
         ALTER TABLE users ADD COLUMN IF NOT EXISTS username TEXT;
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS telegram_avatar_file_id TEXT;
       `).catch(() => {});
 
       const dummyEmail = `tg_${userId}@momo.local`;
@@ -175,14 +176,31 @@ const userRepository = {
          ON CONFLICT (user_id) DO UPDATE SET
            last_seen = NOW(),
            last_updated = NOW(),
-           user_name = COALESCE(EXCLUDED.user_name, users.user_name),
-           photo_url = COALESCE(EXCLUDED.photo_url, users.photo_url),
-           username = COALESCE(EXCLUDED.username, users.username)`,
+           user_name = COALESCE(NULLIF(EXCLUDED.user_name, ''), users.user_name),
+           photo_url = CASE
+             WHEN EXCLUDED.photo_url IS NOT NULL AND EXCLUDED.photo_url <> '' THEN EXCLUDED.photo_url
+             ELSE users.photo_url
+           END,
+           username = COALESCE(NULLIF(EXCLUDED.username, ''), users.username)`,
         [userId, userName || null, photoUrl || null, username || null, dummyEmail]
       );
     } catch (err) {
       // Non-critical — don't throw, just log
       console.warn('⚠️ updateLastSeen failed (non-critical):', err.message);
+    }
+  },
+
+  updateAvatarFileId: async (userId, fileId) => {
+    try {
+      await pool.query(`
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS telegram_avatar_file_id TEXT;
+      `).catch(() => {});
+      await pool.query(
+        `UPDATE users SET telegram_avatar_file_id = $1, last_updated = NOW() WHERE user_id = $2`,
+        [fileId, userId]
+      );
+    } catch (err) {
+      console.warn('⚠️ updateAvatarFileId failed (non-critical):', err.message);
     }
   },
 

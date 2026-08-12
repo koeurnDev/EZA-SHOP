@@ -6,29 +6,29 @@ const AdminOverviewTab = React.memo(({ summary, paddedDailyAnalytics, advancedAn
   const { t } = useUser();
   return (
   <div className="tab-pane-animate">
-    <div className="admin-responsive-grid" style={{ gap: 15, marginBottom: 25 }}>
-      <div className="glass-card-luxury" style={{ padding: '20px' }}>
-        <div style={{ fontSize: 10, fontWeight: 900, color: 'var(--text-dim)', textTransform: 'uppercase', marginBottom: 8 }}>💰 {t('admin_total_revenue')}</div>
-        <div style={{ fontSize: 26, fontWeight: 950 }}>${summary.totalRevenue.toLocaleString()}</div>
+    <div className="admin-stats-grid">
+      <div className="admin-stat-card">
+        <div className="stat-label">{t('admin_total_revenue')}</div>
+        <div className="stat-value">${summary.totalRevenue.toLocaleString()}</div>
       </div>
-      <div className="glass-card-luxury" style={{ padding: '20px' }}>
-        <div style={{ fontSize: 10, fontWeight: 900, color: 'var(--text-dim)', textTransform: 'uppercase', marginBottom: 8 }}>🎫 {t('admin_active_orders')}</div>
-        <div style={{ fontSize: 26, fontWeight: 950 }}>{summary.activeOrders}</div>
+      <div className="admin-stat-card">
+        <div className="stat-label">{t('admin_active_orders')}</div>
+        <div className="stat-value">{summary.activeOrders}</div>
       </div>
-      <div className="glass-card-luxury" style={{ padding: '20px' }}>
-        <div style={{ fontSize: 10, fontWeight: 900, color: 'var(--text-dim)', textTransform: 'uppercase', marginBottom: 8 }}>👤 {t('admin_total_customers')}</div>
-        <div style={{ fontSize: 26, fontWeight: 950 }}>{summary.totalCustomers}</div>
+      <div className="admin-stat-card">
+        <div className="stat-label">{t('admin_total_customers')}</div>
+        <div className="stat-value">{summary.totalCustomers}</div>
       </div>
-      <div className="glass-card-luxury" style={{ padding: '20px' }}>
-        <div style={{ fontSize: 10, fontWeight: 900, color: 'var(--text-dim)', textTransform: 'uppercase', marginBottom: 8 }}>✨ {t('admin_shop_health')}</div>
-        <div style={{ fontSize: 26, fontWeight: 950 }}>{summary.businessHealth}%</div>
+      <div className="admin-stat-card">
+        <div className="stat-label">{t('admin_shop_health')}</div>
+        <div className="stat-value">{summary.businessHealth}%</div>
       </div>
     </div>
 
     <div className="glass-card-luxury" style={{ marginBottom: 25, padding: 20 }}>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 }}>
-        <div style={{ fontSize: 14, fontWeight: 900, display: 'flex', alignItems: 'center', gap: 8, whiteSpace: 'nowrap', flexShrink: 0 }}>
-          <span>📈</span> <span style={{ whiteSpace: 'nowrap' }}>ការវិភាគស៊ីជម្រៅ</span>
+        <div style={{ fontSize: 14, fontWeight: 900, whiteSpace: 'nowrap' }}>
+          📈 {t('admin_analytics')}
         </div>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', flexShrink: 0 }}>
           <button onClick={() => {
@@ -42,12 +42,12 @@ const AdminOverviewTab = React.memo(({ summary, paddedDailyAnalytics, advancedAn
                 a.download = `MO-MO_Orders_${new Date().toISOString().split('T')[0]}.csv`;
                 a.click();
               });
-          }} style={{ background: '#1e293b', color: '#fff', padding: '6px 12px', borderRadius: 12, fontSize: 11, fontWeight: 800, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, whiteSpace: 'nowrap', flexShrink: 0 }}>
-            📥 Export CSV
+          }} className="admin-action-chip">
+            📥 {t('admin_export_csv')}
           </button>
-          <div style={{ fontSize: 10, fontWeight: 800, background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', padding: '4px 10px', borderRadius: 12, display: 'flex', alignItems: 'center', gap: 5, whiteSpace: 'nowrap', flexShrink: 0 }}>
-            <div style={{ width: 6, height: 6, background: '#10b981', borderRadius: '50%', animation: 'pulse 2s infinite', flexShrink: 0 }}></div>
-            Marketing Active
+          <div className="admin-action-chip admin-action-chip--success">
+            <div className="live-dot-pulse" style={{ width: 6, height: 6 }}></div>
+            {t('admin_marketing_active')}
           </div>
         </div>
       </div>
@@ -55,8 +55,8 @@ const AdminOverviewTab = React.memo(({ summary, paddedDailyAnalytics, advancedAn
       {/* Revenue Area Chart */}
       <div style={{ marginBottom: 25, background: 'var(--bg-soft)', padding: 16, borderRadius: 20, border: '1px solid var(--border-subtle)' }}>
         <div style={{ fontSize: 12, fontWeight: 900, color: 'var(--text-bold)', marginBottom: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-          <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>💰 កំណើនចំណូល (14 ថ្ងៃ)</span>
-          <span style={{ fontSize: 10, color: '#10b981', background: 'rgba(16, 185, 129, 0.12)', padding: '2px 8px', borderRadius: 10, fontWeight: 800, whiteSpace: 'nowrap', flexShrink: 0 }}>USD ($)</span>
+          <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>💰 {t('admin_revenue_growth')}</span>
+          <span style={{ fontSize: 10, color: '#10b981', background: 'rgba(16, 185, 129, 0.12)', padding: '2px 8px', borderRadius: 10, fontWeight: 800, whiteSpace: 'nowrap', flexShrink: 0 }}>USD</span>
         </div>
         <div style={{ width: '100%', height: 210 }}>
           <ResponsiveContainer width="100%" height="100%">
@@ -73,7 +73,7 @@ const AdminOverviewTab = React.memo(({ summary, paddedDailyAnalytics, advancedAn
               <Tooltip
                 contentStyle={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 14, color: 'var(--text-bold)', boxShadow: '0 10px 30px rgba(0,0,0,0.3)' }}
                 itemStyle={{ color: '#10b981', fontWeight: 900 }}
-                formatter={(value) => [`$${parseFloat(value).toFixed(2)}`, 'ចំណូល']}
+                formatter={(value) => [`$${parseFloat(value).toFixed(2)}`, t('admin_revenue_label')]}
               />
               <Area type="monotone" dataKey="revenue" stroke="#10b981" fill="url(#colorRevenue)" strokeWidth={3} activeDot={{ r: 6, fill: '#10b981', stroke: '#fff', strokeWidth: 2 }} />
             </AreaChart>
@@ -84,8 +84,7 @@ const AdminOverviewTab = React.memo(({ summary, paddedDailyAnalytics, advancedAn
       {/* Orders Bar Chart */}
       <div style={{ marginBottom: 25, background: 'var(--bg-soft)', padding: 16, borderRadius: 20, border: '1px solid var(--border-subtle)' }}>
         <div style={{ fontSize: 12, fontWeight: 900, color: 'var(--text-bold)', marginBottom: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-          <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>📦 ចំនួនការកម្ម៉ង់</span>
-          <span style={{ fontSize: 10, color: '#3b82f6', background: 'rgba(59, 130, 246, 0.12)', padding: '2px 8px', borderRadius: 10, fontWeight: 800, whiteSpace: 'nowrap', flexShrink: 0 }}>Orders</span>
+          <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>📦 {t('admin_orders_chart')}</span>
         </div>
         <div style={{ width: '100%', height: 190 }}>
           <ResponsiveContainer width="100%" height="100%">
@@ -97,7 +96,7 @@ const AdminOverviewTab = React.memo(({ summary, paddedDailyAnalytics, advancedAn
                 contentStyle={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 14, color: 'var(--text-bold)', boxShadow: '0 10px 30px rgba(0,0,0,0.3)' }}
                 itemStyle={{ color: '#3b82f6', fontWeight: 900 }}
                 cursor={{ fill: 'rgba(255,255,255,0.04)' }}
-                formatter={(value) => [`${value} កម្ម៉ង់`, 'ចំនួនកម្ម៉ង់']}
+                formatter={(value) => [`${value} ${t('admin_orders_label')}`, t('admin_orders_chart')]}
               />
               <Bar dataKey="orders" name="Orders" fill="#3b82f6" radius={[6, 6, 0, 0]} barSize={18} isAnimationActive={true} />
             </BarChart>

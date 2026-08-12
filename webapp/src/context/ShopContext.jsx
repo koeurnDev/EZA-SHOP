@@ -53,12 +53,16 @@ export const ShopProvider = ({ children }) => {
   const [socialIg, setSocialIg] = useState('');
   const [socialTt, setSocialTt] = useState('');
   const [socialEmail, setSocialEmail] = useState('');
+  const [socialWa, setSocialWa] = useState('');
+  const [shopPhone, setShopPhone] = useState('');
+  const [shopAddress, setShopAddress] = useState('');
+  const [shopHours, setShopHours] = useState('');
+  const [shopName, setShopName] = useState('MO MO Boutique');
 
   const showToast = useCallback((message) => {
     setToast(message);
-    if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
     setTimeout(() => setToast(null), 2500);
-  }, [tg]);
+  }, []);
 
   // Sync outbox on online event
   useEffect(() => {
@@ -97,16 +101,21 @@ export const ShopProvider = ({ children }) => {
     if (initData?.settings) {
       const s = initData.settings;
       if (s.shop_status) setShopStatus(s.shop_status);
-      if (s.delivery_threshold) setDeliveryThreshold(s.delivery_threshold);
-      if (s.delivery_fee) setDeliveryFee(s.delivery_fee);
+      if ('delivery_threshold' in s) setDeliveryThreshold(String(s.delivery_threshold));
+      if ('delivery_fee' in s) setDeliveryFee(String(s.delivery_fee));
       if (s.promo_text !== undefined) setPromoText(s.promo_text);
       if (s.promo_banner_url !== undefined) setPromoBannerUrl(s.promo_banner_url); // fix: allow empty string to clear banners
       if (s.shop_logo_url !== undefined) setShopLogoUrl(s.shop_logo_url);
-      if (s.social_fb) setSocialFb(s.social_fb);
-      if (s.social_tg) setSocialTg(s.social_tg);
-      if (s.social_ig) setSocialIg(s.social_ig);
-      if (s.social_tt) setSocialTt(s.social_tt);
-      if (s.social_email) setSocialEmail(s.social_email);
+      if ('social_fb' in s) setSocialFb(s.social_fb || '');
+      if ('social_tg' in s) setSocialTg(s.social_tg || '');
+      if ('social_ig' in s) setSocialIg(s.social_ig || '');
+      if ('social_tt' in s) setSocialTt(s.social_tt || '');
+      if ('social_email' in s) setSocialEmail(s.social_email || '');
+      if ('social_wa' in s) setSocialWa(s.social_wa || '');
+      if ('shop_phone' in s) setShopPhone(s.shop_phone || '');
+      if ('shop_address' in s) setShopAddress(s.shop_address || '');
+      if ('shop_hours' in s) setShopHours(s.shop_hours || '');
+      if (s.receipt_shop_name) setShopName(s.receipt_shop_name);
     }
   }, [initData]);
 
@@ -136,12 +145,17 @@ export const ShopProvider = ({ children }) => {
       socialIg,
       socialTt,
       socialEmail,
+      socialWa,
+      shopPhone,
+      shopAddress,
+      shopHours,
+      shopName,
       activeDiscounts: initData?.discounts || [],
       showFilterModal,
       showScanner,
       filters
     };
-  }, [initData, isInitLoading, selectedCategory, searchTerm, debouncedSearchTerm, view, selectedProduct, toast, shopStatus, deliveryThreshold, deliveryFee, promoText, promoBannerUrl, shopLogoUrl, socialFb, socialTg, socialIg, socialTt, socialEmail, showFilterModal, showScanner, filters]);
+  }, [initData, isInitLoading, selectedCategory, searchTerm, debouncedSearchTerm, view, selectedProduct, toast, shopStatus, deliveryThreshold, deliveryFee, promoText, promoBannerUrl, shopLogoUrl, socialFb, socialTg, socialIg, socialTt, socialEmail, socialWa, shopPhone, shopAddress, shopHours, shopName, showFilterModal, showScanner, filters]);
 
   const dispatch = useMemo(() => ({
     setSelectedCategory,

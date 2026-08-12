@@ -48,6 +48,10 @@ if (REDIS_URL) {
   console.warn('⚠️ Redis (TCP): Missing REDIS_URL. Queues will use memory fallback.');
 }
 
+if (!redisRest && !REDIS_URL) {
+  console.warn('⚠️ Redis: No UPSTASH nor REDIS_URL — cache uses in-memory only (~50–100 entries). Add Redis for ~50ms cache hits.');
+}
+
 /**
  * Non-blocking Redis TCP connect — called from server.js after DB is confirmed.
  */

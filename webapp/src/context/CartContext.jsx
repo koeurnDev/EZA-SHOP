@@ -1,17 +1,19 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useTelegram } from './TelegramContext';
 import { useUser } from './UserContext';
-import { useShop, useShopDispatch } from './ShopContext';
+import { useShopState, useShopDispatch } from './ShopContext';
 import OfflineService from '../services/OfflineService';
 
 const CartStateContext = createContext(null);
 const CartDispatchContext = createContext(null);
 
 export const CartProvider = ({ children }) => {
-  const { tg } = useTelegram();
+  const { tg, HapticFeedback } = useTelegram();
   const { lang, user } = useUser();
-  const { shopStatus } = useShop();
-  const { showToast } = useShopDispatch();
+  const shopState = useShopState();
+  const shopDispatch = useShopDispatch();
+  const shopStatus = shopState?.shopStatus ?? 'open';
+  const showToast = shopDispatch?.showToast;
   
   const [cart, setCart] = useState(() => {
     try {
@@ -88,7 +90,7 @@ export const CartProvider = ({ children }) => {
       setTimeout(() => setFlyingItems(prev => prev.slice(1)), 1000);
     }
 
-    if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+    HapticFeedback?.impactOccurred('light');
 
     if (showToast) {
        showToast(lang === 'kh' ? `បានបន្ថែម ${product.name} ចូលកន្ត្រក` : `Added ${product.name} to cart`);
@@ -104,9 +106,18 @@ export const CartProvider = ({ children }) => {
           : item
         );
       }
-      return [...prev, { ...product, cartKey, variant, quantity: 1 }];
+      return [...prev, {
+        ...product,
+        cartKey,
+        variant,
+        quantity: 1,
+        ...(variant ? {
+          selectedSize: variant.size || '',
+          selectedColor: variant.color || ''
+        } : {})
+      }];
     });
-  }, [shopStatus, tg, lang, showToast]);
+  }, [shopStatus, tg, lang, showToast, HapticFeedback]);
 
   const updateQty = useCallback((cartKeyOrId, delta) => {
     setCart(prev => {
@@ -121,8 +132,16 @@ export const CartProvider = ({ children }) => {
   const clearCart = useCallback(() => {
     setCart([]);
     localStorage.removeItem('momo_idemp_key');
+    localStorage.setItem('momo_cart_v1', JSON.stringify([]));
     setIdempotencyKey(null);
-  }, []);
+    if (tg?.CloudStorage && tg?.isVersionAtLeast?.('6.9')) {
+      try {
+        tg.CloudStorage.setItem('momo_cart_v1', JSON.stringify([]));
+      } catch (e) {
+        console.warn('CloudStorage clear cart failed:', e);
+      }
+    }
+  }, [tg]);
 
   const prepareIdempotency = useCallback(() => {
     const key = Math.random().toString(36).substring(2) + Date.now();

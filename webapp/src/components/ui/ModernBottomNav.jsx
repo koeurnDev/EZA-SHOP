@@ -1,7 +1,11 @@
 import React from 'react';
+import useScrollHideBar from '../../hooks/useScrollHideBar';
 import './ModernBottomNav.css';
 
-const ModernBottomNav = ({ view, setView, cartCount = 0, isAdmin, t, lang }) => {
+const ModernBottomNav = ({ view, setView, cartCount = 0, isAdmin, t, lang, isKeyboardVisible = false }) => {
+  const autoHideEnabled = !isKeyboardVisible && view !== 'product_detail';
+  const navVisible = useScrollHideBar({ enabled: autoHideEnabled, resetKey: view });
+
   const navItems = [
     { 
       id: 'home', 
@@ -48,9 +52,11 @@ const ModernBottomNav = ({ view, setView, cartCount = 0, isAdmin, t, lang }) => 
     }
   ];
 
+  const showBar = navVisible && !isKeyboardVisible;
+
   return (
-    <div className="modern-bottom-nav-container">
-      <nav className="modern-bottom-nav" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 16px) + 8px)' }}>
+    <div className={`modern-bottom-nav-container${showBar ? '' : ' modern-bottom-nav-container--hidden'}`}>
+      <nav className="modern-bottom-nav">
         {navItems.map(item => (
           <button 
             key={item.id}

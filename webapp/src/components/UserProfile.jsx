@@ -1,14 +1,25 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import ProfileCard from './ui/ProfileCard';
 import CambodiaAddress from './ui/CambodiaAddress';
 import { useShopState } from '../context/ShopContext';
+import { isPaymentConfirmed, isUserPurchaseHistoryOrder } from '../utils/orderItemUtils';
+import { openExternalLink, buildSocialLinkItems, buildTelLink, buildMapsLink } from '../utils/socialLinkUtils';
+import SocialBrandIcon from './ui/SocialBrandIcon';
 
 /**
  * 💎 High-Fidelity User Profile & Order History
  * Implements the "Timeline of Excellence" design system.
  */
 const UserProfile = ({ user, setView, BACKEND_URL, onViewInvoice, t, lang, toggleLang, theme, toggleTheme }) => {
-  const { socialFb, socialTg, socialIg, socialTt, socialEmail } = useShopState();
+  const {
+    socialFb, socialTg, socialIg, socialTt, socialEmail, socialWa,
+    shopPhone, shopAddress, shopHours, shopLogoUrl, shopName,
+  } = useShopState();
+  const socialLinks = useMemo(
+    () => buildSocialLinkItems({ socialFb, socialTg, socialIg, socialTt, socialEmail, socialWa }),
+    [socialFb, socialTg, socialIg, socialTt, socialEmail, socialWa]
+  );
+  const hasContactSection = socialLinks.length > 0 || shopPhone || shopAddress || shopHours;
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [ratingOrder, setRatingOrder] = useState(null);
@@ -147,12 +158,12 @@ const UserProfile = ({ user, setView, BACKEND_URL, onViewInvoice, t, lang, toggl
   };
 
   const orderStatuses = {
-    'pending':    { label: t('pending_payment'),                         color: '#94a3b8', icon: '⏳', step: 1 },
-    'paid':       { label: lang === 'kh' ? 'បង់រួច' : 'Paid',       color: '#10b981', icon: '💰', step: 1 },
-    'processing': { label: lang === 'kh' ? 'រៀបចំ'     : 'Packing',    color: '#f59e0b', icon: '📦', step: 2 },
-    'shipped':    { label: lang === 'kh' ? 'ប្រគល់ឲ្យអ្នកដឹក' : 'Courier',   color: '#a855f7', icon: '🚚', step: 3 },
-    'delivering': { label: lang === 'kh' ? 'ប្រគល់ឲ្យអ្នកដឹក' : 'Courier',   color: '#3b82f6', icon: '🚚', step: 3 },
-    'delivered':  { label: lang === 'kh' ? 'បានតតុល'   : 'Delivered',  color: '#10b981', icon: '🏠', step: 3 }
+    'pending':    { label: t('pending_payment'),                              color: '#94a3b8', icon: '⏳', step: 0 },
+    'paid':       { label: lang === 'kh' ? 'បង់រួច'     : 'Paid',      color: '#10b981', icon: '✓',  step: 1 },
+    'processing': { label: lang === 'kh' ? 'រៀបចំ'       : 'Packing',   color: '#f59e0b', icon: '📦', step: 2 },
+    'shipped':    { label: lang === 'kh' ? 'កំពុងដឹក'    : 'Courier',   color: '#a855f7', icon: '🚚', step: 3 },
+    'delivering': { label: lang === 'kh' ? 'កំពុងដឹក'    : 'Courier',   color: '#3b82f6', icon: '🚚', step: 3 },
+    'delivered':  { label: lang === 'kh' ? 'បានដល់'     : 'Delivered',  color: '#10b981', icon: '🏠', step: 3 }
   };
 
   if (!user) return <div className="loading-screen"><div className="loader"></div></div>;
@@ -262,53 +273,58 @@ const UserProfile = ({ user, setView, BACKEND_URL, onViewInvoice, t, lang, toggl
 
 
        <div className="section-header" style={{ padding: '0 0 15px' }}>
-         <h2 style={{ fontSize: 18, fontWeight: 950, color: 'var(--text-bold)' }}>{lang === 'kh' ? 'ប្រវត្តិទិញទំនិញ' : 'Purchase History'}</h2>
+         <h2 style={{ fontSize: 18, fontWeight: 950, color: 'var(--text-bold)' }}>{lang === 'kh' ? 'ប្រវត្តិការទិញ' : 'Purchase History'}</h2>
          <span style={{ fontSize: 13, color: 'var(--text-muted)', fontWeight: 800 }}>
-           {orders.filter(o => o.status !== 'pending' && o.status !== 'expired').length} {t('items')}
+           {orders.filter(isUserPurchaseHistoryOrder).length} {t('items')}
          </span>
        </div>
 
        {loading ? (
          <div style={{ height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><div className="loader"></div></div>
-       ) : orders.filter(o => o.status !== 'pending' && o.status !== 'expired').length === 0 ? (
-         <div style={{ textAlign: 'center', padding: '60px 0', background: 'var(--bg-soft)', borderRadius: 28, marginBottom: 20, border: '1.5px dashed var(--border-subtle)' }}>
+       ) : orders.filter(isUserPurchaseHistoryOrder).length === 0 ? (
+         <div style={{ textAlign: 'center', padding: '60px 0', background: 'var(--bg-soft)', borderRadius: 20, marginBottom: 20, border: '1.5px dashed var(--border-subtle)' }}>
             <div style={{ fontSize: 44, marginBottom: 15, opacity: 0.9 }}>🛍️</div>
             <p style={{ opacity: 0.9, fontWeight: 900, fontSize: 14, color: 'var(--text-main)' }}>{lang === 'kh' ? 'មិនទាន់មានការទិញទេ' : 'No purchase history yet'}</p>
          </div>
        ) : (
         <div className="history-list">
-          {orders.filter(o => o.status !== 'pending' && o.status !== 'expired').map(order => {
-            const status = orderStatuses[order.status] || { label: order.status, icon: '📦', color: '#94a3b8', step: 1 };
+          {orders.filter(isUserPurchaseHistoryOrder).map(order => {
+            const status = orderStatuses[order.status] || { label: order.status, icon: '📦', color: '#94a3b8', step: 0 };
             const isDelivered = order.status === 'delivered';
+            const canRate = ['shipped', 'delivering', 'delivered'].includes(order.status);
+            const paymentConfirmed = isPaymentConfirmed(order.status);
+            const showTracker = paymentConfirmed && !isDelivered && !canRate;
             
             return (
               <div 
                 key={order.id} 
                 className="order-card-luxury animate-up"
-                style={{ marginBottom: 20, position: 'relative' }}
-                onClick={() => onViewInvoice(order)}
+                style={{ marginBottom: 16, position: 'relative', cursor: paymentConfirmed ? 'pointer' : 'default' }}
+                onClick={() => paymentConfirmed && onViewInvoice(order)}
               >
-                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
+                 <div className="order-meta-lux" style={{ marginBottom: 16 }}>
                     <div>
-                       <div style={{ fontSize: 11, fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 4 }}>{t('order_id')}</div>
-                       <div style={{ fontSize: 20, fontWeight: 950, color: 'var(--text-bold)' }}>
-                          MO-{String(order.id).padStart(5, '0')}
+                       <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 4 }}>
+                         {lang === 'kh' ? 'លេខសម្គាល់' : 'Order ID'}
+                       </div>
+                       <div className="order-id-numeric">
+                          {order.order_code || String(order.id)}
                        </div>
                     </div>
-                    <div className="pill-badge" style={{ background: `${status.color}15`, color: status.color, border: `1.5px solid ${status.color}20`, fontWeight: 950 }}>
+                    <div className="pill-badge" style={{ background: `${status.color}15`, color: status.color, border: `1px solid ${status.color}30`, fontWeight: 800, fontSize: 12 }}>
                        {status.icon} {status.label}
                     </div>
                  </div>
 
-                 {!isDelivered && (
-                    <div className="premium-timeline-lux" style={{ margin: '25px 0' }}>
+                 {showTracker && (
+                    <div className="premium-timeline-lux" style={{ margin: '18px 0 8px' }}>
                        <div className="timeline-track-bg"></div>
                        <div className="timeline-track-fill" style={{ width: `${Math.max(0, (status.step - 1) * 50)}%`, background: status.color }}></div>
                        <div className="timeline-steps-lux">
                           {[
-                            { step: 1, icon: '💰', kh: 'បង់រួច', en: 'Paid' },
+                            { step: 1, icon: '✓', kh: 'បង់រួច', en: 'Paid' },
                             { step: 2, icon: '📦', kh: 'រៀបចំ', en: 'Packing' },
-                            { step: 3, icon: '🚚', kh: 'ប្រគល់ឲ្យអ្នកដឹក', en: 'Courier' }
+                            { step: 3, icon: '🚚', kh: 'កំពុងដឹក', en: 'Courier' }
                           ].map((s, i) => {
                              const isActive = s.step <= status.step;
                              const isCurrent = s.step === status.step;
@@ -330,9 +346,9 @@ const UserProfile = ({ user, setView, BACKEND_URL, onViewInvoice, t, lang, toggl
 
                  {order.tracking_number && (
                     <div className="tracking-pill-lux" onClick={(e) => e.stopPropagation()}>
-                       <div style={{ fontSize: 24 }}>🚚</div>
+                       <div style={{ fontSize: 20 }}>🚚</div>
                        <div className="tracking-info-lux">
-                          <div className="tracking-label-lux">{lang === 'kh' ? 'លេខតាមដានអីវ៉ាន់' : 'Courier Tracking'}</div>
+                          <div className="tracking-label-lux">{lang === 'kh' ? 'លេខតាមដាន' : 'Tracking'}</div>
                           <div className="tracking-code-lux">{order.tracking_number}</div>
                        </div>
                        <div className="copy-btn-lux" onClick={() => {
@@ -343,33 +359,31 @@ const UserProfile = ({ user, setView, BACKEND_URL, onViewInvoice, t, lang, toggl
                     </div>
                  )}
 
-                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 10 }}>
+                 <div className="order-card-footer">
                     <div>
-                       <div style={{ fontSize: 11, fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 4 }}>{lang === 'kh' ? 'សរុប' : 'TOTAL'}</div>
-                       <div className="mega-price-primary" style={{ fontSize: 24 }}>${parseFloat(order.total || order.total_amount || 0).toFixed(2)}</div>
+                       <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 2 }}>
+                         {lang === 'kh' ? 'សរុប' : 'Total'}
+                       </div>
+                       <div className="mega-price-primary" style={{ fontSize: 22 }}>
+                         ${parseFloat(order.total || order.total_amount || 0).toFixed(2)}
+                       </div>
                     </div>
                     
                     <div style={{ display: 'flex', gap: 8 }}>
-                       {isDelivered && (
+                       {canRate && (
                           <button 
                              onClick={(e) => { e.stopPropagation(); setRatingOrder(order); }}
-                             className="detail-btn-cart-luxury" 
-                             style={{ padding: '0 16px', borderRadius: 14, height: 44, background: 'var(--primary-gradient)', color: 'white', border: 'none', fontWeight: 900 }}>
-                             ⭐️ {lang === 'kh' ? 'វាយតម្លៃ' : 'Rate'}
+                             className="order-action-btn order-action-btn-primary">
+                             ★ {lang === 'kh' ? 'វាយតម្លៃ' : 'Rate'}
                           </button>
                        )}
-                        <button 
-                           onClick={(e) => { e.stopPropagation(); onViewInvoice(order); }}
-                           style={{ 
-                              display: 'flex', alignItems: 'center', justifyContent: 'center',
-                              padding: '0 20px', borderRadius: 14, height: 44, 
-                              background: 'var(--bg-soft)', 
-                              color: 'var(--text-main)', 
-                              border: '1.5px solid var(--border-subtle)', 
-                              fontWeight: 800, gap: 8, fontSize: 14
-                           }}>
-                           <span style={{ fontSize: 16 }}>🧾</span> {lang === 'kh' ? 'វិក័យប័ត្រ' : 'Receipt'}
-                        </button>
+                       {paymentConfirmed && (
+                          <button 
+                             onClick={(e) => { e.stopPropagation(); onViewInvoice(order); }}
+                             className="order-action-btn">
+                             {lang === 'kh' ? 'វិក្កយបត្រ' : 'Receipt'}
+                          </button>
+                       )}
                     </div>
                  </div>
               </div>
@@ -410,7 +424,7 @@ const UserProfile = ({ user, setView, BACKEND_URL, onViewInvoice, t, lang, toggl
                              <textarea 
                                 className="input-glass-admin" 
                                 style={{ background: 'var(--bg-soft)', borderRadius: 12, fontSize: 13 }}
-                                placeholder={lang === 'kh' ? 'សរសេមតិយោបល់...' : 'Write a comment...'}
+                                placeholder={lang === 'kh' ? 'សរសេរមតិយោបល់...' : 'Write a comment...'}
                                 value={data.comment}
                                 onChange={(e) => setRatingData(prev => ({ ...prev, [item.id]: { ...data, comment: e.target.value } }))}
                              />
@@ -448,38 +462,91 @@ const UserProfile = ({ user, setView, BACKEND_URL, onViewInvoice, t, lang, toggl
       )}
 
       {/* 📱 Contact Us Section */}
-      {(socialFb || socialTg || socialIg || socialTt || socialEmail) && (
+      {hasContactSection && (
          <div className="contact-section-lux" style={{ marginTop: 30, paddingBottom: 40 }}>
-            <div className="section-header" style={{ padding: '0 0 20px' }}>
-               <h2 style={{ fontSize: 20, fontWeight: 950, color: 'var(--text-bold)' }}>{lang === 'kh' ? 'ទំនាក់ទំនងយើងខ្ញុំ' : 'Contact Us'}</h2>
+            <div className="contact-shop-header contact-link-row">
+              <div className="contact-link-icon-slot">
+                {shopLogoUrl ? (
+                  <img src={shopLogoUrl} alt="" className="contact-shop-logo" />
+                ) : (
+                  <div className="contact-shop-logo contact-shop-logo--placeholder">M</div>
+                )}
+              </div>
+              <div className="contact-link-text-block">
+                <h2 className="contact-shop-title">
+                  {shopName || (lang === 'kh' ? 'ទំនាក់ទំនងយើងខ្ញុំ' : 'Contact Us')}
+                </h2>
+                <p className="contact-shop-subtitle">
+                  {lang === 'kh' ? 'ទាក់ទងយើងតាមរយៈឆានែលណាមួយ' : 'Reach us on any channel'}
+                </p>
+              </div>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 12 }}>
-               {socialFb && (
-                  <a href={socialFb} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', background: 'var(--glass-card)', border: '1.5px solid var(--glass-border)', borderRadius: 16, textDecoration: 'none', color: 'var(--text-luxury)' }}>
-                     <span style={{ fontSize: 22, color: '#1877F2' }}>Facebook</span>
-                  </a>
-               )}
-               {socialTg && (
-                  <a href={socialTg} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', background: 'var(--glass-card)', border: '1.5px solid var(--glass-border)', borderRadius: 16, textDecoration: 'none', color: 'var(--text-luxury)' }}>
-                     <span style={{ fontSize: 22, color: '#2AABEE' }}>Telegram</span>
-                  </a>
-               )}
-               {socialIg && (
-                  <a href={socialIg} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', background: 'var(--glass-card)', border: '1.5px solid var(--glass-border)', borderRadius: 16, textDecoration: 'none', color: 'var(--text-luxury)' }}>
-                     <span style={{ fontSize: 22, color: '#E4405F' }}>Instagram</span>
-                  </a>
-               )}
-               {socialTt && (
-                  <a href={socialTt} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', background: 'var(--glass-card)', border: '1.5px solid var(--glass-border)', borderRadius: 16, textDecoration: 'none', color: 'var(--text-luxury)' }}>
-                     <span style={{ fontSize: 22, color: 'var(--text-bold)' }}>TikTok</span>
-                  </a>
-               )}
-               {socialEmail && (
-                  <a href={`mailto:${socialEmail}`} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', background: 'var(--glass-card)', border: '1.5px solid var(--glass-border)', borderRadius: 16, textDecoration: 'none', color: 'var(--text-luxury)' }}>
-                     <span style={{ fontSize: 22, color: '#EA4335' }}>Email</span>
-                  </a>
-               )}
-            </div>
+
+            {(shopPhone || shopHours || shopAddress) && (
+              <div className="contact-info-rows">
+                {shopPhone && (
+                  <button type="button" className="contact-info-row" onClick={() => openExternalLink(buildTelLink(shopPhone))}>
+                    <span className="contact-info-icon">📞</span>
+                    <span className="contact-info-text">
+                      <span className="contact-info-label">{lang === 'kh' ? 'ទូរស័ព្ទ' : 'Phone'}</span>
+                      <span className="contact-info-value">{shopPhone}</span>
+                    </span>
+                  </button>
+                )}
+                {shopHours && (
+                  <div className="contact-info-row contact-info-row--static">
+                    <span className="contact-info-icon">🕐</span>
+                    <span className="contact-info-text">
+                      <span className="contact-info-label">{lang === 'kh' ? 'ម៉ោងបើក' : 'Hours'}</span>
+                      <span className="contact-info-value">{shopHours}</span>
+                    </span>
+                  </div>
+                )}
+                {shopAddress && (
+                  <button type="button" className="contact-info-row" onClick={() => openExternalLink(buildMapsLink(shopAddress))}>
+                    <span className="contact-info-icon">📍</span>
+                    <span className="contact-info-text">
+                      <span className="contact-info-label">{lang === 'kh' ? 'ទីតាំង' : 'Address'}</span>
+                      <span className="contact-info-value">{shopAddress}</span>
+                    </span>
+                  </button>
+                )}
+              </div>
+            )}
+
+            {socialLinks.length > 0 && (
+              <>
+                {(shopPhone || shopHours || shopAddress) && (
+                  <>
+                    <div className="contact-section-divider" aria-hidden="true" />
+                    <p className="contact-social-heading">
+                      {lang === 'kh' ? 'បណ្ដាញសង្គម' : 'Social media'}
+                    </p>
+                  </>
+                )}
+                <div className="social-links-grid">
+                  {socialLinks.map((link) => (
+                    <button
+                      key={link.id}
+                      type="button"
+                      className="social-link-chip contact-link-row"
+                      onClick={() => openExternalLink(link.url)}
+                    >
+                      <span className="contact-link-icon-slot">
+                        <span
+                          className={`social-chip-icon${link.darkIcon ? ' social-chip-icon--dark' : ''}`}
+                          style={{ background: link.gradient || link.color }}
+                          aria-hidden="true"
+                        >
+                          <SocialBrandIcon id={link.id} />
+                        </span>
+                      </span>
+                      <span className="social-chip-label contact-link-text-block">{link.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
          </div>
       )}
 

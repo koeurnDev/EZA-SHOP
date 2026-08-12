@@ -2,23 +2,27 @@ import React from 'react';
 import DarkSelect from '../DarkSelect';
 import { useUser } from '../../../context/UserContext';
 import AdminVariationsEditor from './AdminVariationsEditor';
+import { uploadMultipleImages } from '../../../utils/imageUtils';
 
 const AdminAddProductModal = React.memo(({
   isAddingProduct, isUploading, newProductData, setNewProductData, compressImage, setIsUploading,
   fetchWithRetry, BACKEND_URL, headers, categories, setIsAddingProduct, handlePreview, isSaving, submitAddProduct
 }) => {
-  const { t } = useUser();
+  const { t, lang } = useUser();
   if (!isAddingProduct) return null;
 
-  return (
-    <div className="admin-dashboard-overhaul" style={{ position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, background: 'rgba(0, 0, 0, 0.75)', backdropFilter: 'blur(12px)', padding: '20px', boxSizing: 'border-box' }}>
-      <div className="glass-card-luxury" style={{ width: '94%', maxWidth: 460, maxHeight: '90vh', padding: 22, display: 'flex', flexDirection: 'column', overflow: 'hidden', overflowX: 'hidden', background: 'var(--bg-surface, #ffffff)', backdropFilter: 'none', boxShadow: '0 25px 60px rgba(0,0,0,0.5)', border: '1px solid var(--border-subtle, rgba(0,0,0,0.15))' }}>
-        <h3 style={{ marginBottom: 16, flexShrink: 0, fontSize: 18, fontWeight: 900 }}>➕ {t('admin_add_product')}</h3>
+  const categoryInList = categories.some(c => c.name === newProductData.category);
+  const categorySelectValue = categoryInList ? newProductData.category : 'OTHER';
 
-        <div style={{ overflowY: 'auto', flex: 1, paddingRight: 6, paddingBottom: 40 }}>
+  return (
+    <div className="admin-dashboard-overhaul admin-product-modal-overlay">
+      <div className="admin-product-modal-sheet">
+        <h3 className="admin-product-modal-header">{t('admin_add_product')}</h3>
+
+        <div className="admin-product-modal-body">
           <div style={{ marginBottom: 14 }}>
             <label style={{ display: 'block', fontSize: 11, fontWeight: 800, marginBottom: 8, opacity: 0.6 }}>{t('admin_product_image')}</label>
-            <label className="upload-zone-luxury" style={{ height: 140, position: 'relative' }}>
+            <label className="upload-zone-luxury" style={{ position: 'relative' }}>
               {isUploading && (
                 <div style={{ position: 'absolute', inset: 0, background: 'var(--bg-soft)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', zIndex: 10, borderRadius: 20 }}>
                   <div className="pd-pulse-loader" style={{ fontSize: 28, marginBottom: 8 }}>⌛</div>
@@ -52,19 +56,19 @@ const AdminAddProductModal = React.memo(({
           <div style={{ marginBottom: 12 }}>
             <label style={{ display: 'block', fontSize: 11, fontWeight: 800, marginBottom: 8, opacity: 0.6 }}>{t('admin_product_category')}</label>
             <DarkSelect
-              value={categories.some(c => c.name === newProductData.category) ? newProductData.category : 'OTHER'}
-              onChange={val => setNewProductData({ ...newProductData, category: val })}
+              value={categorySelectValue}
+              onChange={val => setNewProductData({ ...newProductData, category: val === 'OTHER' ? '' : val })}
               placeholder={t('admin_product_category')}
               options={[
                 ...categories.map(c => ({ value: c.name, label: c.name.replace(/\s*\(.*?\)/g, '') })),
-                { value: 'OTHER', label: `➕ ${t('admin_add_product')}` }
+                { value: 'OTHER', label: t('admin_custom_category') }
               ]}
             />
             <input
               className="input-glass-admin"
-              style={{ marginTop: 8, display: categories.some(c => c.name === newProductData.category) ? 'none' : 'block' }}
-              placeholder="វាយបញ្ចូលឈ្មោះប្រភេទថ្មី..."
-              value={newProductData.category === 'OTHER' ? '' : newProductData.category}
+              style={{ marginTop: 8, display: categoryInList ? 'none' : 'block' }}
+              placeholder={lang === 'kh' ? 'វាយបញ្ចូលឈ្មោះប្រភេទថ្មី...' : 'Enter new category name...'}
+              value={newProductData.category || ''}
               onChange={e => setNewProductData({ ...newProductData, category: e.target.value })}
             />
           </div>
@@ -100,7 +104,9 @@ const AdminAddProductModal = React.memo(({
 
           <AdminVariationsEditor 
             variants={newProductData.variants || []} 
-            setVariants={(v) => setNewProductData({ ...newProductData, variants: v })} 
+            setVariants={(v) => setNewProductData({ ...newProductData, variants: v })}
+            category={newProductData.category || ''}
+            productName={newProductData.name || ''}
           />
 
           <div style={{ marginBottom: 14 }}>
@@ -124,16 +130,26 @@ const AdminAddProductModal = React.memo(({
                   </div>
                 )}
                 <span>+</span><label>{t('admin_add_image')}</label>
-                <input type="file" accept="image/*" style={{ display: 'none' }} disabled={isUploading} onChange={async e => {
-                  const file = e.target.files?.[0];
-                  if (file) {
-                    const compressed = await compressImage(file);
-                    const fd = new FormData();
-                    fd.append('image', compressed);
-                    setIsUploading(true);
-                    fetchWithRetry(`${BACKEND_URL}/api/admin/upload`, { method: 'POST', headers, body: fd }).then(d => {
-                      if (d.success && d.data?.url) setNewProductData(prev => ({ ...prev, additional_images: [...(prev.additional_images || []), d.data.url] }));
-                    }).finally(() => setIsUploading(false));
+                <input type="file" accept="image/*" multiple style={{ display: 'none' }} disabled={isUploading} onChange={async e => {
+                  const files = Array.from(e.target.files || []);
+                  e.target.value = '';
+                  if (!files.length) return;
+                  setIsUploading(true);
+                  try {
+                    const urls = await uploadMultipleImages(files, {
+                      compressImage,
+                      fetchWithRetry,
+                      uploadUrl: `${BACKEND_URL}/api/admin/upload`,
+                      headers
+                    });
+                    if (urls.length) {
+                      setNewProductData(prev => ({
+                        ...prev,
+                        additional_images: [...(prev.additional_images || []), ...urls]
+                      }));
+                    }
+                  } finally {
+                    setIsUploading(false);
                   }
                 }} />
               </label>
@@ -141,11 +157,11 @@ const AdminAddProductModal = React.memo(({
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: 8, marginTop: 15, flexShrink: 0 }}>
-          <button className="nav-pill-btn btn-destructive" style={{ flex: 1, minHeight: 48, padding: '0 5px' }} disabled={isSaving} onClick={() => setIsAddingProduct(false)}>{t('cancel')}</button>
-          <button className="nav-pill-btn btn-preview" style={{ flex: 1, minHeight: 48, padding: '0 5px' }} onClick={() => handlePreview(newProductData)}>👁️ {t('admin_preview')}</button>
-          <button className="ticket-btn-primary" style={{ flex: 1.2, minHeight: 48, padding: '0 5px' }} disabled={isSaving} onClick={submitAddProduct}>
-            {isSaving ? `⌛ ${t('admin_saving')}` : t('admin_save')}
+        <div className="admin-product-modal-footer">
+          <button className="nav-pill-btn btn-destructive" style={{ flex: 1 }} disabled={isSaving} onClick={() => setIsAddingProduct(false)}>{t('cancel')}</button>
+          <button className="nav-pill-btn btn-preview" style={{ flex: 1 }} onClick={() => handlePreview(newProductData)}>{t('admin_preview')}</button>
+          <button className="ticket-btn-primary" style={{ flex: 1.2 }} disabled={isSaving} onClick={submitAddProduct}>
+            {isSaving ? t('admin_saving') : t('admin_save')}
           </button>
         </div>
       </div>

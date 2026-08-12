@@ -27,7 +27,9 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
-    "setup:bot": "node scripts/setup-bot.js"
+    "setup:bot": "node scripts/setup-bot.js",
+    "scan:images": "node scripts/scan-broken-images.js",
+    "scan:images:dry": "node scripts/scan-broken-images.js --dry-run"
   },
   "overrides": {
     "axios": "^1.7.9",

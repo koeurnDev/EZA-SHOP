@@ -34,12 +34,13 @@ import OfflineBanner from './components/ui/OfflineBanner';
 import OfflineService from './services/OfflineService';
 import ErrorBoundary from './components/ui/ErrorBoundary';
 import FilterModal from './components/ui/FilterModal';
+import { parseProductStartParam } from './utils/shareUtils';
 const VisualSearchModal = lazy(() => import('./components/ui/VisualSearchModal'));
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || '';
 
 function App() {
-  const { tg, isVersionAtLeast, showAlert } = useTelegram();
+  const { tg, HapticFeedback, showAlert, isVersionAtLeast } = useTelegram();
   const { user, theme, lang, isSuperAdmin, t } = useUserState();
   const { 
     setView, setSelectedProduct, setSelectedCategory, setSearchTerm,
@@ -109,10 +110,37 @@ function App() {
         // Silent fail
       }
     };
-    pingServer(); // Initial ping on load
-    const interval = setInterval(pingServer, 2 * 60 * 1000); // Ping every 2 mins
+    pingServer();
+    const interval = setInterval(pingServer, 2 * 60 * 1000);
     return () => clearInterval(interval);
   }, [user?.id, tg?.initData]);
+
+  // 💓 Keep backend warm on Render free tier (public health ping)
+  useEffect(() => {
+    if (!BACKEND_URL) return;
+    const keepAlive = async () => {
+      try {
+        await fetch(`${BACKEND_URL}/api/alive`, { method: 'GET', keepalive: true });
+      } catch (_) {}
+    };
+    keepAlive();
+    const interval = setInterval(keepAlive, 10 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Open product from shared deep link (?startapp=product_123)
+  useEffect(() => {
+    if (!isSettingsLoaded || !products?.length || !tg) return;
+    const startParam = tg.initDataUnsafe?.start_param;
+    const productId = parseProductStartParam(startParam);
+    if (!productId) return;
+
+    const product = products.find(p => String(p.id) === String(productId));
+    if (product) {
+      setSelectedProduct(product);
+      setView('product_detail');
+    }
+  }, [isSettingsLoaded, products, tg, setSelectedProduct, setView]);
 
   // Navigation & BackButton Logic
   useEffect(() => {
@@ -157,7 +185,7 @@ function App() {
         phone: phoneClean.length < 9,
         address: !formData.address?.trim()
       });
-      if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
+      HapticFeedback?.notificationOccurred('error');
       setTimeout(() => setValidationErrors({}), 2000);
       return;
     }
@@ -211,7 +239,7 @@ function App() {
     
     if (result.success) {
       setLastOrder(result.data.order);
-      // Modal will automatically update via setLastOrder
+      clearCart();
       return true;
     } else {
       setShowInvoice(false); // Rollback on error
@@ -221,9 +249,7 @@ function App() {
   };
 
   const handleConfirmPayment = async (orderCode) => {
-    if (tg?.isVersionAtLeast?.('6.1') && tg.HapticFeedback) {
-      tg.HapticFeedback.impactOccurred('medium');
-    }
+    HapticFeedback?.impactOccurred('medium');
     const result = await fetchWithRetry(`${BACKEND_URL}/api/orders/confirm`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-TG-Data': window.Telegram?.WebApp?.initData || '' },
@@ -234,18 +260,16 @@ function App() {
       handlePaymentSuccess();
       return true;
     } else {
-      tg?.showAlert(result.error || 'Confirmation Failed');
+      showAlert(result.error || 'Confirmation Failed');
       return false;
     }
   };
   const handlePaymentSuccess = () => {
-    if (tg?.isVersionAtLeast?.('6.1') && tg.HapticFeedback) {
-      tg.HapticFeedback.notificationOccurred('success');
-    }
+    clearCart();
+    HapticFeedback?.notificationOccurred('success');
     setShowConfetti(true);
     setTimeout(() => {
       setShowConfetti(false);
-      clearCart();
       setView('home');
     }, 5000);
   };
@@ -276,6 +300,7 @@ function App() {
             paymentQrUrl={paymentQrUrl} paymentInfo={paymentInfo}
             BACKEND_URL={BACKEND_URL} 
             onPaymentSuccess={handlePaymentSuccess}
+            onCartClear={clearCart}
             onConfirmPayment={handleConfirmPayment}
             t={t} lang={lang}
           />
@@ -370,7 +395,7 @@ function App() {
           <VisualSearchModal onClose={() => setShowScanner(false)} />
         </Suspense>
       )}
-        <ModernBottomNav view={view} setView={setView} cartCount={totalItemsCount} isAdmin={isSuperAdmin} t={t} lang={lang} />
+        <ModernBottomNav view={view} setView={setView} cartCount={totalItemsCount} isAdmin={isSuperAdmin} t={t} lang={lang} isKeyboardVisible={isKeyboardVisible} />
         <OfflineBanner />
       </div>
     </ErrorBoundary>

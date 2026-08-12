@@ -35,7 +35,7 @@ const verifyUser = async (req, res, next) => {
   if (req.user && req.tgUser) return next();
 
   const authHeader = req.get('Authorization');
-  const initData = req.get('X-TG-Data');
+  const initData = req.get('X-TG-Data') || (req.method === 'GET' ? req.query.tg : null);
 
   // 1. Direct Telegram InitData validation
   if (initData) {
@@ -80,6 +80,8 @@ const verifyUser = async (req, res, next) => {
     // ⚡ Auto-sync Telegram Profile (photo, name, username) in background
     const fullName = [user.first_name, user.last_name].filter(Boolean).join(' ') || user.username || null;
     userRepository.updateLastSeen(String(user.id), fullName, user.photo_url || null, user.username || null).catch(() => {});
+    const telegramAvatarService = require('../services/telegramAvatarService');
+    telegramAvatarService.refreshUserAvatar(String(user.id)).catch(() => {});
 
     return next();
   }

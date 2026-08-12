@@ -33,6 +33,10 @@ services:
           type: redis
           name: redis
           property: connectionString
+      - key: UPSTASH_REDIS_REST_URL
+        sync: false
+      - key: UPSTASH_REDIS_REST_TOKEN
+        sync: false
 
   # 3. Redis (Job Queue & Cache)
   - type: redis

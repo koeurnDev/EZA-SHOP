@@ -83,6 +83,8 @@ const userController = {
       const username = tgUser.username || null;
 
       await userRepository.updateLastSeen(String(userId), userName, photoUrl, username);
+      const telegramAvatarService = require('../services/telegramAvatarService');
+      telegramAvatarService.refreshUserAvatar(String(userId)).catch(() => {});
       res.json({ success: true });
     } catch (err) {
       // Non-critical — always return 200 so frontend doesn't retry aggressively

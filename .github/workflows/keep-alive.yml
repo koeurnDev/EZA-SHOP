@@ -1,0 +1,25 @@
+name: Backend Keep-Alive 💓
+
+on:
+  schedule:
+    # Every 10 minutes — Render free tier sleeps after ~15 min idle
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping backend /api/alive
+        env:
+          BACKEND_URL: ${{ secrets.RENDER_BACKEND_URL }}
+        run: |
+          if [ -z "$BACKEND_URL" ]; then
+            echo "⚠️ RENDER_BACKEND_URL secret not set — skip (set in GitHub repo secrets)"
+            exit 0
+          fi
+          URL="${BACKEND_URL%/}/api/alive"
+          echo "Pinging $URL"
+          curl -fsS --max-time 30 "$URL" | head -c 500
+          echo ""
+          echo "✅ Keep-alive ping OK"

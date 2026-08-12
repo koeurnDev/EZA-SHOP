@@ -9,6 +9,18 @@
   padding-bottom: env(safe-area-inset-bottom, 0px); /* iOS safe area */
   box-shadow: 0 -4px 10px rgba(0, 0, 0, 0.05);
   z-index: 50;
+  transform: translateY(0);
+  opacity: 1;
+  transition:
+    transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1),
+    opacity 0.22s ease;
+  will-change: transform;
+}
+
+.modern-bottom-nav-container--hidden {
+  transform: translateY(100%);
+  opacity: 0;
+  pointer-events: none;
 }
 
 .modern-bottom-nav {
@@ -17,7 +29,8 @@
   align-items: center;
   height: 64px;
   max-width: 600px;
-  margin: 0 auto; /* Center on larger screens */
+  margin: 0 auto;
+  padding-bottom: 8px;
 }
 
 .modern-nav-btn {
@@ -37,7 +50,19 @@
 }
 
 .modern-nav-btn.active {
-  color: var(--text-bold); /* Very dark gray for active state */
+  color: var(--text-bold);
+}
+
+[data-theme='dark'] .modern-nav-btn.active {
+  color: #ffffff;
+}
+
+[data-theme='dark'] .modern-nav-btn {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+[data-theme='dark'] .modern-nav-indicator {
+  background-color: #ffffff;
 }
 
 .modern-nav-icon {

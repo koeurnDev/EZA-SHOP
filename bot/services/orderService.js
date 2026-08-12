@@ -8,11 +8,11 @@ const QueueService = require('./QueueService');
 const bakongService = require('./bakongService');
 const pool = require('../config/database');
 const { calculateBestDiscount, getDiscountedPrice } = require('../utils/discountUtils');
+const { calculateDeliveryFeeCents, toCents } = require('../utils/deliveryUtils');
 const { BakongKHQR, IndividualInfo, khqrData } = require('bakong-khqr');
 const khqr = new BakongKHQR();
 
 // 🛡️ Cent-based Integer Financial Arithmetic Helpers
-const toCents = (val) => Math.round(Number(val || 0) * 100);
 const fromCents = (cents) => Math.round(cents) / 100;
 
 const orderService = {
@@ -89,8 +89,6 @@ const orderService = {
       const lockedProducts = await productRepository.deductStockBatch(deductionPayload, client);
 
       // 3. Price Verification (Cent-Based Integer Financial Arithmetic)
-      const thresholdCents = toCents(dbSettings.delivery_threshold || '50');
-      const feeCents = toCents(dbSettings.delivery_fee || '1.50');
       let grossTotalCents = 0;
       let totalItemDiscountCents = 0;
 
@@ -120,7 +118,11 @@ const orderService = {
         totalItemDiscountCents += manualDiscountCents;
       }
 
-      const deliveryFeeCents = subtotalCents >= thresholdCents ? 0 : feeCents;
+      const deliveryFeeCents = calculateDeliveryFeeCents(
+        subtotalCents,
+        dbSettings.delivery_fee,
+        dbSettings.delivery_threshold
+      );
       const calculatedTotalCents = subtotalCents + deliveryFeeCents;
       const calculatedTotal = fromCents(calculatedTotalCents);
 

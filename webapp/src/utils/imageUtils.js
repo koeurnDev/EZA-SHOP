@@ -1,3 +1,34 @@
+export const getOptimizedThumbUrl = (url, width = 80) => {
+  if (!url) return '';
+  if (!url.includes('cloudinary.com')) return url;
+
+  const marker = '/upload/';
+  const idx = url.indexOf(marker);
+  if (idx === -1) return url;
+
+  const base = url.slice(0, idx + marker.length);
+  const rest = url.slice(idx + marker.length);
+  const versionPath = rest.match(/(v\d+\/.+)$/)?.[1] || rest;
+  return `${base}f_auto,q_auto,w_${width},h_${width},c_fill,g_auto/${versionPath}`;
+};
+
+export const handleImageError = (e, fallback = '/favicon.png') => {
+  if (!e?.target) return;
+  e.target.onerror = null;
+  if (e.target.src !== fallback) e.target.src = fallback;
+};
+
+export const resolveItemImageUrl = (item, productById) => {
+  const direct = item?.image || item?.product_image || item?.thumbnail;
+  if (direct) return direct;
+  const id = item?.id ?? item?.product_id;
+  if (id != null && productById) {
+    const product = productById.get(String(id));
+    if (product?.image) return product.image;
+  }
+  return '';
+};
+
 export const compressImage = (file, maxWidth = 1000, maxHeight = 1000, quality = 0.8) => {
   return new Promise((resolve, reject) => {
     // If not an image (e.g. video), return original
@@ -53,4 +84,17 @@ export const compressImage = (file, maxWidth = 1000, maxHeight = 1000, quality =
     };
     reader.onerror = (error) => reject(error);
   });
+};
+
+export const uploadMultipleImages = async (files, { compressImage, fetchWithRetry, uploadUrl, headers }) => {
+  const uploaded = [];
+  for (const file of files) {
+    if (!file?.type?.startsWith('image/')) continue;
+    const compressed = await compressImage(file);
+    const fd = new FormData();
+    fd.append('image', compressed);
+    const res = await fetchWithRetry(uploadUrl, { method: 'POST', headers, body: fd });
+    if (res.success && res.data?.url) uploaded.push(res.data.url);
+  }
+  return uploaded;
 };
