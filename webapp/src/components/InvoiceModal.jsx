@@ -271,9 +271,9 @@ const InvoiceModal = ({ order, onClose, paymentQrUrl, paymentInfo, BACKEND_URL, 
         {/* ── HEADER ── */}
         <div style={{ textAlign: 'center', padding: '20px 18px 14px', borderBottom: '1px dashed #e2e8f0' }}>
           <div style={{ display: 'inline-block', padding: 6, background: '#f8fafc', borderRadius: 16, marginBottom: 8 }}>
-            <img src={logoDataUrl || "/favicon.png"} alt="MO MO" crossOrigin="anonymous" style={{ width: 44, height: 44, borderRadius: 10, display: 'block' }} />
+            <img src={logoDataUrl || "/favicon.png"} alt="EZA SHOP" crossOrigin="anonymous" style={{ width: 44, height: 44, borderRadius: 10, display: 'block' }} />
           </div>
-          <div style={{ fontSize: 13, fontWeight: 900, color: '#0f172a', letterSpacing: 2 }}>MO MO BOUTIQUE</div>
+          <div style={{ fontSize: 13, fontWeight: 900, color: '#0f172a', letterSpacing: 2 }}>EZA SHOP</div>
           <div style={{ fontSize: 10, color: '#64748b', fontWeight: 700, marginTop: 2 }}>
             {!isDraft && (() => {
               const d = new Date(localOrder.created_at);
@@ -498,7 +498,7 @@ const InvoiceModal = ({ order, onClose, paymentQrUrl, paymentInfo, BACKEND_URL, 
             </div>
 
             <div className="khqr-body">
-              <div className="khqr-shop-name order-id-lux">MO MO BOUTIQUE</div>
+              <div className="khqr-shop-name order-id-lux">EZA SHOP</div>
               <div className="khqr-amount-lux">${parseFloat(localOrder.total).toFixed(2)}</div>
 
               <div className="khqr-meta-pill">

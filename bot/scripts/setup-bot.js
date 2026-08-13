@@ -25,7 +25,7 @@ async function setupBot() {
       body: JSON.stringify({
         menu_button: {
           type: 'web_app',
-          text: '🛍️ ចូលហាង MO-MO',
+          text: '🛍️ ចូលហាង EZA SHOP',
           web_app: { url: WEBAPP_URL }
         }
       })

@@ -487,7 +487,7 @@ const adminController = {
           const bot = require('../config/telegram');
           if (bot && bot.telegram) {
             await bot.telegram.sendPhoto(req.user.user_id, url, {
-              caption: `🧾 *វិក្កយបត្រ MO MO BOUTIQUE*\n\nសូមអរគុណសម្រាប់ការគាំទ្រ! វិក្កយបត្ររបស់អ្នកត្រូវបានរក្សាទុកជោគជ័យ។`,
+              caption: `🧾 *វិក្កយបត្រ EZA SHOP*\n\nសូមអរគុណសម្រាប់ការគាំទ្រ! វិក្កយបត្ររបស់អ្នកត្រូវបានរក្សាទុកជោគជ័យ។`,
               parse_mode: 'Markdown'
             });
           }

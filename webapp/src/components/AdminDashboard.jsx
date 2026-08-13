@@ -122,7 +122,7 @@ const AdminDashboard = ({
   const [shopLogoUrl, setShopLogoUrl] = useState('');
   const [paymentQrUrl, setPaymentQrUrl] = useState('');
   const [paymentInfo, setPaymentInfo] = useState('');
-  const [receiptShopName, setReceiptShopName] = useState('MO-MO Boutique');
+  const [receiptShopName, setReceiptShopName] = useState('EZA SHOP');
   const [receiptSubtitle, setReceiptSubtitle] = useState('អីវ៉ាន់បោះដុំ និងរាយ');
   const [receiptNote, setReceiptNote] = useState('សូមអរគុណសម្រាប់ការគាំទ្រ!');
   const [socialFb, setSocialFb] = useState('');
@@ -157,7 +157,7 @@ const AdminDashboard = ({
       setShopLogoUrl(s.shop_logo_url || '');
       setPaymentQrUrl(s.payment_qr_url || '');
       setPaymentInfo(s.payment_info || '');
-      setReceiptShopName(s.receipt_shop_name || 'MO-MO Boutique');
+      setReceiptShopName(s.receipt_shop_name || 'EZA SHOP');
       setReceiptSubtitle(s.receipt_subtitle || 'អីវ៉ាន់បោះដុំ និងរាយ');
       setReceiptNote(s.receipt_note || 'សូមអរគុណសម្រាប់ការគាំទ្រ!');
       setSocialFb(s.social_fb || '');
@@ -756,7 +756,7 @@ const AdminDashboard = ({
                 </svg>
               </span>
               <h2 className="admin-title-pro">
-                <span className="admin-title-kh">{lang === 'kh' ? 'គ្រប់គ្រង MO-MO' : 'Manage MO-MO'}</span>
+                <span className="admin-title-kh">{lang === 'kh' ? 'គ្រប់គ្រង EZA SHOP' : 'Manage EZA SHOP'}</span>
               </h2>
             </div>
             <div className="admin-header-actions">
@@ -1032,7 +1032,7 @@ const PrintableOrder = ({ order, shopName, subtitle, shopNote }) => {
   return (
     <div className="printable-order">
       <div className="print-header">
-        <h2 style={{ margin: 0, fontSize: 24, fontWeight: 950 }}>{shopName || 'MO-MO Boutique'}</h2>
+        <h2 style={{ margin: 0, fontSize: 24, fontWeight: 950 }}>{shopName || 'EZA SHOP'}</h2>
         <p style={{ margin: '5px 0', fontSize: 14 }}>{subtitle || 'អីវ៉ាន់បោះដុំ និងរាយ'}</p>
       </div>
       <div className="print-divider"></div>

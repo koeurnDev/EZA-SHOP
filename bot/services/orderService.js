@@ -154,7 +154,7 @@ const orderService = {
 
         const individualInfo = new IndividualInfo(
           bakongId,
-          merchantName || 'MO MO Boutique',
+          merchantName || 'EZA SHOP',
           'Phnom Penh',
           optionalData
         );
@@ -281,7 +281,7 @@ const orderService = {
 
         const individualInfo = new IndividualInfo(
           bakongId,
-          merchantName || 'MO MO Boutique',
+          merchantName || 'EZA SHOP',
           'Phnom Penh',
           optionalData
         );

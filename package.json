@@ -1,5 +1,5 @@
 {
-  "name": "mo-mo",
+  "name": "eza-shop",
   "private": true,
   "scripts": {
     "test": "node --test shared/tests/utils.test.js shared/tests/bannerLink.test.js",

@@ -35,7 +35,7 @@ const bot = new Telegraf(process.env.BOT_TOKEN, telegrafOptions);
 
 // 1. Start Command
 bot.start((ctx) => {
-  ctx.reply(`សួស្តី ${escapeMarkdown(ctx.from.first_name)}! សូមស្វាគមន៍មកកាន់ MO MO Boutique 🛍️\n\nសូមចុចប៊ូតុងខាងក្រោមដើម្បីចូលមើលទំនិញថ្មីៗ`, 
+  ctx.reply(`សួស្តី ${escapeMarkdown(ctx.from.first_name)}! សូមស្វាគមន៍មកកាន់ EZA SHOP 🛍️\n\nសូមចុចប៊ូតុងខាងក្រោមដើម្បីចូលមើលទំនិញថ្មីៗ`, 
     Markup.inlineKeyboard([
       [Markup.button.webApp('Shop Now 🛍️', process.env.WEBAPP_URL)],
       [Markup.button.callback('មើលការកម្ម៉ង់ / Orders 📦', 'view_orders')]
