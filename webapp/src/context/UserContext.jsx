@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import translations from '../translations.json';
 import { useTelegram } from './TelegramContext';
+import { syncTelegramChrome } from '../utils/telegramThemeSync';
 
 const UserStateContext = createContext(null);
 const UserDispatchContext = createContext(null);
@@ -45,10 +46,17 @@ export const UserProvider = ({ children }) => {
     setLang(prev => {
       const next = prev === 'kh' ? 'en' : 'kh';
       localStorage.setItem('momo_lang', next);
+      document.documentElement.setAttribute('data-lang', next);
+      document.documentElement.lang = next === 'kh' ? 'km' : 'en';
       if (tg?.HapticFeedback) tg.HapticFeedback.selectionChanged();
       return next;
     });
   }, [tg]);
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-lang', lang);
+    document.documentElement.lang = lang === 'kh' ? 'km' : 'en';
+  }, [lang]);
 
   const toggleTheme = useCallback(() => {
     setTheme(prev => {
@@ -56,15 +64,7 @@ export const UserProvider = ({ children }) => {
       localStorage.setItem('momo_theme', next);
       document.documentElement.setAttribute('data-theme', next);
       if (tg?.HapticFeedback) tg.HapticFeedback.selectionChanged();
-      
-      // Sync with Telegram core UI (Using strictly validated Hex strings)
-      const headerColor = next === 'dark' ? '#0f172a' : '#fdfbf0';
-      const bgColor = next === 'dark' ? '#020617' : '#fdfbf0';
-      
-      if (tg?.isVersionAtLeast?.('6.1')) {
-        if (tg.setHeaderColor) tg.setHeaderColor(headerColor);
-        if (tg.setBackgroundColor) tg.setBackgroundColor(bgColor);
-      }
+      syncTelegramChrome(tg, next);
       
       return next;
     });
@@ -81,14 +81,7 @@ export const UserProvider = ({ children }) => {
 
       setTheme(finalTheme);
       document.documentElement.setAttribute('data-theme', finalTheme);
-      
-      // Initial Sync
-      const hColor = finalTheme === 'dark' ? '#0f172a' : '#fdfbf0';
-      const bColor = finalTheme === 'dark' ? '#020617' : '#fdfbf0';
-      if (tg?.isVersionAtLeast?.('6.1')) {
-        if (tg.setHeaderColor) tg.setHeaderColor(hColor);
-        if (tg.setBackgroundColor) tg.setBackgroundColor(bColor);
-      }
+      syncTelegramChrome(tg, finalTheme);
       
       const savedLang = localStorage.getItem('momo_lang');
       if (!savedLang) {

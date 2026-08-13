@@ -2,7 +2,7 @@
   "name": "mo-mo",
   "private": true,
   "scripts": {
-    "test": "node --test shared/tests/utils.test.js",
+    "test": "node --test shared/tests/utils.test.js shared/tests/bannerLink.test.js",
     "bot:start": "npm start --prefix bot",
     "bot:migrate": "npm run migrate --prefix bot",
     "bot:smoke": "npm run smoke --prefix bot",

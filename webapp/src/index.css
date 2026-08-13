@@ -10,7 +10,11 @@
   --safe-right: env(safe-area-inset-right, 0px);
   
   /* 🎨 Background Sync: Ensure no gaps between components */
-  --bg-app-raw: 248, 250, 252; /* #f8fafc */
+  --bg-app-raw: 253, 251, 240; /* #FDFBF0 — matches App.css --bg-app */
+}
+
+[data-theme='dark'] {
+  --bg-app-raw: 18, 18, 18; /* #121212 */
 }
 
 @layer base {

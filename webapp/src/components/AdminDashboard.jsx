@@ -8,6 +8,11 @@ import useScrollHideBar from '../hooks/useScrollHideBar';
 import { useShopDispatch } from '../context/ShopContext';
 import ProductDetail from './ProductDetail';
 import { compressImage } from '../utils/imageUtils';
+import {
+  parseBannerEntries,
+  serializeBannerEntries,
+  migrateBannerLinkTargets
+} from '../utils/bannerLinkUtils';
 import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import '../styles/admin-dashboard.css';
 
@@ -570,9 +575,9 @@ const AdminDashboard = ({
       const res = await fetchWithRetry(`${BACKEND_URL}/api/admin/upload`, { method: 'POST', headers: headers, body: formData });
       if (res.success && (res.url || res.data?.url)) {
         const url = res.url || res.data.url;
-        const currentBanners = promoBannerUrl ? promoBannerUrl.split(',').map(u => u.trim()).filter(Boolean) : [];
-        currentBanners.push(url);
-        const newBanners = currentBanners.join(',');
+        const entries = parseBannerEntries(promoBannerUrl);
+        entries.push({ url, rawTarget: '' });
+        const newBanners = serializeBannerEntries(entries);
         const saved = await updateSettingValue('promo_banner_url', newBanners);
         if (saved) {
           setPromoBannerUrl(newBanners);
@@ -587,12 +592,13 @@ const AdminDashboard = ({
   };
 
   const removeBanner = async (indexToRemove) => {
-    const currentBanners = promoBannerUrl ? promoBannerUrl.split(',').map(u => u.trim()).filter(Boolean) : [];
-    const removedBanner = currentBanners[indexToRemove];
-    currentBanners.splice(indexToRemove, 1);
-    const newBanners = currentBanners.join(',');
+    const entries = parseBannerEntries(promoBannerUrl);
+    const removedBanner = entries[indexToRemove];
+    if (!removedBanner) return;
+    entries.splice(indexToRemove, 1);
+    const newBanners = serializeBannerEntries(entries);
+    const previousBanners = promoBannerUrl;
 
-    // ✅ Optimistic update — update UI immediately before waiting for API
     setPromoBannerUrl(newBanners);
     setGlobalPromoBannerUrl(newBanners);
     if (mutateShopData) {
@@ -604,32 +610,48 @@ const AdminDashboard = ({
 
     const saved = await updateSettingValue('promo_banner_url', newBanners);
     if (!saved) {
-      // Rollback if save failed
-      setPromoBannerUrl(promoBannerUrl);
-      setGlobalPromoBannerUrl(promoBannerUrl);
-    } else if (removedBanner) {
-      const imageUrl = removedBanner.split('|')[0];
+      setPromoBannerUrl(previousBanners);
+      setGlobalPromoBannerUrl(previousBanners);
+    } else if (removedBanner?.url) {
       fetchWithRetry(`${BACKEND_URL}/api/admin/delete-file`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...headers },
-        body: JSON.stringify({ url: imageUrl })
+        body: JSON.stringify({ url: removedBanner.url })
       }).catch(() => {});
     }
   };
 
-  const updateBannerProduct = async (index, productId) => {
-    const currentBanners = promoBannerUrl ? promoBannerUrl.split(',').map(u => u.trim()).filter(Boolean) : [];
-    if (index >= 0 && index < currentBanners.length) {
-      let urlPart = currentBanners[index].split('|')[0];
-      currentBanners[index] = productId ? `${urlPart}|${productId}` : urlPart;
-      const newBanners = currentBanners.join(',');
-      const saved = await updateSettingValue('promo_banner_url', newBanners);
-      if (saved) {
-        setPromoBannerUrl(newBanners);
-        setGlobalPromoBannerUrl(newBanners);
-      }
+  const updateBannerProduct = async (index, linkTarget) => {
+    const entries = parseBannerEntries(promoBannerUrl);
+    if (index < 0 || index >= entries.length) return;
+
+    const url = entries[index].url;
+    entries[index] = { url, rawTarget: linkTarget || '' };
+    const newBanners = serializeBannerEntries(entries);
+    const previousBanners = promoBannerUrl;
+
+    setPromoBannerUrl(newBanners);
+    setGlobalPromoBannerUrl(newBanners);
+
+    const saved = await updateSettingValue('promo_banner_url', newBanners);
+    if (!saved) {
+      setPromoBannerUrl(previousBanners);
+      setGlobalPromoBannerUrl(previousBanners);
     }
   };
+
+  const bannerLinksMigratedRef = useRef(false);
+  useEffect(() => {
+    if (bannerLinksMigratedRef.current || !promoBannerUrl || !categories.length) return;
+
+    const { raw, changed } = migrateBannerLinkTargets(promoBannerUrl, categories);
+    bannerLinksMigratedRef.current = true;
+    if (!changed) return;
+
+    setPromoBannerUrl(raw);
+    setGlobalPromoBannerUrl(raw);
+    updateSettingValue('promo_banner_url', raw);
+  }, [promoBannerUrl, categories]);
 
   const handleLogoUpload = async (file) => {
     const formData = new FormData();

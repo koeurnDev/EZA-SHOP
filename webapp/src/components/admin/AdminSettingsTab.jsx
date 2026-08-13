@@ -2,7 +2,14 @@ import React, { useEffect, useMemo, useRef } from 'react';
 import DarkSelect from './DarkSelect';
 import { useUser } from '../../context/UserContext';
 import { getDeliveryRuleSummary, isAlwaysFreeDelivery, parseDeliverySetting } from '../../utils/deliveryUtils';
-import { getBannerDesignSize, getBannerSafeZoneHint, getBannerDisplayNote, BANNER_SPECS } from '../../utils/bannerUtils';
+import { getBannerDesignSize, getBannerSafeZoneHint, getBannerDisplayNote, getOptimizedBannerUrl } from '../../utils/bannerUtils';
+import {
+  parseBannerEntries,
+  parseBannerTarget,
+  buildBannerTarget,
+  resolveCategoryLinkValue,
+  getCategoryOptionValue
+} from '../../utils/bannerLinkUtils';
 import { DEMO_SOCIAL_LINKS, normalizeSocialLink } from '../../utils/socialLinkUtils';
 
 const AdminSettingsTab = React.memo(({
@@ -185,33 +192,29 @@ const AdminSettingsTab = React.memo(({
           <p className="admin-banner-size-hint">{getBannerSafeZoneHint(lang)}</p>
           <p className="admin-banner-preview-note">{getBannerDisplayNote(lang)}</p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 12 }}>
-            {(promoBannerUrl ? promoBannerUrl.split(',').map(u => u.trim()).filter(Boolean) : []).map((img, idx) => {
-              const [url, targetStr] = img.split('|');
-              let linkType = '';
-              let linkValue = '';
-              if (targetStr) {
-                if (targetStr.startsWith('cat:')) { linkType = 'cat'; linkValue = targetStr.substring(4); }
-                else if (targetStr.startsWith('ext:')) { linkType = 'ext'; linkValue = targetStr.substring(4); }
-                else if (targetStr.startsWith('prod:')) { linkType = 'prod'; linkValue = targetStr.substring(5); }
-                else { linkType = 'prod'; linkValue = targetStr; }
-              }
+            {parseBannerEntries(promoBannerUrl).map((entry, idx) => {
+              const { url } = entry;
+              const { linkType, linkValue } = parseBannerTarget(entry.rawTarget || entry.targetStr);
+              const productValue = linkType === 'prod' ? linkValue : '';
+              const categoryValue = linkType === 'cat' ? resolveCategoryLinkValue(categories, linkValue) : '';
+              const externalValue = linkType === 'ext' ? linkValue : '';
 
               return (
-              <div key={idx} className="admin-banner-item">
+              <div key={`${url}-${idx}`} className="admin-banner-item">
                 <div className="admin-banner-thumb">
-                  <img src={url} alt="" crossOrigin="anonymous" />
+                  <img src={getOptimizedBannerUrl(url)} alt="" crossOrigin="anonymous" />
                   <span className="admin-banner-aspect-badge">16:9</span>
-                  <button className="remove-thumb-btn" onClick={() => removeBanner(idx)}>✕</button>
+                  <button type="button" className="remove-thumb-btn" onClick={() => removeBanner(idx)}>✕</button>
                 </div>
-                
+
                 <select
                   value={linkType}
                   onChange={(e) => {
                     const newType = e.target.value;
                     if (!newType) updateBannerProduct(idx, '');
-                    else if (newType === 'prod' && products?.length) updateBannerProduct(idx, `prod:${products[0].id}`);
-                    else if (newType === 'cat' && categories?.length) updateBannerProduct(idx, `cat:${categories[0].id}`);
-                    else if (newType === 'ext') updateBannerProduct(idx, `ext:https://`);
+                    else if (newType === 'prod') updateBannerProduct(idx, 'prod:');
+                    else if (newType === 'cat') updateBannerProduct(idx, 'cat:');
+                    else if (newType === 'ext') updateBannerProduct(idx, 'ext:');
                   }}
                   style={{ width: '100%', padding: '4px', fontSize: '10px', background: 'var(--bg-soft)', color: 'var(--text-main)', border: '1px solid var(--border-subtle)', borderRadius: '6px' }}
                 >
@@ -223,27 +226,31 @@ const AdminSettingsTab = React.memo(({
 
                 {linkType === 'prod' && (
                   <select
-                    value={linkValue}
-                    onChange={(e) => updateBannerProduct(idx, `prod:${e.target.value}`)}
+                    value={productValue}
+                    onChange={(e) => updateBannerProduct(idx, buildBannerTarget('prod', e.target.value))}
                     style={{ width: '100%', padding: '4px', fontSize: '10px', background: 'var(--bg-soft)', color: 'var(--text-main)', border: '1px solid var(--border-subtle)', borderRadius: '6px' }}
                   >
+                    <option value="">{lang === 'kh' ? '— ជ្រើសរើសទំនិញ —' : '— Select product —'}</option>
                     {products?.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                   </select>
                 )}
                 {linkType === 'cat' && (
                   <select
-                    value={linkValue}
-                    onChange={(e) => updateBannerProduct(idx, `cat:${e.target.value}`)}
+                    value={categoryValue}
+                    onChange={(e) => updateBannerProduct(idx, buildBannerTarget('cat', e.target.value))}
                     style={{ width: '100%', padding: '4px', fontSize: '10px', background: 'var(--bg-soft)', color: 'var(--text-main)', border: '1px solid var(--border-subtle)', borderRadius: '6px' }}
                   >
-                    {categories?.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    <option value="">{lang === 'kh' ? '— ជ្រើសរើសប្រភេទ —' : '— Select category —'}</option>
+                    {categories?.map(c => (
+                      <option key={c.id} value={getCategoryOptionValue(c)}>{c.name}</option>
+                    ))}
                   </select>
                 )}
                 {linkType === 'ext' && (
                   <input
-                    type="text"
-                    value={linkValue}
-                    onChange={(e) => updateBannerProduct(idx, `ext:${e.target.value}`)}
+                    type="url"
+                    value={externalValue}
+                    onChange={(e) => updateBannerProduct(idx, buildBannerTarget('ext', e.target.value.trim()))}
                     placeholder="https://..."
                     style={{ width: '100%', padding: '4px', fontSize: '10px', background: 'var(--bg-soft)', color: 'var(--text-main)', border: '1px solid var(--border-subtle)', borderRadius: '6px', boxSizing: 'border-box' }}
                   />

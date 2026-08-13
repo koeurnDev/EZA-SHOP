@@ -1,20 +1,13 @@
 /** Promo banner display specs — keep in sync with App.css (.ads-hero-wrapper) */
 export const BANNER_SPECS = {
-  /** Export this size — one file for desktop + mobile */
   designWidth: 1200,
   designHeight: 675,
   designRatio: '16:9',
-  /** Keep logo / headline inside this centered area (mobile frame is 4:3) */
-  safeZoneWidth: 900,
-  safeZoneHeight: 675,
-  safeZoneRatio: '4:3',
-  aspectDesktop: '16 / 9',
-  aspectMobile: '4 / 3',
-  maxServeWidth: 1000,
+  aspectRatio: '16 / 9',
+  maxServeWidth: 1200,
   formats: 'JPG, PNG, WebP'
 };
 
-/** Primary line for admin — what to export from Figma/Canva */
 export function getBannerDesignSize(lang = 'kh') {
   const { designWidth, designHeight, designRatio, formats } = BANNER_SPECS;
   if (lang === 'kh') {
@@ -23,28 +16,36 @@ export function getBannerDesignSize(lang = 'kh') {
   return `📐 Design / Export: ${designWidth}×${designHeight} px (${designRatio}) · ${formats}`;
 }
 
-/** Safe zone — where to place text so mobile does not feel empty */
 export function getBannerSafeZoneHint(lang = 'kh') {
-  const { safeZoneWidth, safeZoneHeight, safeZoneRatio } = BANNER_SPECS;
   if (lang === 'kh') {
-    return `🎯 Safe zone (ខ្លឹមកណ្ដាល): ${safeZoneWidth}×${safeZoneHeight} px (${safeZoneRatio}) — ដាក់អត្ថបទ/ឡូហ្គោនៅក្នុងនេះ`;
+    return '🎯 ដាក់អត្ថបទ/ឡូហ្គោកណ្ដាល — ជៀវខាងក្រៅអាចត្រូវ crop';
   }
-  return `🎯 Safe zone (center): ${safeZoneWidth}×${safeZoneHeight} px (${safeZoneRatio}) — keep text & logo here`;
+  return '🎯 Keep text & logo centered — edges may crop (cover fill)';
 }
 
-/** How the app displays the same file */
 export function getBannerDisplayNote(lang = 'kh') {
   if (lang === 'kh') {
-    return 'បង្ហាញ: full-width · Desktop 16:9 · Phone frame 4:3 (រូបដដែល — object-fit contain)';
+    return 'បង្ហាញ: full-width 16:9 · phone + desktop ដូចគ្នា · fill edge-to-edge';
   }
-  return 'Display: full-width · Desktop 16:9 · Phone frame 4:3 (same file — object-fit contain)';
+  return 'Display: full-width 16:9 · same on phone & desktop · edge-to-edge fill';
 }
 
-/** @deprecated use getBannerDesignSize + getBannerSafeZoneHint */
-export function getBannerSizeHint(lang = 'kh') {
-  return `${getBannerDesignSize(lang)} · ${getBannerSafeZoneHint(lang)}`;
+/** Cloudinary banner — crop to 16:9 fill for crisp storefront display */
+export function getOptimizedBannerUrl(url) {
+  if (!url || typeof url !== 'string') return url;
+  if (!url.includes('cloudinary.com')) return url;
+
+  const marker = '/upload/';
+  const idx = url.indexOf(marker);
+  if (idx === -1) return url;
+
+  const base = url.slice(0, idx + marker.length);
+  const rest = url.slice(idx + marker.length);
+  const versionPath = rest.match(/(v\d+\/.+)$/)?.[1] || rest;
+  const { designWidth, designHeight } = BANNER_SPECS;
+  return `${base}f_auto,q_90,w_${designWidth},h_${designHeight},c_fill,g_center/${versionPath}`;
 }
 
 export function getBannerPreviewAspectRatio() {
-  return BANNER_SPECS.aspectDesktop;
+  return BANNER_SPECS.aspectRatio;
 }

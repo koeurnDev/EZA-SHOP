@@ -59,6 +59,10 @@ body {
   scrollbar-width: none; /* Firefox */
   -ms-overflow-style: none; /* IE/Edge */
 }
+[data-lang='kh'] body,
+[data-lang='kh'] .app-container {
+  font-family: var(--font-khmer);
+}
 
 body::-webkit-scrollbar,
 *::-webkit-scrollbar {
@@ -315,7 +319,7 @@ body::-webkit-scrollbar,
 .ads-hero-img {
   width: 100%;
   height: 100%;
-  object-fit: contain;
+  object-fit: cover;
   object-position: center;
   display: block;
   image-rendering: auto;
@@ -337,11 +341,6 @@ body::-webkit-scrollbar,
 @keyframes banner-skeleton-load {
   0% { background-position: 200% 0; }
   100% { background-position: -200% 0; }
-}
-@media (max-width: 480px) {
-  .ads-hero-wrapper {
-    aspect-ratio: 4 / 3;
-  }
 }
 
 /* Load more products */
