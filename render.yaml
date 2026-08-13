@@ -1,5 +1,5 @@
 services:
-  # 1. Backend (Telegram Bot)
+  # 1. Backend (Telegram Bot) — same pattern as MO-MO tg-mini-app-bot
   - type: web
     name: eza-shop-bot
     env: node
@@ -30,23 +30,13 @@ services:
         value: "12"
       - key: DB_POOL_MIN
         value: "2"
-      - key: REDIS_URL
-        fromService:
-          type: redis
-          name: redis
-          property: connectionString
+      # Optional — add Upstash later for faster cache (not required)
       - key: UPSTASH_REDIS_REST_URL
         sync: false
       - key: UPSTASH_REDIS_REST_TOKEN
         sync: false
 
-  # 3. Redis (Job Queue & Cache)
-  - type: redis
-    name: redis
-    plan: starter
-    ipAllowList: [] # Required for internal access
-
-  # 2. Frontend (Mini App WebApp)
+  # 2. Frontend (Mini App) — same pattern as MO-MO tg-mini-app-webapp
   - type: web
     name: eza-shop-web
     env: static
