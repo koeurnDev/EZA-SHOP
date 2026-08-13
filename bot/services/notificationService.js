@@ -145,6 +145,13 @@ const sendTelegramNotification = async (type, adminId, userId, order, items = []
       }
     });
 
+    if (userId) {
+      const userTicket = `✅ *បានទទួលរូបបង់ប្រាក់ (Receipt Received)*\n` +
+        `🆔 លេខសម្គាល់: \`${safeOrderCode}\`\n` +
+        `⏳ ក្រុមការងារកំពុងពិនិត្យ — សូមរង់ចាំការបញ្ជាក់។ មិនចាំបាច់បង់ម្តងទៀតទេ! 🙏`;
+      await safeSendTelegram('sendMessage', userId, userTicket, { parse_mode: 'Markdown' });
+    }
+
   } else if (type === 'broadcast') {
     const { userIds, message, photoUrl } = order || {};
     console.log(`📣 [Broadcast Queue Worker] Executing broadcast for ${(userIds || []).length} users...`);

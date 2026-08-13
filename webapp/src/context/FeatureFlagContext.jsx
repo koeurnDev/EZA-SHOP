@@ -11,7 +11,7 @@ export const FeatureFlagProvider = ({ children }) => {
     try {
       const saved = localStorage.getItem('momo_flags');
       return saved ? JSON.parse(saved) : {
-        BETA_WISH_LIST: false,
+        BETA_WISH_LIST: true,
         NEW_CHECKOUT_FLOW: false,
         PREMIUM_ADMIN_STATS: false
       };

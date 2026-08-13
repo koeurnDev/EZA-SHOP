@@ -8,6 +8,7 @@ import DeliveryForm from './DeliveryForm';
 import { formatCategory } from '../utils/langUtils';
 import { getVariantUnitMode, getCapacityIcon } from '../utils/variantUnitUtils';
 import { calculateDeliveryFee, formatDeliveryFeeLabel, isAlwaysFreeDelivery, parseDeliverySetting } from '../utils/deliveryUtils';
+import { getOptimizedThumbUrl, handleImageError, resolveItemImageUrl } from '../utils/imageUtils';
 import './ui/ModernCart.css';
 
 const CartPage = ({
@@ -16,7 +17,7 @@ const CartPage = ({
 }) => {
   const { cart, totalPrice, totalItemsCount } = useCartState();
   const { updateQty, clearCart } = useCartDispatch();
-  const { activeDiscounts, deliveryThreshold, deliveryFee } = useShopState();
+  const { activeDiscounts, deliveryThreshold, deliveryFee, products } = useShopState();
   const { setView } = useShopDispatch();
   const { t, lang, user } = useUserState();
   const { tg } = useTelegram();
@@ -27,6 +28,11 @@ const CartPage = ({
   const [promoLoading, setPromoLoading] = useState(false);
   const [promoError, setPromoError] = useState('');
   const threshold = parseDeliverySetting(deliveryThreshold, 50);
+
+  const productById = useMemo(
+    () => new Map((products || []).map((p) => [String(p.id), p])),
+    [products]
+  );
 
   const totalDiscount = useMemo(() => {
     return cart.reduce((sum, item) => {
@@ -143,7 +149,7 @@ const CartPage = ({
           </button>
           <h2 className="text-xl font-black text-bold">{t('cart_title')}</h2>
         </div>
-        <div className="flex flex-col items-center justify-center py-16">
+        <div className="cart-empty-state">
           <div className="relative mb-8 flex justify-center items-center">
              <div className="absolute rounded-full opacity-20 blur-3xl" style={{ width: '120px', height: '120px', background: 'var(--text-bold)' }}></div>
              <svg width="100" height="100" viewBox="0 0 24 24" fill="none" stroke="var(--text-bold)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="relative z-10" style={{ filter: 'drop-shadow(0 8px 16px rgba(0,0,0,0.08))' }}>
@@ -152,11 +158,15 @@ const CartPage = ({
                 <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
              </svg>
           </div>
-          <h3 className="text-xl font-black text-bold mb-2 text-center">{lang === 'kh' ? 'កន្ត្រករបស់អ្នកទទេស្អាត' : 'Your cart is empty'}</h3>
-          <p className="text-sm font-bold text-muted mb-8 text-center max-w-[260px] leading-relaxed">
-            {lang === 'kh' ? 'សូមចូលទៅកាន់ទំព័រដើម ដើម្បីជ្រើសរើសទំនិញដែលលោកអ្នកពេញចិត្ត!' : 'Looks like you haven\'t added any items to your cart yet.'}
+          <h3 className={`cart-empty-title${lang === 'kh' ? ' cart-empty-desc--kh' : ''}`}>{t('empty_cart')}</h3>
+          <p className={`cart-empty-desc${lang === 'kh' ? ' cart-empty-desc--kh' : ''}`}>
+            {lang === 'kh' ? 'សូមចូលទៅទំព័រដើម ដើម្បីជ្រើសរើសទំនិញដែលអ្នកពេញចិត្ត' : 'Browse the shop and add items you love.'}
           </p>
-          <button className="px-10 py-4 bg-emerald-600 text-white font-black rounded-2xl shadow-xl transition-all active:scale-95 hover:scale-105" onClick={() => setView('home')} style={{ letterSpacing: '0.5px' }}>
+          <button
+            type="button"
+            className={`cart-empty-cta${lang === 'kh' ? ' cart-empty-cta--kh' : ''}`}
+            onClick={() => setView('home')}
+          >
             {lang === 'kh' ? 'ទៅទិញឥឡូវនេះ' : 'Shop Now'}
           </button>
         </div>
@@ -191,16 +201,17 @@ const CartPage = ({
                   const dPrice = best ? getDiscountedPrice(item, best) : null;
                   const finalPrice = dPrice || item.price;
                   const isDiscounted = dPrice !== null && dPrice < item.price;
+                  const itemImage = resolveItemImageUrl(item, productById);
                   
                   return (
                   <div key={item.cartKey || item.id} className="cart-item">
                     <div className="cart-item-image">
                       <img
-                        src={item.image.includes('cloudinary') ? item.image.replace('upload/', 'upload/f_auto,q_auto,w_100/') : item.image}
+                        src={itemImage ? getOptimizedThumbUrl(itemImage, 100) : '/favicon.png'}
                         alt="" className="w-full h-full object-cover rounded-[14px]"
                         loading="lazy"
                         decoding="async"
-                        onError={(e) => { e.target.onerror = null; e.target.src = '/favicon.png'; }}
+                        onError={(e) => handleImageError(e, '/favicon.png', itemImage || item.image)}
                       />
                     </div>
                     <div className="cart-item-details">

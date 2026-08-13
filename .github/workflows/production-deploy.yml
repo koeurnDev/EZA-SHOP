@@ -30,6 +30,13 @@ jobs:
       run: |
         npm ci
         npm audit --audit-level=high
+        node --check server.js
+        node --check app.js
+        node --check scripts/migrate-all.js
+        node --check scripts/smoke-test.js
+
+    - name: 🧪 Shared Utils Tests
+      run: npm test
 
     - name: 🛡️ Frontend Security Audit & Build
       working-directory: ./webapp
@@ -39,15 +46,9 @@ jobs:
         npm run build
         # The build process automatically strips console logs via Vite config
 
-    - name: 🚀 Deploy to Production Server
+    - name: 🚀 Deploy to Production (Render)
       if: github.ref == 'refs/heads/main'
-      env:
-        SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-        SERVER_IP: ${{ secrets.SERVER_IP }}
-        SERVER_USER: ${{ secrets.SERVER_USER }}
       run: |
-        echo "Deployment script triggered..."
-        # Replace this with actual deployment commands (e.g., rsync, Docker, or PM2 restart)
-        # Example:
-        # rsync -avz --delete ./webapp/dist/ $SERVER_USER@$SERVER_IP:/var/www/momo-app/
-        # ssh $SERVER_USER@$SERVER_IP "cd /opt/momo-bot && git pull && npm ci && pm2 restart bot"
+        echo "Render auto-deploys on push to main (see render.yaml)."
+        echo "Backend preDeployCommand runs: npm run migrate"
+        echo "Manual check after deploy: cd bot && npm run smoke"

@@ -98,26 +98,23 @@ const CambodiaAddress = ({ value, onChange, lang }) => {
         <label style={{ fontSize: 11, fontWeight: 900, opacity: 0.7, marginBottom: 5, display: 'block' }}>
           {lang === 'kh' ? 'លេខផ្ទះ ផ្លូវ' : 'House / Street No.'}
         </label>
-        <input 
+        <input
           type="text"
-          className="input-glass-admin" 
-          style={{ width: '100%', fontSize: 14 }}
+          className="input-glass-admin cambodia-address-input"
           value={houseStreet}
           onChange={e => setHouseStreet(e.target.value)}
           placeholder={lang === 'kh' ? 'ផ្ទះលេខ 12A, ផ្លូវ 2004...' : 'House 12A, St 2004...'}
         />
       </div>
 
-      {/* Dropdowns Grid */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
         {/* Province */}
         <div>
           <label style={{ fontSize: 11, fontWeight: 900, opacity: 0.7, marginBottom: 5, display: 'block' }}>
             {lang === 'kh' ? 'រាជធានី/ខេត្ត' : 'Province'}
           </label>
-          <select 
-            className="input-glass-admin" 
-            style={{ width: '100%', fontSize: 14 }}
+          <select
+            className="input-glass-admin cambodia-address-select"
             value={provinceId}
             onChange={e => setProvinceId(e.target.value)}
           >
@@ -133,9 +130,8 @@ const CambodiaAddress = ({ value, onChange, lang }) => {
           <label style={{ fontSize: 11, fontWeight: 900, opacity: 0.7, marginBottom: 5, display: 'block' }}>
             {lang === 'kh' ? 'ស្រុក/ខណ្ឌ' : 'District'}
           </label>
-          <select 
-            className="input-glass-admin" 
-            style={{ width: '100%', fontSize: 14 }}
+          <select
+            className="input-glass-admin cambodia-address-select"
             value={districtId}
             onChange={e => setDistrictId(e.target.value)}
             disabled={!provinceId}
@@ -152,9 +148,8 @@ const CambodiaAddress = ({ value, onChange, lang }) => {
           <label style={{ fontSize: 11, fontWeight: 900, opacity: 0.7, marginBottom: 5, display: 'block' }}>
             {lang === 'kh' ? 'ឃុំ/សង្កាត់' : 'Commune'}
           </label>
-          <select 
-            className="input-glass-admin" 
-            style={{ width: '100%', fontSize: 14 }}
+          <select
+            className="input-glass-admin cambodia-address-select"
             value={communeId}
             onChange={e => setCommuneId(e.target.value)}
             disabled={!districtId}
@@ -171,9 +166,8 @@ const CambodiaAddress = ({ value, onChange, lang }) => {
           <label style={{ fontSize: 11, fontWeight: 900, opacity: 0.7, marginBottom: 5, display: 'block' }}>
             {lang === 'kh' ? 'ភូមិ' : 'Village'}
           </label>
-          <select 
-            className="input-glass-admin" 
-            style={{ width: '100%', fontSize: 14 }}
+          <select
+            className="input-glass-admin cambodia-address-select"
             value={villageId}
             onChange={e => setVillageId(e.target.value)}
             disabled={!communeId || villages.length === 0}

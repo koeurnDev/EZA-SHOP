@@ -1,14 +1,15 @@
 import React, { useState, memo } from 'react';
 import { getDiscountedPrice } from '../utils/discountUtils';
+import { resolveProductImageUrl } from '../utils/imageUtils';
+import ProductImage from './ProductImage';
 import { useUser } from '../context/UserContext';
-import { formatCategory } from '../utils/langUtils';
 import { useShopDispatch } from '../context/ShopContext';
 
 const ProductCard = memo(({ 
   product, onAdd, onViewProduct, discountLookup = {}, 
   variant = 'grid'
 }) => {
-  const { t, lang } = useUser();
+  const { t } = useUser();
   const [isAdded, setIsAdded] = useState(false);
   const [isPressing, setIsPressing] = useState(false);
   const [isFavorited, setIsFavorited] = useState(false);
@@ -40,45 +41,18 @@ const ProductCard = memo(({
     setIsPressing(false);
   };
 
-  const getOptimizedImage = (url) => {
-    if (!url || !url.includes('cloudinary')) return url || '';
-    return url.replace('/upload/', '/upload/f_auto,q_auto:eco,w_400,h_400,c_fill,g_auto/');
-  };
+  const imageUrl = resolveProductImageUrl(product);
 
   const bestDiscount = discountLookup[product.id] || discountLookup['all'] || null;
   const hasFlashSale = product.flash_sale_price && product.flash_sale_end && new Date(product.flash_sale_end) > new Date();
   const finalPrice = hasFlashSale ? product.flash_sale_price : getDiscountedPrice(product, bestDiscount);
   const isDiscounted = hasFlashSale || bestDiscount !== null || finalPrice < product.price;
 
-  // Short badge text for the top left (e.g. New, Special, Category)
-  let badgeText = formatCategory(product.category, lang) || 'ពិសេស';
-  if (badgeText.length > 12) {
-      badgeText = badgeText.substring(0, 12) + '...';
-  }
-
-  let hasMultipleImages = false;
-  try {
-    if (product.additional_images) {
-      const parsed = typeof product.additional_images === 'string' ? JSON.parse(product.additional_images) : product.additional_images;
-      if (Array.isArray(parsed) && parsed.length > 0) hasMultipleImages = true;
-    }
-  } catch(e) {}
-
   return (
     <div
       className={`product-card-standard-green ${isOutOfStock ? 'pc-out-of-stock' : ''}`}
       onClick={handleClick}
     >
-      {/* Multiple Images Indicator (Instagram style) */}
-      {hasMultipleImages && (
-        <div style={{ position: 'absolute', top: 12, left: 12, background: 'rgba(0,0,0,0.4)', padding: '6px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10, backdropFilter: 'blur(4px)', color: 'white' }}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <rect x="3" y="3" width="14" height="14" rx="2" ry="2"></rect>
-            <path d="M7 21h12a2 2 0 0 0 2-2V7"></path>
-          </svg>
-        </div>
-      )}
-      
       {/* Flash Sale Tag */}
       {hasFlashSale && (
         <div style={{ position: 'absolute', top: 12, right: 12, background: '#ef4444', color: 'white', padding: '2px 8px', borderRadius: 4, fontSize: 10, fontWeight: 'bold', zIndex: 10 }}>
@@ -88,13 +62,11 @@ const ProductCard = memo(({
 
       {/* Image Wrapper */}
       <div className="standard-image-wrapper">
-        <img
-          src={getOptimizedImage(product.image) || '/favicon.png'}
-          onError={(e) => { e.target.onerror = null; e.target.src = '/favicon.png'; }}
+        <ProductImage
+          url={imageUrl}
           alt={product.name}
           className="standard-card-img"
           loading="lazy"
-          decoding="async"
         />
       </div>
       

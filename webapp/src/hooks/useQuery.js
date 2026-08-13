@@ -4,14 +4,22 @@ import { useApi } from './useApi';
 const CACHE_PREFIX = 'momo_cache_';
 const STALE_TIME = 5 * 60 * 1000; // 5 minutes
 
+/** Old cache had products with image:null — skip hydrate only, never reject live API */
+const isStaleImageCache = (value) => {
+  const products = value?.products;
+  if (!Array.isArray(products) || products.length === 0) return false;
+  return products.every((p) => !p?.image);
+};
+
 export const useQuery = (key, url, options = {}) => {
+  const { revalidateOnMount = false, ...fetchOptions } = options;
   const { fetchWithRetry } = useApi();
   const [data, setData] = useState(() => {
     try {
       const cached = localStorage.getItem(`${CACHE_PREFIX}${key}`);
       if (cached) {
-        const { value, timestamp } = JSON.parse(cached);
-        // Instant data from cache
+        const { value } = JSON.parse(cached);
+        if (isStaleImageCache(value)) return null;
         return value;
       }
     } catch (e) { return null; }
@@ -24,7 +32,7 @@ export const useQuery = (key, url, options = {}) => {
   const cooldownRef = useRef(0);
   const mutationEpochRef = useRef(0);
 
-  const optionsString = JSON.stringify(options);
+  const optionsString = JSON.stringify(fetchOptions);
 
   const fetchData = useCallback(async (isSilent = false) => {
     // 🛡️ Cooldown Protection
@@ -50,7 +58,7 @@ export const useQuery = (key, url, options = {}) => {
           value: payload,
           timestamp: Date.now()
         }));
-        
+
         setData(payload);
         setError(null);
       } else {
@@ -87,19 +95,23 @@ export const useQuery = (key, url, options = {}) => {
     try {
       const cached = localStorage.getItem(`${CACHE_PREFIX}${key}`);
       if (cached) {
-        const { timestamp } = JSON.parse(cached);
-        const isStale = Date.now() - timestamp > STALE_TIME;
-        // ⚡ Stale-While-Revalidate: serve cached data instantly, then refresh silently in bg if stale
-        if (isStale) {
+        const parsed = JSON.parse(cached);
+        if (isStaleImageCache(parsed.value)) {
+          localStorage.removeItem(`${CACHE_PREFIX}${key}`);
+          fetchData();
+          return;
+        }
+        const isStale = Date.now() - parsed.timestamp > STALE_TIME;
+        if (revalidateOnMount || isStale) {
           fetchData(true);
         }
       } else {
-        fetchData(); // cold start - must fetch
+        fetchData();
       }
     } catch (e) {
-      fetchData(); // corrupt cache - force fresh fetch
+      fetchData();
     }
-  }, [key, fetchData]);
+  }, [key, fetchData, revalidateOnMount]);
 
   return { data, loading, error, refetch: fetchData, mutate };
 };

@@ -10,6 +10,7 @@ const orderRepository = {
         ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_fee DECIMAL(12,2) DEFAULT 0;
         ALTER TABLE orders ADD COLUMN IF NOT EXISTS gross_total DECIMAL(12,2) DEFAULT 0;
         ALTER TABLE orders ADD COLUMN IF NOT EXISTS is_reminded BOOLEAN DEFAULT false;
+        ALTER TABLE orders ADD COLUMN IF NOT EXISTS receipt_url TEXT;
       `);
     } catch (e) {
       console.warn('⚠️ Migration Guard: Non-critical failure (Columns might already exist or permission issue)');
@@ -104,7 +105,11 @@ const orderRepository = {
   },
 
   updateReceiptUrl: async (id, url) => {
-    const res = await pool.query('UPDATE orders SET receipt_url = $1 WHERE id = $2 RETURNING *', [url, id]);
+    // Customer submitted payment proof — suppress unpaid reminders while admin reviews
+    const res = await pool.query(
+      'UPDATE orders SET receipt_url = $1, is_reminded = true WHERE id = $2 RETURNING *',
+      [url, id]
+    );
     return res.rows[0];
   },
 
@@ -151,21 +156,53 @@ const orderRepository = {
     return res.rows;
   },
 
-  findPendingOrders: async (lookbackHours = 24, limit = 50, offset = 0) => {
+  /**
+   * Truly abandoned checkouts only — no receipt uploaded, payment window expired.
+   * Used by marketingAutomation; never nudge customers awaiting admin confirmation.
+   */
+  findAbandonedUnpaidOrders: async (lookbackHours = 24, minAgeHours = 4, limit = 50, offset = 0) => {
     const safeLimit = Math.min(Math.max(parseInt(limit) || 50, 1), 200);
     const safeOffset = Math.max(parseInt(offset) || 0, 0);
+    const safeLookback = Math.min(Math.max(parseInt(lookbackHours) || 24, 1), 168);
+    const safeMinAge = Math.min(Math.max(parseInt(minAgeHours) || 4, 1), 72);
 
     const res = await pool.query(
       `SELECT * FROM orders 
        WHERE status = 'pending' 
        AND is_reminded = false
+       AND (receipt_url IS NULL OR receipt_url = '')
+       AND expires_at IS NOT NULL
+       AND expires_at < NOW()
        AND created_at > NOW() - (INTERVAL '1 hour' * $1)
-       AND created_at < NOW() - INTERVAL '2 hours'
+       AND created_at < NOW() - (INTERVAL '1 hour' * $2)
        ORDER BY created_at ASC
-       LIMIT $2 OFFSET $3`,
-      [lookbackHours, safeLimit, safeOffset]
+       LIMIT $3 OFFSET $4`,
+      [safeLookback, safeMinAge, safeLimit, safeOffset]
     );
     return res.rows;
+  },
+
+  /** All recent pending orders with QR — for Bakong reconciliation worker. */
+  findPendingForReconciliation: async (lookbackHours = 48, limit = 50, offset = 0) => {
+    const safeLimit = Math.min(Math.max(parseInt(limit) || 50, 1), 200);
+    const safeOffset = Math.max(parseInt(offset) || 0, 0);
+    const safeLookback = Math.min(Math.max(parseInt(lookbackHours) || 48, 1), 168);
+
+    const res = await pool.query(
+      `SELECT * FROM orders 
+       WHERE status = 'pending'
+       AND qr_string IS NOT NULL AND qr_string != ''
+       AND created_at > NOW() - (INTERVAL '1 hour' * $1)
+       ORDER BY created_at ASC
+       LIMIT $2 OFFSET $3`,
+      [safeLookback, safeLimit, safeOffset]
+    );
+    return res.rows;
+  },
+
+  /** @deprecated Use findAbandonedUnpaidOrders or findPendingForReconciliation */
+  findPendingOrders: async (lookbackHours = 24, limit = 50, offset = 0) => {
+    return orderRepository.findAbandonedUnpaidOrders(lookbackHours, 4, limit, offset);
   },
 
   markAsReminded: async (id) => {

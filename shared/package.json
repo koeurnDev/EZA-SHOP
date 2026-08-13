@@ -1,0 +1,5 @@
+{
+  "name": "@momo/shared",
+  "private": true,
+  "type": "module"
+}

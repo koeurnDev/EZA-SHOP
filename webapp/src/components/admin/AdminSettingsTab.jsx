@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef } from 'react';
 import DarkSelect from './DarkSelect';
 import { useUser } from '../../context/UserContext';
 import { getDeliveryRuleSummary, isAlwaysFreeDelivery, parseDeliverySetting } from '../../utils/deliveryUtils';
+import { getBannerDesignSize, getBannerSafeZoneHint, getBannerDisplayNote, BANNER_SPECS } from '../../utils/bannerUtils';
 import { DEMO_SOCIAL_LINKS, normalizeSocialLink } from '../../utils/socialLinkUtils';
 
 const AdminSettingsTab = React.memo(({
@@ -179,8 +180,11 @@ const AdminSettingsTab = React.memo(({
       {/* Banners + Logo */}
       <div className="admin-responsive-grid" style={{ gap: 15 }}>
         <div className="glass-card-luxury" style={{ padding: 20, minWidth: 0, overflow: 'hidden' }}>
-          <div style={{ fontWeight: 950, marginBottom: 15, fontSize: 14 }}>🖼️ {t('admin_shop_banner')}</div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+          <div style={{ fontWeight: 950, marginBottom: 8, fontSize: 14 }}>🖼️ {t('admin_shop_banner')}</div>
+          <p className="admin-banner-size-hint admin-banner-size-hint--primary">{getBannerDesignSize(lang)}</p>
+          <p className="admin-banner-size-hint">{getBannerSafeZoneHint(lang)}</p>
+          <p className="admin-banner-preview-note">{getBannerDisplayNote(lang)}</p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 12 }}>
             {(promoBannerUrl ? promoBannerUrl.split(',').map(u => u.trim()).filter(Boolean) : []).map((img, idx) => {
               const [url, targetStr] = img.split('|');
               let linkType = '';
@@ -193,9 +197,10 @@ const AdminSettingsTab = React.memo(({
               }
 
               return (
-              <div key={idx} style={{ position: 'relative', width: 140, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <div style={{ position: 'relative', width: '100%', height: 80, borderRadius: 12, overflow: 'hidden', border: '1px solid var(--border-subtle)' }}>
-                  <img src={url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="" crossOrigin="anonymous" />
+              <div key={idx} className="admin-banner-item">
+                <div className="admin-banner-thumb">
+                  <img src={url} alt="" crossOrigin="anonymous" />
+                  <span className="admin-banner-aspect-badge">16:9</span>
                   <button className="remove-thumb-btn" onClick={() => removeBanner(idx)}>✕</button>
                 </div>
                 
@@ -245,10 +250,11 @@ const AdminSettingsTab = React.memo(({
                 )}
               </div>
             )})}
-            <label className="upload-zone-luxury" style={{ flexShrink: 0, width: 140, height: 80 }}>
+            <label className="upload-zone-luxury admin-banner-upload">
               <div className="upload-label-content" style={{ minHeight: 'auto', padding: 10 }}>
                 <div style={{ fontSize: 22 }}>🌄</div>
                 <div style={{ fontSize: 11, fontWeight: 900 }}>{t('admin_add_banner')}</div>
+                <div className="admin-banner-upload-size">1200×675</div>
               </div>
               <input type="file" accept="image/*" onChange={async e => { 
                 const file = e.target.files?.[0]; 

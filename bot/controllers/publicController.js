@@ -4,6 +4,7 @@ const productRepository = require('../repositories/productRepository');
 const couponRepository = require('../repositories/couponRepository');
 const broadcastRepository = require('../repositories/broadcastRepository');
 const cacheService = require('../services/cacheService');
+const imageHealthService = require('../services/imageHealthService');
 const asyncHandler = require('../utils/asyncHandler');
 const { ForbiddenError } = require('../utils/errors');
 
@@ -76,7 +77,6 @@ const publicController = {
   }),
 
   deleteNotification: asyncHandler(async (req, res) => {
-    // 🛡️ Security Guard: Strict RBAC check for notification deletion
     const authUserId = req.tgUser?.id || req.user?.user_id;
     const superAdminId = Number(process.env.SUPERADMIN_ID);
     const isAdminOrStaff = req.user?.role === 'admin' || req.user?.role === 'staff' || Number(authUserId) === superAdminId;
@@ -93,6 +93,17 @@ const publicController = {
     await broadcastRepository.delete(id);
     cacheService.delete('public:notifications');
     res.json({ success: true });
+  }),
+
+  reportBrokenImage: asyncHandler(async (req, res) => {
+    const url = typeof req.body?.url === 'string' ? req.body.url.trim() : '';
+    if (!url || !url.includes('cloudinary.com') || url.length > 2048) {
+      return res.status(400).json({ success: false, error: 'Invalid image URL' });
+    }
+
+    // Client reports only mark cache — never wipe DB (prevents mass image loss)
+    const result = await imageHealthService.reportBrokenImage(url, { clearDb: false });
+    res.json({ success: true, ...result });
   })
 };
 

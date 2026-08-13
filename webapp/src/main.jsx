@@ -3,6 +3,8 @@ import ReactDOM from 'react-dom/client'
 import App from './App.jsx'
 import { AppProvider } from './context/AppContext'
 import './index.css'
+import './styles/product-detail.css'
+import './styles/wishlist.css'
 import './App.css'
 
 const root = document.getElementById('root');

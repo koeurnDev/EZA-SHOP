@@ -38,7 +38,7 @@ async function runImageScan() {
   if (process.env.DISABLE_IMAGE_SCAN === 'true') return;
   try {
     console.log('🖼️ Image scan: starting Cloudinary health check...');
-    const result = await imageHealthService.scanAndRepairProducts({ clearDb: true });
+    const result = await imageHealthService.scanAndRepairProducts({ clearDb: false });
     console.log(
       `🖼️ Image scan: ${result.scanned} checked, ${result.broken.length} broken` +
       (result.cleared ? `, ${result.cleared} cleared from DB` : '')

@@ -6,6 +6,7 @@ import { useUserState } from '../context/UserContext';
 import { useCartDispatch } from '../context/CartContext';
 import { useTelegram } from '../context/TelegramContext';
 import { formatCategory } from '../utils/langUtils';
+import { productMatchesSearch, getSearchSuggestions } from '../utils/searchUtils';
 
 const SkeletonGrid = () => (
   <div className="product-grid-main grid grid-cols-2 gap-3 px-4 pb-5">
@@ -18,7 +19,7 @@ const SkeletonGrid = () => (
 const ProductGrid = () => {
   const [limit, setLimit] = React.useState(14);
   const { products, searchTerm, debouncedSearchTerm, selectedCategory, activeDiscounts, isSettingsLoaded, filters } = useShopState();
-  const { setView, setSelectedProduct } = useShopDispatch();
+  const { setView, setSelectedProduct, setSearchTerm } = useShopDispatch();
   const { t, lang } = useUserState();
   const { addToCart } = useCartDispatch();
   const { tg } = useTelegram();
@@ -40,12 +41,8 @@ const ProductGrid = () => {
   const filtered = useMemo(() => {
     return (products || [])
       .filter(p => {
-        const searchLower = (debouncedSearchTerm || '').toLowerCase().trim();
-        const matchesSearch = searchLower === '' || 
-                              (p.name || '').toLowerCase().includes(searchLower) ||
-                              (p.category || '').toLowerCase().includes(searchLower) ||
-                              (p.description || '').toLowerCase().includes(searchLower) ||
-                              (p.id && p.id.toString().includes(searchLower));
+        const searchLower = (debouncedSearchTerm || '').trim();
+        const matchesSearch = searchLower === '' || productMatchesSearch(p, searchLower);
         const matchesCategory = selectedCategory === 'all' || 
                                 (selectedCategory === 'flash_sale' ? p.flash_sale_price : p.category === selectedCategory);
         
@@ -80,7 +77,17 @@ const ProductGrid = () => {
     return combined.slice(0, 10);
   }, [products]);
   const hasActiveFilters = filters?.minPrice || filters?.maxPrice || (filters?.sort && filters.sort !== 'newest');
-  const showFeatured = searchTerm === '' && selectedCategory === 'all' && !hasActiveFilters && featured.length > 0;
+  const showFeatured = !debouncedSearchTerm?.trim() && selectedCategory === 'all' && !hasActiveFilters && featured.length > 0;
+
+  const emptySuggestions = useMemo(() => {
+    if (!debouncedSearchTerm?.trim() || filtered.length > 0) return [];
+    return getSearchSuggestions(products, debouncedSearchTerm, 4);
+  }, [products, debouncedSearchTerm, filtered.length]);
+
+  const popularFallback = useMemo(() => {
+    if (filtered.length > 0 || !debouncedSearchTerm?.trim()) return [];
+    return featured.slice(0, 4);
+  }, [filtered.length, debouncedSearchTerm, featured]);
 
   const handleViewProduct = React.useCallback((product) => {
     setSelectedProduct(product);
@@ -135,8 +142,47 @@ const ProductGrid = () => {
           <>
             <div className="product-grid-main grid grid-cols-2 gap-3 pb-4">
               {displayed.length === 0 ? (
-                <div className="col-span-2 text-center py-10 opacity-50">
-                  <p>{searchTerm ? (t('browse') === 'Browse' ? 'No products found' : 'រកមិនឃើញទំនិញទេ') : (t('browse') === 'Browse' ? 'No products available' : 'មិនទាន់មានទំនិញទេ')}</p>
+                <div className="col-span-2 search-empty-state">
+                  <div className="search-empty-icon">🔍</div>
+                  <p className="search-empty-title">
+                    {debouncedSearchTerm?.trim() ? t('search_no_results') : (lang === 'kh' ? 'មិនទាន់មានទំនិញទេ' : 'No products available')}
+                  </p>
+                  <p className="search-empty-hint">
+                    {debouncedSearchTerm?.trim() ? t('search_try_hint') : (lang === 'kh' ? 'សូមពិនិត្យម្តងទៀតក្រោយ' : 'Please check back later')}
+                  </p>
+                  {debouncedSearchTerm?.trim() && (
+                    <button type="button" className="search-empty-clear-btn" onClick={() => setSearchTerm('')}>
+                      {t('search_clear')}
+                    </button>
+                  )}
+                  {emptySuggestions.length > 0 && (
+                    <div className="search-empty-suggestions">
+                      <span className="search-empty-label">{t('search_suggestions')}</span>
+                      <div className="search-empty-chips">
+                        {emptySuggestions.map((p) => (
+                          <button key={p.id} type="button" className="search-chip" onClick={() => setSearchTerm(p.name)}>
+                            {p.name}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {popularFallback.length > 0 && (
+                    <div className="search-empty-popular">
+                      <span className="search-empty-label">{t('search_popular')}</span>
+                      <div className="product-grid-main grid grid-cols-2 gap-3 pt-2">
+                        {popularFallback.map((product) => (
+                          <ProductCard
+                            key={`pop-${product.id}`}
+                            product={product}
+                            onAdd={addToCart}
+                            onViewProduct={handleViewProduct}
+                            discountLookup={discountLookup}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               ) : (
                 displayed.map((product, idx) => (

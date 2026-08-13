@@ -411,7 +411,7 @@ const orderService = {
       let hasMore = true;
 
       while (hasMore) {
-        const pendingOrders = await orderRepository.findPendingOrders(24, batchSize, offset);
+        const pendingOrders = await orderRepository.findPendingForReconciliation(48, batchSize, offset);
         if (!pendingOrders || pendingOrders.length === 0) {
           hasMore = false;
           break;

@@ -14,12 +14,25 @@ export const ShopProvider = ({ children }) => {
   const { fetchWithRetry } = useApi();
   
   const queryOptions = useMemo(() => ({ 
-    headers: { 'x-tg-data': tg?.initData || '' } 
+    headers: { 'x-tg-data': tg?.initData || '' },
+    revalidateOnMount: true,
   }), [tg?.initData]);
+
+  // Bust stale product cache (images were wiped then restored)
+  useEffect(() => {
+    try {
+      localStorage.removeItem('momo_cache_init');
+      localStorage.removeItem('momo_cache_init_v2');
+      localStorage.removeItem('momo_cache_init_v3');
+      localStorage.removeItem('momo_cache_init_v4');
+      localStorage.removeItem('momo_broken_images');
+      localStorage.removeItem('momo_broken_images_v2');
+    } catch { /* ignore */ }
+  }, []);
 
   // 🚀 CONSOLIDATED INITIAL DATA FETCHING (v6 Performance Pack)
   const { data: initData, loading: isInitLoading, refetch: refetchInit, mutate: mutateInit } = useQuery(
-    'init', 
+    'init_v6', 
     `${BACKEND_URL}/api/init`, 
     queryOptions
   );
@@ -27,6 +40,7 @@ export const ShopProvider = ({ children }) => {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
+  const [searchFocused, setSearchFocused] = useState(false);
   const [view, setView] = useState('home');
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
@@ -37,6 +51,10 @@ export const ShopProvider = ({ children }) => {
     const timer = setTimeout(() => setDebouncedSearchTerm(searchTerm), 300);
     return () => clearTimeout(timer);
   }, [searchTerm]);
+
+  useEffect(() => {
+    if (view !== 'browse') setSearchFocused(false);
+  }, [view]);
 
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [toast, setToast] = useState(null);
@@ -130,6 +148,7 @@ export const ShopProvider = ({ children }) => {
       selectedCategory,
       searchTerm,
       debouncedSearchTerm, // 🚀 Use this for filtering
+      searchFocused,
       view,
       selectedProduct,
       toast,
@@ -155,11 +174,12 @@ export const ShopProvider = ({ children }) => {
       showScanner,
       filters
     };
-  }, [initData, isInitLoading, selectedCategory, searchTerm, debouncedSearchTerm, view, selectedProduct, toast, shopStatus, deliveryThreshold, deliveryFee, promoText, promoBannerUrl, shopLogoUrl, socialFb, socialTg, socialIg, socialTt, socialEmail, socialWa, shopPhone, shopAddress, shopHours, shopName, showFilterModal, showScanner, filters]);
+  }, [initData, isInitLoading, selectedCategory, searchTerm, debouncedSearchTerm, searchFocused, view, selectedProduct, toast, shopStatus, deliveryThreshold, deliveryFee, promoText, promoBannerUrl, shopLogoUrl, socialFb, socialTg, socialIg, socialTt, socialEmail, socialWa, shopPhone, shopAddress, shopHours, shopName, showFilterModal, showScanner, filters]);
 
   const dispatch = useMemo(() => ({
     setSelectedCategory,
     setSearchTerm,
+    setSearchFocused,
     setView,
     setSelectedProduct,
     showToast,
@@ -177,11 +197,9 @@ export const ShopProvider = ({ children }) => {
     setShowFilterModal,
     setShowScanner,
     setFilters,
-    refetchData: (isBackground = false) => {
-      refetchInit(isBackground);
-    },
+    refetchData: (isBackground = false) => refetchInit(isBackground),
     mutateShopData: mutateInit
-  }), [refetchInit, showToast, setShopStatus, setDeliveryThreshold, setDeliveryFee, setPromoText, setPromoBannerUrl, setShopLogoUrl, setSocialFb, setSocialTg, setSocialIg, setSocialTt, setSocialEmail, setShowFilterModal, setShowScanner, setFilters]);
+  }), [refetchInit, showToast, setShopStatus, setDeliveryThreshold, setDeliveryFee, setPromoText, setPromoBannerUrl, setShopLogoUrl, setSocialFb, setSocialTg, setSocialIg, setSocialTt, setSocialEmail, setSearchFocused, setShowFilterModal, setShowScanner, setFilters]);
 
   return (
     <ShopStateContext.Provider value={state}>
@@ -189,7 +207,6 @@ export const ShopProvider = ({ children }) => {
         {children}
         {toast && (
           <div className="user-toast-float">
-             <span>✨</span>
              <span>{toast}</span>
           </div>
         )}

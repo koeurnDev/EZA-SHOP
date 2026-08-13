@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useQuery } from '../../hooks/useQuery';
 import { useApi } from '../../hooks/useApi';
 import { useTelegram } from '../../context/TelegramContext';
@@ -79,39 +79,29 @@ const AdminCouponsTab = ({ BACKEND_URL }) => {
   };
 
   return (
-    <div className="tab-pane-animate">
-      <div className="glass-card-luxury" style={{ padding: '20px', boxSizing: 'border-box' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', marginBottom: '20px', gap: '10px' }}>
-          <h3 style={{ fontSize: 16, fontWeight: 900, color: 'var(--text-bold)', margin: 0 }}>🎫 គ្រប់គ្រងប័ណ្ណបញ្ចុះតម្លៃ</h3>
-          <button 
+    <div className="tab-pane-animate admin-coupons-tab">
+      <div className="glass-card-luxury admin-coupons-card">
+        <div className="admin-coupons-head">
+          <h3 className="admin-coupons-title">គ្រប់គ្រងប័ណ្ណបញ្ចុះតម្លៃ</h3>
+          <button
+            type="button"
+            className={isAdding ? 'admin-products-scan-btn' : 'admin-products-add-btn'}
             onClick={() => setIsAdding(!isAdding)}
-            style={{ 
-              padding: '8px 16px', 
-              borderRadius: '12px', 
-              whiteSpace: 'nowrap', 
-              background: isAdding ? 'var(--bg-soft)' : 'var(--primary-gradient)', 
-              color: isAdding ? 'var(--text-main)' : '#ffffff', 
-              border: isAdding ? '1px solid var(--border-subtle)' : 'none',
-              fontWeight: 800,
-              fontSize: 12,
-              cursor: 'pointer',
-              flexShrink: 0
-            }}
           >
             {isAdding ? 'បោះបង់' : '+ បង្កើតថ្មី'}
           </button>
         </div>
 
       {isAdding && (
-        <form onSubmit={handleSubmit} style={{ background: 'var(--bg-soft)', padding: '20px', borderRadius: '18px', marginBottom: '24px', border: '1px solid var(--border-subtle)' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px' }}>
+        <form onSubmit={handleSubmit} className="admin-coupon-form">
+          <div className="admin-coupon-form-grid">
             <div style={{ minWidth: 0 }}>
               <label className="admin-form-label">កូដបញ្ចុះតម្លៃ</label>
-              <input 
-                className="admin-form-input" 
-                placeholder="ឧ. VIP10" 
-                value={formData.code} 
-                onChange={e => setFormData({...formData, code: e.target.value.toUpperCase()})}
+              <input
+                className="input-glass-admin admin-form-input"
+                placeholder="ឧ. VIP10"
+                value={formData.code}
+                onChange={e => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
                 required
               />
             </div>
@@ -131,90 +121,81 @@ const AdminCouponsTab = ({ BACKEND_URL }) => {
             </div>
             <div style={{ minWidth: 0 }}>
               <label className="admin-form-label">ចំនួនបញ្ចុះ</label>
-              <input 
-                className="admin-form-input" 
-                type="number" 
+              <input
+                className="input-glass-admin admin-form-input"
+                type="number"
                 step="0.01"
-                placeholder="ឧ. 10" 
-                value={formData.value} 
-                onChange={e => setFormData({...formData, value: e.target.value})}
+                placeholder="ឧ. 10"
+                value={formData.value}
+                onChange={e => setFormData({ ...formData, value: e.target.value })}
                 required
               />
             </div>
             <div style={{ minWidth: 0 }}>
               <label className="admin-form-label">ចំនួនដងប្រើបាន</label>
-              <input 
-                className="admin-form-input" 
-                type="number" 
-                placeholder="ទុកចំហ បើមិនចង់កំណត់" 
-                value={formData.usageLimit} 
-                onChange={e => setFormData({...formData, usageLimit: e.target.value})}
+              <input
+                className="input-glass-admin admin-form-input"
+                type="number"
+                placeholder="ទុកចំហ បើមិនចង់កំណត់"
+                value={formData.usageLimit}
+                onChange={e => setFormData({ ...formData, usageLimit: e.target.value })}
               />
             </div>
           </div>
-          
-          <div style={{ marginTop: '16px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <input 
-              type="checkbox" 
-              id="isAuto" 
-              checked={formData.isAuto}
-              onChange={e => setFormData({...formData, isAuto: e.target.checked})}
-              style={{ width: 18, height: 18, accentColor: '#ec4899', cursor: 'pointer' }}
-            />
-            <label htmlFor="isAuto" style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--text-bold)', cursor: 'pointer' }}>
-              បញ្ចុះតម្លៃដោយស្វ័យប្រវត្តិ — មិនបាច់វាយកូដ
-            </label>
-          </div>
 
-          <button type="submit" style={{ marginTop: '18px', width: '100%', padding: '12px', borderRadius: '12px', background: 'var(--primary-gradient)', color: '#ffffff', fontWeight: 900, border: 'none', cursor: 'pointer', fontSize: 14 }}>
-            💾 រក្សាទុកប័ណ្ណបញ្ចុះតម្លៃ
+          <label className="admin-coupon-auto">
+            <input
+              type="checkbox"
+              checked={formData.isAuto}
+              onChange={e => setFormData({ ...formData, isAuto: e.target.checked })}
+            />
+            <span>បញ្ចុះតម្លៃដោយស្វ័យប្រវត្តិ — មិនបាច់វាយកូដ</span>
+          </label>
+
+          <button type="submit" className="admin-broadcast-send-btn">
+            រក្សាទុកប័ណ្ណបញ្ចុះតម្លៃ
           </button>
         </form>
       )}
 
       {loading ? (
-        <div style={{ textAlign: 'center', padding: '20px', color: 'var(--text-muted)' }}>កំពុងទាញយកទិន្នន័យ...</div>
+        <div className="admin-coupon-empty">កំពុងទាញយកទិន្នន័យ...</div>
       ) : coupons.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)', background: 'var(--bg-soft)', borderRadius: '14px', border: '1px solid var(--border-subtle)' }}>
-          មិនទាន់មានប័ណ្ណបញ្ចុះតម្លៃនៅឡើយទេ
-        </div>
+        <div className="admin-coupon-empty">មិនទាន់មានប័ណ្ណបញ្ចុះតម្លៃនៅឡើយទេ</div>
       ) : (
-        <div style={{ overflowX: 'auto' }}>
-          <table className="admin-data-table" style={{ width: '100%', borderCollapse: 'collapse', whiteSpace: 'nowrap', color: 'var(--text-main)' }}>
+        <div className="admin-coupon-table-wrap">
+          <table className="admin-data-table admin-coupon-table">
             <thead>
-              <tr style={{ borderBottom: '2px solid var(--border-subtle)', textAlign: 'left' }}>
-                <th style={{ padding: '12px 10px', color: 'var(--text-bold)' }}>កូដ</th>
-                <th style={{ padding: '12px 10px', color: 'var(--text-bold)' }}>បញ្ចុះ</th>
-                <th style={{ padding: '12px 10px', color: 'var(--text-bold)' }}>ការប្រើប្រាស់</th>
-                <th style={{ padding: '12px 10px', color: 'var(--text-bold)' }}>ស្ថានភាព</th>
-                <th style={{ padding: '12px 10px', textAlign: 'right', color: 'var(--text-bold)' }}>សកម្មភាព</th>
+              <tr>
+                <th>កូដ</th>
+                <th>បញ្ចុះ</th>
+                <th>ការប្រើប្រាស់</th>
+                <th>ស្ថានភាព</th>
+                <th style={{ textAlign: 'right' }}>សកម្មភាព</th>
               </tr>
             </thead>
             <tbody>
               {coupons.map(c => {
                 const limitReached = c.usage_limit && c.used_count >= c.usage_limit;
                 return (
-                  <tr key={c.id} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-                    <td style={{ padding: '12px 10px', fontWeight: 'bold', color: 'var(--text-bold)' }}>{c.code}</td>
-                    <td style={{ padding: '12px 10px', color: '#ec4899', fontWeight: 800 }}>
+                  <tr key={c.id}>
+                    <td className="admin-coupon-code">{c.code}</td>
+                    <td className="admin-coupon-value">
                       {c.discount_type === 'percent' ? `${c.value}%` : `$${c.value}`}
                     </td>
-                    <td style={{ padding: '12px 10px' }}>
-                      {c.used_count || 0} / {c.usage_limit || '∞'} 
-                      {limitReached && <span style={{ color: '#ef4444', fontSize: '0.8rem', marginLeft: '5px', fontWeight: 'bold' }}>(ពេញ)</span>}
+                    <td>
+                      {c.used_count || 0} / {c.usage_limit || '∞'}
+                      {limitReached && <span className="admin-coupon-full">(ពេញ)</span>}
                     </td>
-                    <td style={{ padding: '12px 10px' }}>
+                    <td>
                       {c.is_auto ? (
-                        <span style={{ background: 'rgba(56, 189, 248, 0.15)', color: '#0284c7', padding: '4px 10px', borderRadius: '12px', fontSize: '0.8rem', fontWeight: 800 }}>ស្វ័យប្រវត្តិ</span>
+                        <span className="admin-coupon-badge">ស្វ័យប្រវត្តិ</span>
                       ) : (
-                        <span style={{ background: 'var(--bg-soft)', color: 'var(--text-muted)', padding: '4px 10px', borderRadius: '12px', fontSize: '0.8rem', fontWeight: 800, border: '1px solid var(--border-subtle)' }}>ប្រើកូដ</span>
+                        <span className="admin-coupon-badge admin-coupon-badge--muted">ប្រើកូដ</span>
                       )}
                     </td>
-                    <td style={{ padding: '12px 10px', textAlign: 'right' }}>
-                      <button 
-                        onClick={() => handleDelete(c.id)}
-                        style={{ background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.2)', padding: '6px 12px', borderRadius: '8px', cursor: 'pointer', fontWeight: 800, fontSize: 12 }}
-                      >
+                    <td style={{ textAlign: 'right' }}>
+                      <button type="button" className="admin-coupon-delete" onClick={() => handleDelete(c.id)}>
                         លុប
                       </button>
                     </td>

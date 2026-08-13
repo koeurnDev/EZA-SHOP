@@ -2,8 +2,8 @@ import React from 'react';
 import { TelegramProvider } from './TelegramContext';
 import { UserProvider } from './UserContext';
 import { ShopProvider } from './ShopContext';
-import { CartProvider } from './CartContext';
 import { FeatureFlagProvider } from './FeatureFlagContext';
+import { CartProvider } from './CartContext';
 
 export const AppProvider = ({ children }) => {
   return (

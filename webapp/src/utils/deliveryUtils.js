@@ -1,17 +1,9 @@
-export function parseDeliverySetting(value, fallback) {
-  if (value === null || value === undefined || value === '') return fallback;
-  const parsed = parseFloat(String(value).trim());
-  return Number.isFinite(parsed) ? parsed : fallback;
-}
+import {
+  parseDeliverySetting,
+  calculateDeliveryFee
+} from '@shared/deliveryUtils.js';
 
-/** Delivery fee in dollars. Free when fee setting is 0, or subtotal meets threshold. */
-export function calculateDeliveryFee(subtotal, deliveryFeeSetting, deliveryThresholdSetting) {
-  const fee = parseDeliverySetting(deliveryFeeSetting, 1.5);
-  const threshold = parseDeliverySetting(deliveryThresholdSetting, 50);
-  if (fee <= 0) return 0;
-  if (subtotal >= threshold) return 0;
-  return fee;
-}
+export { parseDeliverySetting, calculateDeliveryFee };
 
 export function isAlwaysFreeDelivery(deliveryFeeSetting) {
   return parseDeliverySetting(deliveryFeeSetting, 1.5) <= 0;

@@ -2,6 +2,32 @@ import React, { useState, useEffect } from 'react';
 import { useTelegram } from '../../context/TelegramContext';
 import { getCustomerAvatarSrc, getUiAvatarUrl } from '../../utils/avatarUtils';
 
+const formatCustomerActive = (user) => {
+  if (user.last_seen) {
+    const diff = Date.now() - new Date(user.last_seen).getTime();
+    if (diff < 5 * 60 * 1000) {
+      return { text: '🟢 Online ឥឡូវនេះ', online: true };
+    }
+    const d = new Date(user.last_seen);
+    return {
+      text: d.toLocaleString('en-GB', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+      }),
+      online: false
+    };
+  }
+  if (user.last_updated) {
+    return { text: new Date(user.last_updated).toLocaleDateString('en-GB'), online: false };
+  }
+  return { text: '---', online: false };
+};
+
 const CustomerAvatar = ({ user, backendUrl, initData }) => {
   const [imgFailed, setImgFailed] = useState(false);
   const initial = user.user_name ? user.user_name.charAt(0).toUpperCase() : '👤';
@@ -227,6 +253,7 @@ const AdminCustomersTab = ({ BACKEND_URL }) => {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {filteredCustomers.map(user => {
               const isExpanded = expandedUser === user.user_id;
+              const active = formatCustomerActive(user);
               return (
                 <div 
                   key={user.user_id} 
@@ -330,21 +357,17 @@ const AdminCustomersTab = ({ BACKEND_URL }) => {
 
                   {/* Expanded Details Box */}
                   {isExpanded && (
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: 11, background: 'var(--bg-surface)', padding: 12, borderRadius: 12, border: '1px solid var(--border-subtle)', animation: 'fadeIn 0.2s ease', marginTop: 4 }}>
-                      <div style={{ minWidth: 0, overflow: 'hidden' }}>
-                        <span style={{ color: 'var(--text-dim)' }}>Phone:</span> <br/>
-                        <span style={{ fontWeight: 700, display: 'block', color: (user.phone && (user.phone.includes(':') || user.phone.length > 25)) ? 'var(--text-muted)' : 'inherit' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: 11, background: 'var(--bg-surface)', padding: 12, borderRadius: 12, border: '1px solid var(--border-subtle)', animation: 'fadeIn 0.2s ease', marginTop: 4 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                        <span style={{ color: 'var(--text-dim)', flexShrink: 0 }}>Phone:</span>
+                        <span style={{ fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: (user.phone && (user.phone.includes(':') || user.phone.length > 25)) ? 'var(--text-muted)' : 'inherit' }}>
                           {user.phone && (user.phone.includes(':') || user.phone.length > 25) ? '🔒 Protected' : (user.phone || '---')}
                         </span>
                       </div>
-                      <div>
-                        <span style={{ color: 'var(--text-dim)' }}>Active:</span> <br/>
-                        <span style={{ fontWeight: 700, color: (user.last_seen && (Date.now() - new Date(user.last_seen).getTime() < 5 * 60 * 1000)) ? '#10b981' : 'inherit' }}>
-                          {user.last_seen ? (
-                            (Date.now() - new Date(user.last_seen).getTime() < 5 * 60 * 1000) ? '🟢 Online ឥឡូវនេះ' : new Date(user.last_seen).toLocaleString()
-                          ) : (
-                            user.last_updated ? new Date(user.last_updated).toLocaleDateString() : '---'
-                          )}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                        <span style={{ color: 'var(--text-dim)', flexShrink: 0 }}>Active:</span>
+                        <span style={{ fontWeight: 700, whiteSpace: 'nowrap', fontSize: 10.5, color: active.online ? '#10b981' : 'inherit' }}>
+                          {active.text}
                         </span>
                       </div>
                     </div>

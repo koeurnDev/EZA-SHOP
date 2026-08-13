@@ -526,6 +526,7 @@ const adminController = {
 
       // Save broadcast in database for in-app NotificationsModal
       await broadcastRepository.create(message, photoUrl);
+      cacheService.delete('public:notifications');
 
       // 🚀 Offload long-running broadcast job to resilient background Bull Queue
       await notificationService.sendBroadcast(userIds, message, photoUrl);
@@ -571,7 +572,7 @@ const adminController = {
   scanBrokenImages: async (req, res) => {
     try {
       const imageHealthService = require('../services/imageHealthService');
-      const clearDb = req.body?.clearDb !== false;
+      const clearDb = req.body?.clearDb === true;
       const result = await imageHealthService.scanAndRepairProducts({ clearDb });
       res.json({ success: true, ...result });
     } catch (err) {

@@ -6,6 +6,7 @@ services:
     plan: free
     rootDir: bot
     buildCommand: npm install
+    preDeployCommand: npm run migrate
     startCommand: npm start
     envVars:
       - key: NODE_ENV

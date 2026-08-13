@@ -1,7 +1,7 @@
 import React from 'react';
 import ShopHeader from './ui/ShopHeader';
 
-const Hero = ({ searchTerm, setSearchTerm, view, setView, user, lang, theme, toggleLang, toggleTheme }) => {
+const Hero = ({ searchTerm, setSearchTerm, view, setView, user, lang, theme, toggleLang, toggleTheme, isKeyboardVisible, t }) => {
    return (
       <div className="hero-section !px-0 !pt-0">
          <ShopHeader 
@@ -14,6 +14,8 @@ const Hero = ({ searchTerm, setSearchTerm, view, setView, user, lang, theme, tog
             theme={theme}
             toggleLang={toggleLang}
             toggleTheme={toggleTheme}
+            isKeyboardVisible={isKeyboardVisible}
+            t={t}
          />
       </div>
    );

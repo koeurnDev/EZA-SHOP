@@ -61,6 +61,7 @@ const AdminDashboard = ({
   const [isUploading, setIsUploading] = useState(false);
   const [isPreviewing, setIsPreviewing] = useState(false);
   const [previewData, setPreviewData] = useState(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // 🛰️ BATCHED Data Fetching: Reduces 6 parallel connections to 1
   const {
@@ -228,9 +229,25 @@ const AdminDashboard = ({
     }, '🗑️');
   };
 
-  const refetchData = useCallback((isBackground = false) => {
-    refetchDashboard(isBackground);
-  }, [refetchDashboard]);
+  const refetchData = useCallback(async (isBackground = false) => {
+    if (!isBackground) setIsRefreshing(true);
+    try {
+      await Promise.all([
+        refetchDashboard(isBackground),
+        refetchShopData(isBackground),
+        refetchFaqs(isBackground)
+      ]);
+      if (!isBackground) {
+        setToastMessage(lang === 'kh' ? 'ធ្វើបច្ចុប្បន្នភាពរួចហើយ' : 'Data refreshed');
+        setShowSuccessToast(true);
+        setTimeout(() => setShowSuccessToast(false), 1800);
+      }
+    } finally {
+      if (!isBackground) {
+        setTimeout(() => setIsRefreshing(false), 500);
+      }
+    }
+  }, [refetchDashboard, refetchShopData, refetchFaqs, lang]);
 
   // 🔒 Senior Review Fix: use stable ref to avoid interval reset on refetchData identity change
   const refetchDataRef = useRef(refetchData);
@@ -493,7 +510,7 @@ const AdminDashboard = ({
         body: JSON.stringify({ message: broadcastMsg, photoUrl: broadcastImage })
       });
       if (res.success) {
-        setToastMessage(`📢 បានផ្ញើដំណឹងដល់អតិថិជន ${res.data?.count || 0} នាក់!`);
+        setToastMessage(`បានផ្ញើដល់ Telegram (${res.data?.count || 0} នាក់) + App`);
         setShowSuccessToast(true);
         setTimeout(() => setShowSuccessToast(false), 3000);
         setBroadcastMsg('');
@@ -689,7 +706,7 @@ const AdminDashboard = ({
     'shipped': { label: 'ប្រគល់ជូនអ្នកដឹក', color: 'var(--text-main)', icon: '🚚' },
     'delivering': { label: 'ប្រគល់ជូនអ្នកដឹក', color: 'var(--text-main)', icon: '🚚' },
     'delivered': { label: 'ប្រគល់ជូនអ្នកដឹក', color: 'var(--text-main)', icon: '🚚' },
-    'cancelled': { label: 'បោះបង់', color: 'var(--text-main)', icon: '❌' }
+    'cancelled': { label: 'បានបោះបង់', color: 'var(--text-dim)', icon: '' }
   };
 
   const chromeVisible = useScrollHideBar({ enabled: true, resetKey: activeTab });
@@ -710,15 +727,31 @@ const AdminDashboard = ({
         <div className={`admin-sticky-chrome${chromeVisible ? '' : ' admin-sticky-chrome--hidden'}`}>
           <div className="admin-header-luxury">
             <div className="admin-header-brand">
-              <span className="admin-header-icon" aria-hidden="true">⚙️</span>
+              <span className="admin-header-icon" aria-hidden="true">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="3" />
+                  <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
+                </svg>
+              </span>
               <h2 className="admin-title-pro">
-                <span className="admin-title-kh">{lang === 'kh' ? 'គ្រប់គ្រង' : 'Manage'}</span>
-                <span className="admin-title-accent"> MO-MO</span>
+                <span className="admin-title-kh">{lang === 'kh' ? 'គ្រប់គ្រង MO-MO' : 'Manage MO-MO'}</span>
               </h2>
             </div>
             <div className="admin-header-actions">
-              <button onClick={() => refetchData(false)} className="icon-btn-admin" aria-label="Refresh Data" title={t('admin_refresh')}>🔄</button>
-              <button onClick={() => setView('home')} className="back-btn-pill">← {t('admin_logout')}</button>
+              <button
+                type="button"
+                onClick={() => refetchData(false)}
+                className={`admin-header-icon-btn${isRefreshing ? ' admin-header-icon-btn--spin' : ''}`}
+                aria-label={t('admin_refresh')}
+                title={t('admin_refresh')}
+                disabled={isRefreshing}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="23 4 23 10 17 10" />
+                  <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+                </svg>
+              </button>
+              <button type="button" onClick={() => setView('home')} className="back-btn-pill admin-header-exit-btn">← {t('admin_logout')}</button>
             </div>
           </div>
 
@@ -804,6 +837,7 @@ const AdminDashboard = ({
               isBroadcasting={isBroadcasting}
               handleBroadcast={handleBroadcast}
               handleBroadcastUpload={handleBroadcastUpload}
+              setBroadcastImage={setBroadcastImage}
             />
           )}
 
@@ -871,7 +905,6 @@ const AdminDashboard = ({
 
         {showSuccessToast && (
           <div className="admin-toast-float">
-            <span>✨</span>
             <span>{toastMessage}</span>
           </div>
         )}

@@ -1,4 +1,6 @@
 const orderRepository = require('../repositories/orderRepository');
+const orderService = require('../services/orderService');
+const bakongService = require('../services/bakongService');
 const cacheService = require('../services/cacheService');
 const bot = require('../config/telegram');
 
@@ -37,8 +39,8 @@ const marketingAutomation = {
 
     marketingAutomation.isProcessing = true;
     try {
-      console.log('🔄 [Marketing Automation] Scanning for abandoned carts...');
-      const abandonedOrders = await orderRepository.findPendingOrders(24);
+      console.log('🔄 [Marketing Automation] Scanning for abandoned unpaid checkouts...');
+      const abandonedOrders = await orderRepository.findAbandonedUnpaidOrders(24, 4);
 
       if (abandonedOrders.length === 0) {
         console.log('✅ [Marketing Automation] No abandoned carts found.');
@@ -49,6 +51,22 @@ const marketingAutomation = {
 
       for (const order of abandonedOrders) {
         try {
+          // Skip if customer already submitted payment proof (admin still reviewing)
+          if (order.receipt_url) {
+            await orderRepository.markAsReminded(order.id);
+            continue;
+          }
+
+          // Auto-confirm if Bakong already received payment — never ask customer to pay again
+          if (order.qr_string) {
+            const tx = await bakongService.checkTransaction(order.qr_string);
+            if (tx.success) {
+              console.log(`✅ [Marketing Automation] Bakong payment found for ${order.order_code}. Confirming instead of reminding.`);
+              await orderService.confirmOrderPayment(order.order_code, { id: 'SYSTEM' }, true);
+              continue;
+            }
+          }
+
           const items = typeof order.items === 'string' ? JSON.parse(order.items) : (order.items || []);
           let itemsDescription = '';
           

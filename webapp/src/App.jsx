@@ -1,5 +1,4 @@
 import React, { lazy, Suspense, useEffect } from 'react';
-import './App.css';
 
 // Context Hooks
 import { useTelegram } from './context/TelegramContext';
@@ -10,6 +9,7 @@ import { useApi } from './hooks/useApi';
 import { useTelemetry } from './hooks/useTelemetry';
 import { useFeatureFlags } from './context/FeatureFlagContext';
 import { useKeyboardVisibility } from './hooks/useKeyboardVisibility';
+import { useWishlist } from './hooks/useWishlist';
 
 
 // Components
@@ -45,7 +45,7 @@ function App() {
   const { 
     setView, setSelectedProduct, setSelectedCategory, setSearchTerm,
     setShopStatus, setDeliveryThreshold, setDeliveryFee, setPromoText, setPromoBannerUrl, setShopLogoUrl,
-    setShowFilterModal, setShowScanner
+    setShowFilterModal, setShowScanner, showToast
   } = useShopDispatch();
   const { toggleLang, toggleTheme } = useUserDispatch();
   
@@ -57,7 +57,7 @@ function App() {
     view, isSettingsLoaded, shopStatus, products, 
     deliveryThreshold, promoText, promoBannerUrl, selectedCategory, 
     selectedProduct, activeDiscounts, shopLogoUrl, deliveryFee,
-    paymentQrUrl, paymentInfo, searchTerm,
+    paymentQrUrl, paymentInfo, searchTerm, searchFocused,
     showFilterModal,
     showScanner
   } = useShopState();
@@ -70,6 +70,8 @@ function App() {
 
 
   const { addToCart, clearCart, updateQty, handleBulkAddToCart, prepareIdempotency } = useCartDispatch();
+  const { wishlist, wishlistCount, isFavorited, toggleWishlist } = useWishlist(user?.id);
+  const { fetchWithRetry } = useApi();
 
   // Local state for specific UI interactions not needed in global context
   const [showInvoice, setShowInvoice] = React.useState(false);
@@ -166,7 +168,17 @@ function App() {
     }
   }, [cart.length, tg, isVersionAtLeast]);
 
-  const { fetchWithRetry, loading: isApiLoading } = useApi();
+  const handleToggleWishlist = async (productId) => {
+    const id = productId ?? selectedProduct?.id;
+    if (id == null) return;
+    const added = await toggleWishlist(id);
+    HapticFeedback?.impactOccurred('light');
+    showToast(
+      added
+        ? (lang === 'kh' ? 'បានរក្សាទុក — មើលក្នុង Profile → សំណព្វ' : 'Saved — see Profile → Favorites')
+        : (lang === 'kh' ? 'បានដកចេញពីសំណព្វ' : 'Removed from favorites')
+    );
+  };
   
   if (!isSettingsLoaded) {
     return (
@@ -334,22 +346,34 @@ function App() {
           <>
             {view === 'profile' && (
               <Suspense fallback={<ProfileSkeleton />}>
-                <UserProfile user={user} setView={setView} BACKEND_URL={BACKEND_URL} onViewInvoice={(o) => { setLastOrder(o); setShowInvoice(true); }} t={t} lang={lang} toggleLang={toggleLang} theme={theme} toggleTheme={toggleTheme} products={products} handleBulkAddToCart={handleBulkAddToCart} />
+                <UserProfile user={user} setView={setView} BACKEND_URL={BACKEND_URL} onViewInvoice={(o) => { setLastOrder(o); setShowInvoice(true); }} t={t} lang={lang} toggleLang={toggleLang} theme={theme} toggleTheme={toggleTheme} products={products} handleBulkAddToCart={handleBulkAddToCart} wishlistCount={wishlistCount} />
               </Suspense>
             )}
-            {view === 'wishlist' && isEnabled('BETA_WISH_LIST') && (
+            {view === 'wishlist' && (
               <Suspense fallback={<div className="p-5"><div className="h-40 bg-bg-soft rounded-3xl animate-pulse"></div></div>}>
-                <WishlistPage products={products} onAdd={addToCart} setView={setView} t={t} lang={lang} />
+                <WishlistPage
+                  wishlist={wishlist}
+                  products={products}
+                  onAdd={addToCart}
+                  onViewProduct={(p) => { setSelectedProduct(p); setView('product_detail'); }}
+                  onToggleWishlist={handleToggleWishlist}
+                  activeDiscounts={activeDiscounts}
+                  handleBulkAddToCart={handleBulkAddToCart}
+                  setView={setView}
+                  t={t}
+                  lang={lang}
+                />
               </Suspense>
-            )}
-            {view === 'wishlist' && !isEnabled('BETA_WISH_LIST') && (
-              <div className="p-8 text-center text-muted">Coming Soon...</div>
             )}
             {(view === 'home' || view === 'browse') && (
               <div className="animate-in">
-                <Hero searchTerm={searchTerm} setSearchTerm={setSearchTerm} view={view} setView={setView} user={user} lang={lang} theme={theme} toggleLang={toggleLang} toggleTheme={toggleTheme} />
-                <PromoBanner threshold={deliveryThreshold} promoText={promoText} promoBannerUrl={promoBannerUrl} t={t} lang={lang} />
-                {view === 'browse' && <CategoryNavigator searchTerm={searchTerm} setSearchTerm={setSearchTerm} selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory} t={t} />}
+                <Hero searchTerm={searchTerm} setSearchTerm={setSearchTerm} view={view} setView={setView} user={user} lang={lang} theme={theme} toggleLang={toggleLang} toggleTheme={toggleTheme} isKeyboardVisible={isKeyboardVisible} t={t} />
+                {!(view === 'browse' && (searchTerm.trim() || searchFocused)) && (
+                  <PromoBanner threshold={deliveryThreshold} promoText={promoText} promoBannerUrl={promoBannerUrl} t={t} lang={lang} />
+                )}
+                {view === 'browse' && !searchFocused && (
+                  <CategoryNavigator searchTerm={searchTerm} setSearchTerm={setSearchTerm} selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory} t={t} />
+                )}
                 <ProductGrid />
               </div>
             )}
@@ -386,7 +410,20 @@ function App() {
         )}
 
         {view === 'product_detail' && selectedProduct && (
-          <ProductDetail product={selectedProduct} allProducts={products} onAdd={addToCart} onClose={() => setView('home')} onBuyNow={() => setView('checkout')} activeDiscounts={activeDiscounts} t={t} lang={lang} shopLogoUrl={shopLogoUrl} onSelectRelated={(p) => setSelectedProduct(p)} />
+          <ProductDetail
+            product={selectedProduct}
+            allProducts={products}
+            onAdd={addToCart}
+            onClose={() => setView('home')}
+            onBuyNow={() => setView('checkout')}
+            activeDiscounts={activeDiscounts}
+            t={t}
+            lang={lang}
+            shopLogoUrl={shopLogoUrl}
+            onSelectRelated={(p) => setSelectedProduct(p)}
+            isFavorited={isFavorited(selectedProduct.id)}
+            onToggleWishlist={() => handleToggleWishlist(selectedProduct.id)}
+          />
         )}
 
         <FilterModal />

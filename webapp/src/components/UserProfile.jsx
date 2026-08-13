@@ -10,7 +10,7 @@ import SocialBrandIcon from './ui/SocialBrandIcon';
  * 💎 High-Fidelity User Profile & Order History
  * Implements the "Timeline of Excellence" design system.
  */
-const UserProfile = ({ user, setView, BACKEND_URL, onViewInvoice, t, lang, toggleLang, theme, toggleTheme }) => {
+const UserProfile = ({ user, setView, BACKEND_URL, onViewInvoice, t, lang, toggleLang, theme, toggleTheme, wishlistCount = 0 }) => {
   const {
     socialFb, socialTg, socialIg, socialTt, socialEmail, socialWa,
     shopPhone, shopAddress, shopHours, shopLogoUrl, shopName,
@@ -172,19 +172,19 @@ const UserProfile = ({ user, setView, BACKEND_URL, onViewInvoice, t, lang, toggl
     <div className="history-page-luxury">
       
       <div className="history-header-lux" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-           <button onClick={() => setView('home')} className="back-btn-pill">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+           <button type="button" onClick={() => setView('home')} className="back-btn-pill back-btn-pill--icon" aria-label="Back">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
            </button>
-           <h1 className="detail-title-mega" style={{ fontSize: 24, margin: 0, whiteSpace: 'nowrap' }}>{t('my_account')}</h1>
+           <h1 className="profile-page-title">{t('my_account')}</h1>
         </div>
         
         <div className="hero-actions-right">
-           <div className="lang-switcher-pill" onClick={toggleLang} style={{ height: 38, padding: '0 12px' }}>
-              <img src={lang === 'kh' ? 'https://flagcdn.com/w40/kh.png' : 'https://flagcdn.com/w40/gb.png'} alt="" className="lang-icon-img" style={{ width: 18, height: 18 }} />
-              <span style={{ fontSize: 12 }}>{lang === 'kh' ? 'KH' : 'EN'}</span>
+           <div className="lang-switcher-pill" onClick={toggleLang} role="button" tabIndex={0}>
+              <img src={lang === 'kh' ? 'https://flagcdn.com/w40/kh.png' : 'https://flagcdn.com/w40/gb.png'} alt="" className="lang-icon-img" />
+              <span>{lang === 'kh' ? 'KH' : 'EN'}</span>
            </div>
-           <div className="theme-toggle-pill" onClick={toggleTheme} style={{ width: 38, height: 38, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
+           <div className="theme-toggle-pill" onClick={toggleTheme} role="button" tabIndex={0}>
               {theme === 'dark' ? '☀️' : '🌙'}
            </div>
         </div>
@@ -196,75 +196,88 @@ const UserProfile = ({ user, setView, BACKEND_URL, onViewInvoice, t, lang, toggl
         imageUrl={user?.photo_url || `https://ui-avatars.com/api/?name=${user?.first_name || 'User'}&background=random`}
       />
 
+      <button type="button" className="profile-favorites-link" onClick={() => setView('wishlist')}>
+        <span className="profile-favorites-icon" aria-hidden="true">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l8.82-8.82 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+          </svg>
+        </span>
+        <span className="profile-favorites-text">
+          {lang === 'kh' ? 'សំណព្វ' : 'Favorites'}
+        </span>
+        <span className="profile-favorites-count">{wishlistCount}</span>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <polyline points="9 18 15 12 9 6" />
+        </svg>
+      </button>
+
       {dbProfile && (
-        <div className="glass-card-luxury" style={{ marginBottom: 30, padding: 20 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 }}>
-            <div style={{ fontSize: 16, fontWeight: 900 }}>{lang === 'kh' ? 'ព័ត៌មានរបស់ខ្ញុំ' : 'My Information'}</div>
+        <div className="glass-card-luxury profile-info-card">
+          <div className="profile-info-head">
+            <div className="profile-info-title">{lang === 'kh' ? 'ព័ត៌មានរបស់ខ្ញុំ' : 'My Information'}</div>
             {!isEditingProfile ? (
-              <button onClick={() => setIsEditingProfile(true)} style={{ background: 'none', border: 'none', color: '#ec4899', fontSize: 12, fontWeight: 900 }}>
+              <button type="button" className="profile-info-edit-btn" onClick={() => setIsEditingProfile(true)}>
                 {lang === 'kh' ? 'កែប្រែ' : 'Edit'}
               </button>
             ) : (
-              <button onClick={() => setIsEditingProfile(false)} style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: 12, fontWeight: 900 }}>
+              <button type="button" className="profile-info-cancel-btn" onClick={() => setIsEditingProfile(false)}>
                 {lang === 'kh' ? 'បោះបង់' : 'Cancel'}
               </button>
             )}
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 15, marginBottom: 15, paddingBottom: 15, borderBottom: '1px solid var(--border-subtle)' }}>
-            <div style={{ width: 40, height: 40, borderRadius: 12, background: 'linear-gradient(135deg, #f59e0b, #ec4899)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>
-              🎁
-            </div>
+          <div className="profile-loyalty-row">
+            <div className="profile-loyalty-icon">pts</div>
             <div>
-              <div style={{ fontSize: 11, fontWeight: 800, opacity: 0.6 }}>{lang === 'kh' ? 'ពិន្ទុសន្សំ' : 'Loyalty Points'}</div>
-              <div style={{ fontSize: 18, fontWeight: 950, color: '#f59e0b' }}>{dbProfile.loyalty_points || 0} pts</div>
+              <div className="profile-loyalty-label">{lang === 'kh' ? 'ពិន្ទុសន្សំ' : 'Loyalty Points'}</div>
+              <div className="profile-loyalty-value">{dbProfile.loyalty_points || 0} pts</div>
             </div>
           </div>
 
           {!isEditingProfile ? (
-            <div style={{ display: 'grid', gap: 12 }}>
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: 14, lineHeight: '1.5' }}>
-                <span style={{ opacity: 0.6, marginTop: 2 }}>📞</span> 
-                <span style={{ fontWeight: 700, color: 'var(--text-main)' }}>{sanitizeText(dbProfile.phone) || (lang === 'kh' ? 'មិនទាន់មាន' : 'Not set')}</span>
+            <div className="profile-info-view">
+              <div className="profile-info-line">
+                <span className="profile-info-line-label">{lang === 'kh' ? 'លេខទូរស័ព្ទ' : 'Phone'}</span>
+                <span className="profile-info-line-value">{sanitizeText(dbProfile.phone) || (lang === 'kh' ? 'មិនទាន់មាន' : 'Not set')}</span>
               </div>
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: 14, lineHeight: '1.5' }}>
-                <span style={{ opacity: 0.6, marginTop: 2 }}>📍</span> 
-                <span style={{ fontWeight: 700, color: 'var(--text-main)' }}>{sanitizeText(dbProfile.address) || (lang === 'kh' ? 'មិនទាន់មាន' : 'Not set')}</span>
+              <div className="profile-info-line">
+                <span className="profile-info-line-label">{lang === 'kh' ? 'អាសយដ្ឋាន' : 'Address'}</span>
+                <span className="profile-info-line-value">{sanitizeText(dbProfile.address) || (lang === 'kh' ? 'មិនទាន់មាន' : 'Not set')}</span>
               </div>
             </div>
           ) : (
-            <div style={{ display: 'grid', gap: 15 }}>
+            <div className="profile-info-form">
               <div>
-                <label style={{ fontSize: 11, fontWeight: 900, opacity: 0.7, marginBottom: 5, display: 'block' }}>
+                <label className="profile-form-label">
                   {lang === 'kh' ? 'លេខទូរស័ព្ទ' : 'Phone Number'}
                 </label>
-                <input 
+                <input
                   type="tel"
-                  className="input-glass-admin" 
-                  style={{ width: '100%', fontSize: 14 }}
+                  className="input-glass-admin profile-form-input"
                   value={editPhone}
                   onChange={e => setEditPhone(e.target.value)}
                   placeholder="012 345 678"
                 />
               </div>
               <div>
-                <label style={{ fontSize: 11, fontWeight: 900, opacity: 0.7, marginBottom: 5, display: 'block' }}>
+                <label className="profile-form-label">
                   {lang === 'kh' ? 'អាសយដ្ឋានដឹកជញ្ជូន' : 'Delivery Address'}
                 </label>
-                <div style={{ background: 'var(--bg-soft)', padding: 15, borderRadius: 16 }}>
-                  <CambodiaAddress 
+                <div className="profile-address-box">
+                  <CambodiaAddress
                     value={editAddress}
                     onChange={(val) => setEditAddress(val)}
                     lang={lang}
                   />
                 </div>
               </div>
-              <button 
-                className="detail-btn-buy-luxury" 
+              <button
+                type="button"
+                className="profile-save-btn"
                 onClick={saveProfile}
                 disabled={isSavingProfile}
-                style={{ height: 44, fontSize: 14, marginTop: 5 }}>
-                {isSavingProfile ? '⌛...' : (lang === 'kh' ? 'រក្សាទុក' : 'Save Profile')}
+              >
+                {isSavingProfile ? (lang === 'kh' ? 'កំពុងរក្សាទុក...' : 'Saving...') : (lang === 'kh' ? 'រក្សាទុក' : 'Save')}
               </button>
             </div>
           )}

@@ -2,27 +2,35 @@ const wishlistService = require('../services/wishlistService');
 const asyncHandler = require('../utils/asyncHandler');
 const { ValidationError, UnauthorizedError } = require('../utils/errors');
 
+const getAuthUserId = (req) => req.tgUser?.id || req.user?.user_id || req.user?.id;
+
 const wishlistController = {
   get: asyncHandler(async (req, res) => {
-    // 🛡️ IDOR Fix: Derive user ID directly from authenticated session
-    const authUserId = req.tgUser?.id || req.user?.user_id || req.user?.id;
+    const authUserId = getAuthUserId(req);
     if (!authUserId) {
       throw new UnauthorizedError('Authentication Required');
     }
 
     const superAdminId = Number(process.env.SUPERADMIN_ID);
     const isAdminOrStaff = req.user?.role === 'admin' || req.user?.role === 'staff' || Number(authUserId) === superAdminId;
-
-    // Only allow requesting arbitrary userId if the caller is an Admin/Staff
     const effectiveUserId = (isAdminOrStaff && req.params.userId) ? req.params.userId : authUserId;
 
     const wishlist = await wishlistService.getWishlist(effectiveUserId, authUserId);
     res.json({ success: true, wishlist: wishlist || [] });
   }),
 
+  getMine: asyncHandler(async (req, res) => {
+    const authUserId = getAuthUserId(req);
+    if (!authUserId) {
+      throw new UnauthorizedError('Authentication Required');
+    }
+
+    const wishlist = await wishlistService.getWishlist(authUserId, authUserId);
+    res.json({ success: true, wishlist: wishlist || [] });
+  }),
+
   toggle: asyncHandler(async (req, res) => {
-    // 🛡️ IDOR Fix: Derive user ID directly from authenticated session
-    const authUserId = req.tgUser?.id || req.user?.user_id || req.user?.id;
+    const authUserId = getAuthUserId(req);
     if (!authUserId) {
       throw new UnauthorizedError('Authentication Required');
     }
@@ -33,11 +41,10 @@ const wishlistController = {
     }
 
     const result = await wishlistService.toggleWishlist(authUserId, productId, authUserId);
-    
-    // Structured response metadata for optimistic UI updates
-    res.json({ 
-      success: true, 
-      added: result.added, 
+
+    res.json({
+      success: true,
+      added: result.added,
       productId,
       message: result.added ? 'Item added to wishlist' : 'Item removed from wishlist'
     });

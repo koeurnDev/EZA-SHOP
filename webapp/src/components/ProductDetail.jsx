@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { calculateBestDiscount, getDiscountedPrice } from '../utils/discountUtils';
 import { formatCategory } from '../utils/langUtils';
 import { getVariantUnitMode, getCapacityLabel, getSelectionPrompt } from '../utils/variantUnitUtils';
+import { parseProductSections, isSkincareProduct } from '../utils/productContentUtils';
+import { useShopState } from '../context/ShopContext';
 
 import ImageLightboxModal from './ui/ImageLightboxModal';
 import { shareProduct } from '../utils/shareUtils';
@@ -26,6 +28,8 @@ const ProductDetail = ({ product, allProducts = [], onAdd, onClose, onBuyNow, ac
   const [newReviewRating, setNewReviewRating] = useState(5);
   const [submittingReview, setSubmittingReview] = useState(false);
   const [showReviewForm, setShowReviewForm] = useState(false);
+  const [activeTab, setActiveTab] = useState('description');
+  const { shopName } = useShopState();
 
   const scrollRef = React.useRef(null);
   const mainScrollRef = React.useRef(null);
@@ -40,6 +44,7 @@ const ProductDetail = ({ product, allProducts = [], onAdd, onClose, onBuyNow, ac
   React.useEffect(() => {
     setQuantity(1);
     setActiveImg(0);
+    setActiveTab('description');
     setFullProduct(product); // Reset when product changes
     if (mainScrollRef.current) mainScrollRef.current.scrollTop = 0;
     if (scrollRef.current) scrollRef.current.scrollLeft = 0;
@@ -130,7 +135,15 @@ const ProductDetail = ({ product, allProducts = [], onAdd, onClose, onBuyNow, ac
   const discountedPriceValue = getDiscountedPrice(product, bestDiscount);
   const isDiscounted = bestDiscount !== null;
   const displayProduct = fullProduct || product;
-  const hasReviews = displayProduct.review_count && displayProduct.review_count > 0;
+  const hasReviews = Number(displayProduct.review_count) > 0;
+  const isSkincare = isSkincareProduct({
+    category: displayProduct.category || product.category || '',
+    name: displayProduct.name || product.name || ''
+  });
+  const productSections = React.useMemo(
+    () => parseProductSections(displayProduct.description || product.description || ''),
+    [displayProduct.description, product.description]
+  );
   const relatedProducts = allProducts.filter(p => p.category === product.category && p.id !== product.id).slice(0, 8);
 
   const variants = React.useMemo(() => {
@@ -356,263 +369,318 @@ const ProductDetail = ({ product, allProducts = [], onAdd, onClose, onBuyNow, ac
               )}
             </div>
 
-            {/* Content */}
+            {/* Content Card */}
             <div className="pd-content">
-
-              {/* Product Name */}
-              <h1 className="pd-name">{product.name}</h1>
-
-              {/* Star Rating */}
-              {hasReviews && (
-                <div className="pd-rating-row">
-                  <span className="pd-star">★</span>
-                  <span className="pd-rating-val">{parseFloat(displayProduct.avg_rating).toFixed(1)}</span>
-                  <span className="pd-rating-count">({displayProduct.review_count.toLocaleString()} Reviews)</span>
+              <div className="pd-header-card">
+                <div className="pd-header-top">
+                  <div className="pd-header-main">
+                    <span className="pd-brand-label">
+                      {formatCategory(displayProduct.category, lang) || shopName || 'MoMo'}
+                    </span>
+                    <div className="pd-title-price-row">
+                      <h1 className="pd-name">{product.name}</h1>
+                      <div className="pd-price-actions">
+                        <div className="pd-price-block">
+                          <span className="pd-price-now">${discountedPriceValue}</span>
+                          {isDiscounted && (
+                            <span className="pd-price-was">${product.price}</span>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          className={`pd-header-wishlist ${isFavorited ? 'active' : ''}`}
+                          onClick={(e) => { e.stopPropagation(); if (typeof onToggleWishlist === 'function') onToggleWishlist(); }}
+                          aria-pressed={isFavorited}
+                          aria-label={isFavorited ? (lang === 'kh' ? 'ដកចេញពីសំណព្វ' : 'Remove from favorites') : (lang === 'kh' ? 'រក្សាទុកសំណព្វ' : 'Save to favorites')}
+                        >
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill={isFavorited ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l8.82-8.82 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                    {hasReviews && (
+                      <div className="pd-rating-row">
+                        <span className="pd-star">★</span>
+                        <span className="pd-rating-val">{parseFloat(displayProduct.avg_rating).toFixed(1)}</span>
+                        <span className="pd-rating-count">({displayProduct.review_count.toLocaleString()} {lang === 'kh' ? 'ការវាយតម្លៃ' : 'Reviews'})</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              )}
 
-              {/* Price and Quantity */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', marginTop: '8px' }}>
-                <div className="pd-price-row" style={{ margin: 0 }}>
-                  <span className="pd-price-now" style={isDiscounted ? { color: '#ef4444' } : {}}>${discountedPriceValue} USD</span>
-                  {isDiscounted && (
-                    <>
-                      <span className="pd-price-was" style={{ textDecoration: 'line-through', color: 'var(--text-muted)' }}>${product.price} USD</span>
-                      <span className="pd-pct-badge" style={{ background: 'linear-gradient(135deg, #ef4444, #dc2626)', color: 'white', padding: '3px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: '800', marginLeft: '6px', boxShadow: '0 2px 6px rgba(239, 68, 68, 0.3)' }}>
-                        -{bestDiscount.value}{bestDiscount.discount_type === 'percent' ? '%' : '$'}
-                      </span>
-                    </>
+                <div className="pd-meta-row">
+                  <div className={`pd-info-row ${isOutOfStock ? 'out-of-stock' : ''}`}>
+                    <span className={`pd-stock-dot ${isOutOfStock ? 'out' : 'in'}`} />
+                    <span className="pd-info-text">
+                      {isOutOfStock
+                        ? (lang === 'kh' ? 'អស់ស្តុក' : 'Out of stock')
+                        : (lang === 'kh' ? `មានស្តុក (${actualStock})` : `In stock (${actualStock})`)}
+                    </span>
+                  </div>
+                  <div className="pd-qty-selector">
+                    <button type="button" onClick={() => setQuantity(prev => (prev > 1 ? prev - 1 : 1))} className="pd-qty-btn" aria-label="Decrease quantity">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14" /></svg>
+                    </button>
+                    <span className="pd-qty-val">{quantity}</span>
+                    <button type="button" onClick={() => setQuantity(prev => prev + 1)} className="pd-qty-btn" aria-label="Increase quantity">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="pd-tabs" role="tablist">
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={activeTab === 'description'}
+                    className={`pd-tab ${activeTab === 'description' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('description')}
+                  >
+                    {lang === 'kh' ? 'ពិពណ៌នា' : 'Description'}
+                  </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={activeTab === 'reviews'}
+                    className={`pd-tab ${activeTab === 'reviews' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('reviews')}
+                  >
+                    {lang === 'kh' ? 'ការវាយតម្លៃ' : 'Reviews'}
+                  </button>
+                  {isSkincare && (
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={activeTab === 'how_to_use'}
+                      className={`pd-tab ${activeTab === 'how_to_use' ? 'active' : ''}`}
+                      onClick={() => setActiveTab('how_to_use')}
+                    >
+                      {lang === 'kh' ? 'របៀបប្រើ' : 'How to use'}
+                    </button>
                   )}
-                </div>
-
-                <div className="pd-qty-selector">
-                  <button onClick={() => setQuantity(prev => (prev > 1 ? prev - 1 : 1))} className="pd-qty-btn" aria-label="Decrease quantity">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14" /></svg>
-                  </button>
-                  <span className="pd-qty-val">{quantity}</span>
-                  <button onClick={() => setQuantity(prev => prev + 1)} className="pd-qty-btn" aria-label="Increase quantity">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                  </button>
                 </div>
               </div>
 
-              {/* Variants Selection */}
-              {hasVariants && (
-                <div style={{ marginBottom: '20px', padding: '14px', background: 'var(--bg-surface)', borderRadius: '14px', border: '1px solid var(--border-subtle)' }}>
-                  {uniqueColors.length > 0 && (
-                    <div style={{ marginBottom: uniqueSizes.length > 0 ? '14px' : '0' }}>
-                      <div style={{ fontSize: '13px', fontWeight: '800', marginBottom: '8px', color: 'var(--text-bold)' }}>{lang === 'kh' ? 'ពណ៌' : 'Color'}: <span style={{ color: 'var(--text-muted)' }}>{selectedColor || ''}</span></div>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                        {uniqueColors.map(c => {
-                          const isSelected = selectedColor === c;
-                          const colorMatches = variants.filter(v => v.color === c && (!selectedSize || v.size === selectedSize));
-                          const colorStock = colorMatches.reduce((sum, v) => sum + (parseInt(v.stock) || 0), 0);
-                          const isColorDisabled = colorStock <= 0;
-
-                          return (
-                            <button
-                              key={c}
-                              disabled={isColorDisabled}
-                              onClick={() => !isColorDisabled && setSelectedColor(isSelected ? null : c)}
-                              className={`pd-variant-btn ${isSelected ? 'selected' : ''} ${isColorDisabled ? 'disabled' : ''}`}
-                            >
-                              {c} {isColorDisabled ? (lang === 'kh' ? '(អស់)' : '(Out)') : ''}
-                            </button>
-                          );
-                        })}
-                      </div>
+              {activeTab === 'description' && (
+                <div className="pd-tab-panel">
+                  {loadingFullProduct ? (
+                    <div className="pd-desc-skeleton">
+                      <div className="skeleton-pulse" style={{ height: 14, width: '100%', marginBottom: 8, borderRadius: 4, background: 'var(--border-subtle)' }} />
+                      <div className="skeleton-pulse" style={{ height: 14, width: '90%', marginBottom: 8, borderRadius: 4, background: 'var(--border-subtle)' }} />
+                      <div className="skeleton-pulse" style={{ height: 14, width: '70%', borderRadius: 4, background: 'var(--border-subtle)' }} />
                     </div>
+                  ) : productSections.description ? (
+                    <>
+                      <p className="pd-desc">{productSections.description}</p>
+                      {isSkincare && productSections.ingredients && (
+                        <div className="pd-skincare-block">
+                          <h4 className="pd-skincare-label">{lang === 'kh' ? 'សមាសធាតុ' : 'Ingredients'}</h4>
+                          <p className="pd-desc">{productSections.ingredients}</p>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <p className="pd-desc pd-desc-empty">
+                      {lang === 'kh' ? 'មិនទាន់មានពិពណ៌នា' : 'No description available.'}
+                    </p>
                   )}
-                  {uniqueSizes.length > 0 && (
-                    <div>
-                      <div style={{ fontSize: '13px', fontWeight: '800', marginBottom: '8px', color: 'var(--text-bold)' }}>{capacityLabel}: <span style={{ color: 'var(--text-muted)' }}>{selectedSize || ''}</span></div>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+
+                  {hasVariants && uniqueSizes.length > 0 && (
+                    <div className="pd-size-section">
+                      <div className="pd-size-label">{capacityLabel}</div>
+                      <div className="pd-size-list">
                         {uniqueSizes.map(s => {
                           const isSelected = selectedSize === s;
                           const sizeMatches = variants.filter(v => v.size === s && (!selectedColor || v.color === selectedColor));
                           const sizeStock = sizeMatches.reduce((sum, v) => sum + (parseInt(v.stock) || 0), 0);
                           const isSizeDisabled = sizeStock <= 0;
-
                           return (
                             <button
+                              type="button"
                               key={s}
                               disabled={isSizeDisabled}
                               onClick={() => !isSizeDisabled && setSelectedSize(isSelected ? null : s)}
-                              className={`pd-variant-btn ${isSelected ? 'selected' : ''} ${isSizeDisabled ? 'disabled' : ''}`}
+                              className={`pd-size-option ${isSelected ? 'selected' : ''} ${isSizeDisabled ? 'disabled' : ''}`}
                             >
-                              {s} {isSizeDisabled ? (lang === 'kh' ? '(អស់)' : '(Out)') : ''}
+                              {s}
+                              {isSizeDisabled && <span className="pd-size-out">{lang === 'kh' ? 'អស់' : 'Out'}</span>}
                             </button>
                           );
                         })}
                       </div>
                     </div>
                   )}
-                </div>
-              )}
 
-              {/* Info rows */}
-              <div className="pd-info-rows">
-                <div className={`pd-info-row ${isOutOfStock ? 'out-of-stock' : ''}`}>
-                  <span className={`pd-stock-dot ${isOutOfStock ? 'out' : 'in'}`} />
-                  <span className="pd-info-text">
-                    {isOutOfStock
-                      ? (lang === 'kh' ? 'អស់ស្តុក' : 'Out of stock')
-                      : (lang === 'kh' ? `មានស្តុក (${actualStock})` : `In stock (${actualStock})`)}
-                  </span>
-                </div>
-              </div>
-
-              {/* Description */}
-              {loadingFullProduct ? (
-                <div style={{ padding: '15px 0' }}>
-                  <div className="skeleton-pulse" style={{ height: 14, width: '100%', marginBottom: 8, borderRadius: 4, background: 'var(--border-subtle)' }} />
-                  <div className="skeleton-pulse" style={{ height: 14, width: '90%', marginBottom: 8, borderRadius: 4, background: 'var(--border-subtle)' }} />
-                  <div className="skeleton-pulse" style={{ height: 14, width: '70%', borderRadius: 4, background: 'var(--border-subtle)' }} />
-                </div>
-              ) : fullProduct.description && (
-                <p className="pd-desc">{fullProduct.description}</p>
-              )}
-
-              {/* Related Products */}
-              {relatedProducts.length > 0 && (
-                <div className="pd-related-section" style={{ marginTop: '32px', paddingTop: '24px', borderTop: '1px solid var(--border-subtle)' }}>
-                  <h3 style={{ fontSize: '15px', fontWeight: '900', marginBottom: '16px', color: 'var(--text-bold)' }}>
-                    {lang === 'kh' ? 'ផលិតផលស្រដៀងគ្នា' : 'You might also like'}
-                  </h3>
-                  <div className="pd-related-row">
-                    {relatedProducts.map(rp => (
-                      <div
-                        key={rp.id}
-                        onClick={() => {
-                          if (onSelectRelated) onSelectRelated(rp);
-                        }}
-                        style={{ minWidth: '120px', width: '120px', cursor: 'pointer', background: 'var(--bg-surface)', borderRadius: '16px', overflow: 'hidden', border: '1px solid var(--border-subtle)' }}
-                      >
-                        <div className="pd-image-area" style={{ height: '140px', borderRadius: 0 }}>
-                          <img
-                            src={(rp.image && rp.image.includes('cloudinary')) ? rp.image.replace('upload/', 'upload/f_auto,q_auto,w_200,c_fill,g_auto/') : rp.image}
-                            alt={rp.name}
-                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                            onError={(e) => { e.target.onerror = null; e.target.src = '/favicon.png'; }}
-                          />
-                        </div>
-                        <div style={{ padding: '8px' }}>
-                          <div style={{ fontSize: '11px', fontWeight: '800', color: 'var(--text-bold)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: '4px' }}>{rp.name}</div>
-                          <div style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text-bold)' }}>${rp.price}</div>
-                        </div>
+                  {hasVariants && uniqueColors.length > 0 && (
+                    <div className="pd-size-section">
+                      <div className="pd-size-label">{lang === 'kh' ? 'ពណ៌' : 'Color'}</div>
+                      <div className="pd-size-list">
+                        {uniqueColors.map(c => {
+                          const isSelected = selectedColor === c;
+                          const colorMatches = variants.filter(v => v.color === c && (!selectedSize || v.size === selectedSize));
+                          const colorStock = colorMatches.reduce((sum, v) => sum + (parseInt(v.stock) || 0), 0);
+                          const isColorDisabled = colorStock <= 0;
+                          return (
+                            <button
+                              type="button"
+                              key={c}
+                              disabled={isColorDisabled}
+                              onClick={() => !isColorDisabled && setSelectedColor(isSelected ? null : c)}
+                              className={`pd-size-option ${isSelected ? 'selected' : ''} ${isColorDisabled ? 'disabled' : ''}`}
+                            >
+                              {c}
+                              {isColorDisabled && <span className="pd-size-out">{lang === 'kh' ? 'អស់' : 'Out'}</span>}
+                            </button>
+                          );
+                        })}
                       </div>
-                    ))}
-                  </div>
-                  <style>{`.pd-related-section ::-webkit-scrollbar { display: none; }`}</style>
-                </div>
-              )}
+                    </div>
+                  )}
 
-              {/* Reviews Section */}
-              <div className="pd-reviews-section" style={{ marginTop: '32px', paddingTop: '24px', paddingBottom: '8px', borderTop: '1px solid var(--border-subtle)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                  <h3 style={{ fontSize: '18px', fontWeight: '900', margin: 0, color: 'var(--text-bold)' }}>
-                    {lang === 'kh' ? 'ការវាយតម្លៃអតិថិជន' : 'Customer Reviews'}
-                  </h3>
-                  {!showReviewForm && (
-                    <button
-                      onClick={() => setShowReviewForm(true)}
-                      style={{ background: 'transparent', color: 'var(--text-muted)', padding: '5px 14px', borderRadius: '100px', fontWeight: '700', border: '1.5px solid var(--border-subtle)', fontSize: '12px', cursor: 'pointer' }}
-                    >
-                      {lang === 'kh' ? 'សរសេរការវាយតម្លៃ' : 'Write Review'}
-                    </button>
+                  {relatedProducts.length > 0 && (
+                    <div className="pd-related-section">
+                      <h3 className="pd-related-title">
+                        {lang === 'kh' ? 'ផលិតផលស្រដៀងគ្នា' : 'You might also like'}
+                      </h3>
+                      <div className="pd-related-row">
+                        {relatedProducts.map(rp => (
+                          <div
+                            key={rp.id}
+                            className="pd-related-card"
+                            onClick={() => { if (onSelectRelated) onSelectRelated(rp); }}
+                          >
+                            <div className="pd-related-img-wrap">
+                              <img
+                                src={(rp.image && rp.image.includes('cloudinary')) ? rp.image.replace('upload/', 'upload/f_auto,q_auto,w_200,c_fill,g_auto/') : rp.image}
+                                alt={rp.name}
+                                onError={(e) => { e.target.onerror = null; e.target.src = '/favicon.png'; }}
+                              />
+                            </div>
+                            <div className="pd-related-info">
+                              <div className="pd-related-name">{rp.name}</div>
+                              <div className="pd-related-price">${rp.price}</div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   )}
                 </div>
+              )}
 
-                {/* Add Review Form */}
-                {showReviewForm && (
-                  <div style={{ background: 'var(--bg-soft)', padding: '16px', borderRadius: '16px', marginBottom: '20px', border: '1px solid var(--border-subtle)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'center', gap: '4px', marginBottom: '16px' }}>
-                      {[1, 2, 3, 4, 5].map(star => (
-                        <span
-                          key={star}
-                          onClick={() => setNewReviewRating(star)}
-                          style={{
-                            fontSize: '36px',
-                            padding: '10px 14px',
-                            color: star <= newReviewRating ? '#fbbf24' : 'var(--border-subtle)',
-                            cursor: 'pointer',
-                            transition: 'transform 0.1s',
-                            textShadow: star <= newReviewRating ? '0 2px 10px rgba(251, 191, 36, 0.4)' : 'none',
-                            WebkitTapHighlightColor: 'transparent',
-                            userSelect: 'none'
-                          }}
-                        >★</span>
+              {activeTab === 'how_to_use' && isSkincare && (
+                <div className="pd-tab-panel">
+                  {productSections.howToUse ? (
+                    <p className="pd-desc pd-desc-preline">{productSections.howToUse}</p>
+                  ) : (
+                    <div className="pd-skincare-tips">
+                      <p className="pd-desc pd-desc-preline">
+                        {lang === 'kh'
+                          ? `១. លាងមុខស្អាតមុន
+២. លាបបរិមាណតិច
+៣. ប្រើពេលព្រឹក និងល្ងាច
+៤. លាប sunscreen ពេលថ្ងៃ (បើចាំបាច់)`
+                          : `1. Cleanse face first
+2. Apply a small amount
+3. Use morning and evening
+4. Follow with sunscreen during the day (if needed)`}
+                      </p>
+                      <p className="pd-desc pd-desc-empty pd-desc-hint">
+                        {lang === 'kh'
+                          ? 'Admin: បន្ថែម [HOW_TO_USE] ក្នុងពិពណ៌នាផលិតផល'
+                          : 'Admin: add [HOW_TO_USE] in the product description'}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {activeTab === 'reviews' && (
+                <div className="pd-tab-panel pd-reviews-panel">
+                  <div className="pd-reviews-header">
+                    <h3 className="pd-reviews-title">
+                      {lang === 'kh' ? 'ការវាយតម្លៃអតិថិជន' : 'Customer Reviews'}
+                    </h3>
+                    {!showReviewForm && (
+                      <button type="button" className="pd-review-write-btn" onClick={() => setShowReviewForm(true)}>
+                        {lang === 'kh' ? 'សរសេរការវាយតម្លៃ' : 'Write Review'}
+                      </button>
+                    )}
+                  </div>
+
+                  {showReviewForm && (
+                    <div className="pd-review-form">
+                      <div className="pd-review-stars">
+                        {[1, 2, 3, 4, 5].map(star => (
+                          <button
+                            type="button"
+                            key={star}
+                            onClick={() => setNewReviewRating(star)}
+                            className={`pd-review-star ${star <= newReviewRating ? 'active' : ''}`}
+                          >★</button>
+                        ))}
+                      </div>
+                      <textarea
+                        value={newReviewText}
+                        onChange={(e) => setNewReviewText(e.target.value)}
+                        placeholder={lang === 'kh' ? 'សរសេរមតិយោបល់របស់អ្នក...' : 'Write your review...'}
+                        className="pd-review-textarea"
+                      />
+                      <div className="pd-review-form-actions">
+                        <button type="button" className="pd-review-cancel-btn" onClick={() => setShowReviewForm(false)}>
+                          {lang === 'kh' ? 'បោះបង់' : 'Cancel'}
+                        </button>
+                        <button
+                          type="button"
+                          className="pd-review-submit-btn"
+                          onClick={() => handleSubmitReview()}
+                          disabled={submittingReview || !newReviewText.trim()}
+                        >
+                          {submittingReview ? '...' : (lang === 'kh' ? 'បញ្ជូន' : 'Submit')}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {loadingReviews ? (
+                    <div className="pd-reviews-empty">Loading...</div>
+                  ) : reviews.length > 0 ? (
+                    <div className="pd-reviews-list">
+                      {reviews.map(rev => (
+                        <div key={rev.id} className="pd-review-item">
+                          <div className="pd-review-item-head">
+                            <span className="pd-review-author">{rev.user_name}</span>
+                            <span className="pd-review-rating">{'★'.repeat(rev.rating)}{'☆'.repeat(5 - rev.rating)}</span>
+                          </div>
+                          <p className="pd-review-body">{rev.comment}</p>
+                          <span className="pd-review-date">{new Date(rev.created_at).toLocaleDateString()}</span>
+                        </div>
                       ))}
                     </div>
-                    <textarea
-                      value={newReviewText}
-                      onChange={(e) => setNewReviewText(e.target.value)}
-                      placeholder={lang === 'kh' ? 'សរសេរមតិយោបល់របស់អ្នក...' : 'Write your review...'}
-                      style={{ width: '100%', padding: '14px', borderRadius: '12px', border: '1px solid var(--border-subtle)', background: 'var(--bg-surface)', outline: 'none', resize: 'none', height: '80px', fontFamily: 'inherit', marginBottom: '12px', fontSize: '14px', color: 'var(--text-main)' }}
-                    />
-                    <div style={{ display: 'flex', gap: '10px' }}>
-                      <button
-                        onClick={() => setShowReviewForm(false)}
-                        style={{ background: 'transparent', color: 'var(--text-muted)', padding: '10px 16px', borderRadius: '100px', fontWeight: '800', border: '1px solid var(--border-subtle)', flex: 1, cursor: 'pointer' }}
-                      >
-                        {lang === 'kh' ? 'បោះបង់' : 'Cancel'}
-                      </button>
-                      <button
-                        onClick={() => handleSubmitReview()}
-                        disabled={submittingReview || !newReviewText.trim()}
-                        style={{ background: 'var(--primary-gradient, linear-gradient(135deg, #111827, #1f2937))', color: 'white', padding: '10px 16px', borderRadius: '100px', fontWeight: '800', border: 'none', opacity: (submittingReview || !newReviewText.trim()) ? 0.5 : 1, flex: 2, boxShadow: '0 4px 15px rgba(0,0,0,0.1)', cursor: 'pointer' }}
-                      >
-                        {submittingReview ? '...' : (lang === 'kh' ? 'បញ្ជូនមតិយោបល់' : 'Submit Review')}
-                      </button>
+                  ) : (
+                    <div className="pd-reviews-empty">
+                      {lang === 'kh' ? 'មិនទាន់មានការវាយតម្លៃនៅឡើយទេ' : 'No reviews yet. Be the first!'}
                     </div>
-                  </div>
-                )}
-
-                {/* Review List */}
-                {loadingReviews ? (
-                  <div style={{ textAlign: 'center', padding: '20px', color: 'var(--text-muted)' }}>Loading...</div>
-                ) : reviews.length > 0 ? (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                    {reviews.map(rev => (
-                      <div key={rev.id} style={{ borderBottom: '1px solid var(--border-subtle)', paddingBottom: '16px' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                          <span style={{ fontWeight: '800', color: 'var(--text-bold)' }}>{rev.user_name}</span>
-                          <span style={{ color: '#fbbf24', fontSize: '14px', letterSpacing: '2px' }}>{'★'.repeat(rev.rating)}{'☆'.repeat(5 - rev.rating)}</span>
-                        </div>
-                        <p style={{ margin: 0, fontSize: '14px', color: 'var(--text-main)', lineHeight: '1.6' }}>{rev.comment}</p>
-                        <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '8px', display: 'block', fontWeight: '600' }}>
-                          {new Date(rev.created_at).toLocaleDateString()}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '14px', padding: '20px', background: 'var(--bg-soft)', borderRadius: '12px' }}>
-                    {lang === 'kh' ? 'មិនទាន់មានការវាយតម្លៃនៅឡើយទេ សូមក្លាយជាអ្នកវាយតម្លៃដំបូងគេ!' : 'No reviews yet. Be the first to review!'}
-                  </div>
-                )}
-              </div>
-
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Sticky Footer — auto-hide on scroll down */}
+          {/* Sticky Footer */}
           <div className={`pd-footer${footerVisible ? '' : ' pd-footer--hidden'}`}>
             <button
-              className={`pd-heart-btn ${isFavorited ? 'active' : ''}`}
-              onClick={(e) => { e.stopPropagation(); if (typeof onToggleWishlist === 'function') onToggleWishlist(); }}
-              aria-label="Wishlist"
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill={isFavorited ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l8.82-8.82 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
-              </svg>
-            </button>
-
-            <button
+              type="button"
               className={`pd-cart-btn outline ${isOutOfStock ? 'disabled' : ''}`}
               onClick={handleAdd}
               disabled={isOutOfStock}
             >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
+                <line x1="3" y1="6" x2="21" y2="6" />
+                <path d="M16 10a4 4 0 0 1-8 0" />
+              </svg>
               {isOutOfStock
                 ? (lang === 'kh' ? 'អស់ស្តុក' : 'Out of Stock')
                 : (t ? t('add_to_cart') : (lang === 'kh' ? 'បន្ថែមទៅកន្ត្រក' : 'Add to Cart'))
@@ -620,6 +688,7 @@ const ProductDetail = ({ product, allProducts = [], onAdd, onClose, onBuyNow, ac
             </button>
 
             <button
+              type="button"
               className={`pd-cart-btn ${isOutOfStock ? 'disabled' : ''}`}
               onClick={handleBuyNow}
               disabled={isOutOfStock}

@@ -97,8 +97,13 @@ const productRepository = {
     return await cacheService.getOrFetch(
       CACHE_KEYS.minimalProducts,
       async () => {
-        const res = await pool.query('SELECT id, name, price, stock, category, image, video_url, flash_sale_price, flash_sale_end FROM products ORDER BY id DESC');
-        return res.rows;
+        const res = await pool.query('SELECT id, name, price, stock, category, image, additional_images, video_url, flash_sale_price, flash_sale_end FROM products ORDER BY id DESC');
+        return res.rows.map((row) => {
+          if (row.image) return row;
+          const extras = safeJsonParse(row.additional_images, []);
+          if (extras[0]) return { ...row, image: extras[0] };
+          return row;
+        });
       },
       CACHE_TTL.products
     );

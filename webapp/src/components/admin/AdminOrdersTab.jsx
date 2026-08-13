@@ -186,7 +186,7 @@ const AdminOrdersTab = React.memo(({
     { value: 'pending', label: `⌛ ${t('admin_filter_pending')} (${counts.pending})` },
     { value: 'processing', label: `📦 ${t('admin_filter_preparing')} (${counts.toPack})` },
     { value: 'shipped', label: `🚚 ${t('admin_filter_shipped')} (${counts.shipped})` },
-    { value: 'cancelled', label: `❌ ${t('admin_filter_cancelled')}` },
+    { value: 'cancelled', label: t('admin_filter_cancelled') },
   ], [t, counts]);
 
   const ORDER_STATUS_OPTIONS = useMemo(() => [
@@ -194,7 +194,7 @@ const AdminOrdersTab = React.memo(({
     { value: 'paid', label: lang === 'kh' ? 'កំពុងរៀបចំ' : 'Preparing' },
     { value: 'processing', label: lang === 'kh' ? 'កំពុងរៀបចំ' : 'Preparing' },
     { value: 'shipped', label: lang === 'kh' ? 'ប្រគល់ជូនអ្នកដឹក' : 'Handed to courier' },
-    { value: 'cancelled', label: lang === 'kh' ? 'បោះបង់' : 'Cancelled' }
+    { value: 'cancelled', label: lang === 'kh' ? 'បានបោះបង់' : 'Cancelled' }
   ], [lang]);
 
   const getOrderStatusLabel = (status) => {
@@ -202,7 +202,7 @@ const AdminOrdersTab = React.memo(({
       if (status === 'pending') return 'រង់ចាំការបញ្ជាក់';
       if (['paid', 'processing'].includes(status)) return 'កំពុងរៀបចំ';
       if (['shipped', 'delivering', 'delivered'].includes(status)) return 'ប្រគល់ជូនអ្នកដឹក';
-      if (status === 'cancelled') return 'បោះបង់';
+      if (status === 'cancelled') return 'បានបោះបង់';
     }
     const key = status === 'delivered' ? 'shipped' : (status === 'paid' ? 'processing' : status);
     return ORDER_STATUS_OPTIONS.find(opt => opt.value === key)?.label || status;
@@ -215,17 +215,7 @@ const AdminOrdersTab = React.memo(({
     return 'admin-status-select--pending';
   };
 
-  const isTerminalOrderStatus = (status) => ['shipped', 'delivering', 'delivered', 'cancelled'].includes(status);
-
-  const getStatusChangeOptions = (currentStatus) => {
-    const transitions = {
-      pending: ['paid', 'cancelled'],
-      paid: ['processing', 'cancelled'],
-      processing: ['shipped', 'cancelled'],
-    };
-    const allowed = transitions[currentStatus] || [];
-    return ORDER_STATUS_OPTIONS.filter(opt => allowed.includes(opt.value));
-  };
+  const canCancelOrder = (status) => ['paid', 'processing'].includes(status);
 
   const filtered = useMemo(() => {
     const list = orders.filter(o => {
@@ -451,36 +441,25 @@ const AdminOrdersTab = React.memo(({
         const cleanUserName = (o.user_name || '').replace(/\s*-\s*$/, '').trim() || (lang === 'kh' ? 'អតិថិជន' : 'Customer');
 
         return (
-          <div key={o.id} className="glass-card-luxury admin-order-card" style={{ borderLeft: isLeftover ? '4px solid #ef4444' : hasMultipleOrders ? '4px solid #f59e0b' : 'none' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                <span className="ticket-id-luxury" style={{ fontWeight: 900 }}>#{o.order_code || o.id}</span>
+          <div key={o.id} className={`glass-card-luxury admin-order-card${o.status === 'cancelled' ? ' admin-order-card--cancelled' : ''}`} style={{ borderLeft: isLeftover ? '4px solid var(--text-dim)' : hasMultipleOrders ? '4px solid var(--text-muted, #94a3b8)' : 'none' }}>
+            <div className="admin-order-card-header">
+              <div className="admin-order-card-meta">
+                <span className="admin-order-chip admin-order-chip--id">#{o.order_code || o.id}</span>
                 {hasMultipleOrders && (
-                  <span style={{ fontSize: 10, fontWeight: 900, background: 'linear-gradient(135deg, #f59e0b, #d97706)', color: '#ffffff', padding: '3px 8px', borderRadius: 8, boxShadow: '0 2px 6px rgba(245,158,11,0.3)' }}>
-                    🎁 មាន {phoneCounts[o.phone]} កម្ម៉ង់រួមគ្នា!
+                  <span className="admin-order-chip admin-order-chip--hint">
+                    {phoneCounts[o.phone]} {lang === 'kh' ? 'កម្ម៉ង់រួម' : 'linked'}
                   </span>
                 )}
                 {isLeftover && (
-                  <span style={{ fontSize: 10, fontWeight: 900, background: '#ef4444', color: '#fff', padding: '3px 8px', borderRadius: 8 }}>
-                    ⚠️ សេសសល់ {diffDays > 0 ? `${diffDays}ថ្ងៃ` : `${diffHours}ម៉ោង`}
+                  <span className="admin-order-chip admin-order-chip--warn">
+                    {lang === 'kh' ? 'សេសសល់' : 'Left'} {diffDays > 0 ? `${diffDays}ថ្ងៃ` : `${diffHours}ម`}
                   </span>
                 )}
               </div>
 
-              {isTerminalOrderStatus(o.status) ? (
-                <span className={`admin-order-status-badge ${getOrderStatusClass(o.status)}`}>
-                  {getOrderStatusLabel(o.status)}
-                </span>
-              ) : (
-                <DarkSelect
-                  style={{ minWidth: 118, maxWidth: 140, flexShrink: 0 }}
-                  value={o.status}
-                  onChange={(val) => updateStatus(o.id ?? o.order_code, val)}
-                  options={getStatusChangeOptions(o.status)}
-                  selectedLabel={getOrderStatusLabel(o.status)}
-                  triggerClassName={getOrderStatusClass(o.status)}
-                />
-              )}
+              <span className={`admin-order-status-badge ${getOrderStatusClass(o.status)}`}>
+                {getOrderStatusLabel(o.status)}
+              </span>
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
@@ -664,9 +643,22 @@ const AdminOrdersTab = React.memo(({
                 </div>
               )}
               {o.status === 'pending' && (
-                <button className="ticket-btn-primary admin-order-btn" onClick={() => updateStatus(o.id ?? o.order_code, 'paid')}>
-                  1. បញ្ជាក់ការបង់
-                </button>
+                <div className="admin-order-pending-actions">
+                  <button
+                    type="button"
+                    className="ticket-btn-primary admin-order-btn"
+                    onClick={() => updateStatus(o.id ?? o.order_code, 'paid')}
+                  >
+                    {t('admin_confirm_payment')}
+                  </button>
+                  <button
+                    type="button"
+                    className="admin-order-btn admin-order-btn--muted"
+                    onClick={() => updateStatus(o.id ?? o.order_code, 'cancelled')}
+                  >
+                    {t('admin_not_paid')}
+                  </button>
+                </div>
               )}
               {o.status === 'paid' && (
                 <button className="ticket-btn-primary admin-order-btn admin-order-btn--blue" onClick={() => updateStatus(o.id ?? o.order_code, 'processing')}>
@@ -712,6 +704,15 @@ const AdminOrdersTab = React.memo(({
                     setTimeout(() => window.print(), 300);
                   }
                 }}>Print</button>
+              )}
+              {canCancelOrder(o.status) && (
+                <button
+                  type="button"
+                  className="admin-order-cancel-link"
+                  onClick={() => updateStatus(o.id ?? o.order_code, 'cancelled')}
+                >
+                  {lang === 'kh' ? 'បោះបង់ការកម្ម៉ង់' : 'Cancel order'}
+                </button>
               )}
                 </>
               )}

@@ -9,14 +9,14 @@ const AdminFaqsTab = React.memo(({ faqsLoading, faqsList, setEditingFaq, setIsFa
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
         <h3 style={{ fontSize: 18, fontWeight: 900 }}>{t('admin_faq_title')}</h3>
         <button
-          className="ticket-btn-primary"
-          style={{ flex: 'none', width: 'auto', padding: '10px 20px', height: 'auto' }}
+          type="button"
+          className="admin-products-add-btn"
           onClick={() => {
             setEditingFaq({ id: null, q_kh: '', q_en: '', a_kh: '', a_en: '', sort_order: 0, is_active: true });
             setIsFaqModalOpen(true);
           }}
         >
-          ➕ {t('admin_add_faq')}
+          + {t('admin_add_faq')}
         </button>
       </div>
 

@@ -60,12 +60,31 @@ npm run dev
 
 ## 💾 Maintenance & Operations
 
-### 1. Database Management
-- The system automatically initializes tables on startup.
-- **Stock Management**: Inventory is deducted automatically on successful orders.
-- **Cleanup**: When a product is deleted from the Admin Panel, the server automatically removes the associated image from Cloudinary to save storage.
+See **[MAINTENANCE.md](./MAINTENANCE.md)** for the full ops guide.
 
-### 2. Security Configuration
+### Quick commands (`cd bot`)
+
+| Command | Purpose |
+|---------|---------|
+| `npm run migrate` | Apply pending DB migrations |
+| `npm run smoke` | Health check (DB, tables, products) |
+| `npm run scan:images` | Scan Cloudinary URLs (safe — no DB wipe) |
+| `npm run restore:images` | Restore product images from backup |
+| `npm run backup:db` | Export database backup |
+| `npm test` | Shared discount/delivery math tests |
+| `npm run check` | test + smoke + webapp build |
+
+### Database
+- Migrations are **not** auto-run on local `npm start` — run `npm run migrate` after schema changes.
+- On **Render**, migrations run automatically via `preDeployCommand` before each deploy.
+- Track applied files in the `schema_migrations` table.
+
+### Product images
+- Default image scan **only flags** broken URLs in cache — it does **not** clear the database.
+- Use `npm run scan:images:clear` only when you intentionally want to remove broken URLs from products.
+- Set `DISABLE_IMAGE_SCAN=true` to disable the daily worker scan.
+
+### Security Configuration
 - **Admin Protection**: Only the user matching `SUPERADMIN_ID` can access the `/admin` section. 
 - **Signature Verification**: Every admin request is cryptographically verified using Telegram's `initData` signature.
 - **Secure Headers**: The server uses `Helmet` to protect against common web attacks.

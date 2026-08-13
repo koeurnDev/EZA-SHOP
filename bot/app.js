@@ -136,6 +136,7 @@ app.get('/api/products/:id', publicController.getProductById);
 app.get('/api/flags', publicController.getFlags); // 🚀 Combined Feature Flags
 app.get('/api/notifications', publicController.getNotifications); // 🔔 In-App System Messages
 app.delete('/api/notifications/:id', isStaffOrAdmin, publicController.deleteNotification); // 🗑️ Delete Notification (Staff/Admin Only)
+app.post('/api/images/report-broken', publicController.reportBrokenImage);
 app.get('/api/faqs', faqController.getFaqs);
 
 // Reviews Routes
@@ -162,6 +163,7 @@ app.put('/api/user/profile', verifyUser, userController.updateProfile);
 app.post('/api/ping', verifyUser, userController.ping);
 
 // Wishlist Routes
+app.get('/api/wishlist', verifyUser, wishlistController.getMine);
 app.get('/api/wishlist/:userId', verifyUser, wishlistController.get);
 app.post('/api/wishlist/toggle', verifyUser, wishlistController.toggle);
 

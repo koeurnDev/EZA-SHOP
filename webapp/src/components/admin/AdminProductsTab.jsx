@@ -1,5 +1,11 @@
 import React from 'react';
 import { useUser } from '../../context/UserContext';
+import DarkSelect from './DarkSelect';
+import ProductImage from '../ProductImage';
+import { resolveProductImageUrl } from '../../utils/imageUtils';
+
+const stripCategoryEmoji = (text) =>
+  (text || '').replace(/[\u{1F300}-\u{1FAFF}\u2600-\u27BF]/gu, '').replace(/\s*\(.*?\)/g, '').trim();
 
 const AdminProductsTab = React.memo(({
   products, categories = [], productSearchTerm, localProductSearchTerm, setLocalProductSearchTerm,
@@ -9,6 +15,14 @@ const AdminProductsTab = React.memo(({
   const { t } = useUser();
   const [openMenu, setOpenMenu] = React.useState(null);
   const [selectedCategory, setSelectedCategory] = React.useState('all');
+
+  const categoryOptions = React.useMemo(() => [
+    { value: 'all', label: t('all') || 'ទាំងអស់' },
+    ...categories.map(c => ({
+      value: c.name,
+      label: stripCategoryEmoji(c.name) || c.name
+    }))
+  ], [categories, t]);
 
   const filtered = products.filter(p => {
     const term = productSearchTerm.toLowerCase().trim();
@@ -31,64 +45,47 @@ const AdminProductsTab = React.memo(({
           onChange={e => setLocalProductSearchTerm(e.target.value)}
         />
         <button
+          type="button"
+          className="admin-products-add-btn"
           onClick={() => setIsAddingProduct(true)}
-          style={{
-            flexShrink: 0, padding: '10px 16px', borderRadius: 12,
-            border: 'none', background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-            color: '#fff', fontWeight: 900, fontSize: 13, cursor: 'pointer',
-            display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap',
-            boxShadow: '0 4px 14px rgba(16, 185, 129, 0.28)',
-            transition: 'all 0.2s ease'
-          }}
         >
-          ➕ {t('admin_add_product') || 'បន្ថែម'}
+          + {t('admin_add_product') || 'បន្ថែម'}
         </button>
         {onScanBrokenImages && (
           <button
             type="button"
+            className="admin-products-scan-btn"
             onClick={onScanBrokenImages}
             title="Scan Cloudinary 404s"
-            style={{
-              flexShrink: 0, padding: '10px 12px', borderRadius: 12,
-              border: '1px solid var(--border-subtle)', background: 'var(--bg-soft)',
-              color: 'var(--text-main)', fontWeight: 800, fontSize: 12, cursor: 'pointer',
-            }}
           >
-            🖼️ Scan
+            Scan
           </button>
         )}
       </div>
 
-      {/* Category chips row — no dropdown, no overlap */}
-      <div style={{
-        display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4, marginBottom: 16,
-        scrollbarWidth: 'none', msOverflowStyle: 'none'
-      }}>
-        {[{ name: 'all', label: '📦 ទាំងអស់' }, ...categories.map(c => ({ name: c.name, label: (c.name || '').replace(/\s*\(.*?\)/g, '') }))].map((c, i) => {
-          const isActive = selectedCategory === c.name;
-          return (
-            <button
-              key={i}
-              onClick={() => setSelectedCategory(c.name)}
-              style={{
-                flexShrink: 0, padding: '7px 14px', borderRadius: 20, fontSize: 12, fontWeight: 800,
-                border: isActive ? 'none' : '1px solid var(--border-subtle)',
-                background: isActive ? 'linear-gradient(135deg, #6366f1, #8b5cf6)' : 'var(--bg-soft)',
-                color: isActive ? '#fff' : 'var(--text-muted)',
-                cursor: 'pointer', transition: 'all 0.18s ease',
-                boxShadow: isActive ? '0 4px 12px rgba(99,102,241,0.35)' : 'none',
-              }}
-            >
-              {c.label}
-            </button>
-          );
-        })}
+      <div style={{ marginBottom: 16 }}>
+        <label className="admin-form-label">{t('admin_product_category') || 'ប្រភេទ'}</label>
+        <DarkSelect
+          value={selectedCategory}
+          onChange={setSelectedCategory}
+          style={{ width: '100%' }}
+          triggerClassName="admin-form-select-trigger"
+          menuClassName="admin-form-select-menu"
+          placeholder={t('all') || 'ទាំងអស់'}
+          options={categoryOptions}
+        />
       </div>
 
       <div style={{ display: 'grid', gap: 12, marginBottom: 30 }}>
         {filtered.slice(0, visibleProductLimit).map(p => (
           <div key={p.id} className="glass-card-luxury" style={{ padding: 12, display: 'flex', gap: 12, alignItems: 'center', position: 'relative', zIndex: openMenu === p.id ? 50 : 1 }}>
-            <img src={p.image || '/favicon.png'} onError={(e) => { e.target.onerror = null; e.target.src = '/favicon.png'; }} style={{ width: 50, height: 50, borderRadius: 12, objectFit: 'cover' }} alt={p.name} crossOrigin="anonymous" />
+            <ProductImage
+              url={resolveProductImageUrl(p)}
+              alt={p.name}
+              width={80}
+              style={{ width: 50, height: 50, borderRadius: 12, objectFit: 'cover', flexShrink: 0 }}
+              loading="eager"
+            />
             <div style={{ flex: 1 }}>
               <div style={{ fontWeight: 800, fontSize: 14 }}>{p.name}</div>
               <div style={{ fontSize: 11, color: 'var(--text-main)', fontWeight: 800, marginTop: 4 }}>

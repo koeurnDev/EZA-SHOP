@@ -1,15 +1,17 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useTelegram } from './TelegramContext';
-import { useUser } from './UserContext';
+import { useUserState } from './UserContext';
 import { useShopState, useShopDispatch } from './ShopContext';
 import OfflineService from '../services/OfflineService';
+import { isKnownBrokenImage } from '../utils/imageUtils';
 
 const CartStateContext = createContext(null);
 const CartDispatchContext = createContext(null);
 
 export const CartProvider = ({ children }) => {
   const { tg, HapticFeedback } = useTelegram();
-  const { lang, user } = useUser();
+  const userState = useUserState();
+  const lang = userState?.lang ?? localStorage.getItem('momo_lang') ?? 'kh';
   const shopState = useShopState();
   const shopDispatch = useShopDispatch();
   const shopStatus = shopState?.shopStatus ?? 'open';
@@ -67,6 +69,35 @@ export const CartProvider = ({ children }) => {
       }
     }
   }, [tg]);
+
+  // Drop stale Cloudinary URLs from cart (deleted products / removed images)
+  useEffect(() => {
+    const products = shopState?.products;
+    if (!Array.isArray(products)) return;
+    const byId = new Map(products.map((p) => [String(p.id), p]));
+
+    setCart((prev) => {
+      if (!prev.length) return prev;
+      let changed = false;
+      const next = prev.map((item) => {
+        const live = byId.get(String(item.id));
+        if (live) {
+          const image = live.image || '';
+          if (image !== (item.image || '') || live.price !== item.price || live.name !== item.name) {
+            changed = true;
+            return { ...item, image, price: live.price, name: live.name, stock: live.stock };
+          }
+          return item;
+        }
+        if (item.image && isKnownBrokenImage(item.image)) {
+          changed = true;
+          return { ...item, image: '' };
+        }
+        return item;
+      });
+      return changed ? next : prev;
+    });
+  }, [shopState?.products]);
 
   useEffect(() => {
     if (idempotencyKey) localStorage.setItem('momo_idemp_key', idempotencyKey);
