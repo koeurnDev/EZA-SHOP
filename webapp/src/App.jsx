@@ -147,7 +147,11 @@ function App() {
   // Navigation & BackButton Logic
   useEffect(() => {
     if (!tg) return;
-    const handleBack = () => setView('home');
+    const handleBack = () => {
+      if (view === 'product_detail') setView('browse');
+      else if (view === 'wishlist') setView('profile');
+      else setView('home');
+    };
 
     if ((view === 'checkout' || view === 'browse' || view === 'product_detail' || view === 'wishlist') && isVersionAtLeast('6.1')) {
       tg.BackButton.show();
@@ -414,7 +418,7 @@ function App() {
             product={selectedProduct}
             allProducts={products}
             onAdd={addToCart}
-            onClose={() => setView('home')}
+            onClose={() => setView('browse')}
             onBuyNow={() => setView('checkout')}
             activeDiscounts={activeDiscounts}
             t={t}

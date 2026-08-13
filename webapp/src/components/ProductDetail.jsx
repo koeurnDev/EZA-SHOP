@@ -10,7 +10,7 @@ import { shareProduct } from '../utils/shareUtils';
 import useScrollHideBar from '../hooks/useScrollHideBar';
 
 /**
- * ProductDetail — immersive gallery, Telegram BackButton for close
+ * ProductDetail — immersive gallery with always-visible back control
  */
 const ProductDetail = ({ product, allProducts = [], onAdd, onClose, onBuyNow, activeDiscounts = [], t, lang, shopLogoUrl, isFavorited = false, onToggleWishlist, onSelectRelated }) => {
   const [quantity, setQuantity] = useState(1);
@@ -237,15 +237,13 @@ const ProductDetail = ({ product, allProducts = [], onAdd, onClose, onBuyNow, ac
             <div className="pd-image-section-wrapper">
               <div className="pd-image-area">
 
-                {!(typeof window !== 'undefined' && window.Telegram?.WebApp?.BackButton && window.Telegram.WebApp.isVersionAtLeast?.('6.1')) && (
-                  <div className="pd-float-actions pd-float-actions-left">
-                    <button className="pd-float-btn" onClick={onClose} aria-label="Back">
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M15 18l-6-6 6-6" />
-                      </svg>
-                    </button>
-                  </div>
-                )}
+                <div className="pd-float-actions pd-float-actions-left">
+                  <button type="button" className="pd-float-btn" onClick={onClose} aria-label={lang === 'kh' ? 'ត្រឡប់' : 'Back'}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M15 18l-6-6 6-6" />
+                    </svg>
+                  </button>
+                </div>
 
                 <div className="pd-float-actions">
                   <button className="pd-float-btn" onClick={(e) => {
