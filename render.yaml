@@ -1,7 +1,7 @@
 services:
   # 1. Backend (Telegram Bot)
   - type: web
-    name: tg-mini-app-bot
+    name: eza-shop-bot
     env: node
     plan: free
     rootDir: bot
@@ -18,6 +18,8 @@ services:
       - key: WEBAPP_URL
         sync: false
       - key: SUPERADMIN_ID
+        sync: false
+      - key: SESSION_SECRET
         sync: false
       - key: CLOUDINARY_CLOUD_NAME
         sync: false
@@ -47,7 +49,7 @@ services:
 
   # 2. Frontend (Mini App WebApp)
   - type: web
-    name: tg-mini-app-webapp
+    name: eza-shop-web
     env: static
     rootDir: webapp
     buildCommand: npm install && npm run build
@@ -55,3 +57,5 @@ services:
     envVars:
       - key: VITE_BACKEND_URL
         sync: false
+      - key: VITE_BOT_USERNAME
+        value: Eza_Shop_Bot
