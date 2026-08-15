@@ -5,22 +5,75 @@ import type { Env, TelegramInitData } from '../types';
  * Simple authentication bypass for development
  * In production, implement proper Telegram auth verification
  */
+/**
+ * Cryptographically verify Telegram Mini App initData using Web Crypto API HMAC-SHA256
+ */
 export async function verifyTelegramAuth(initData: string, botToken: string): Promise<TelegramInitData | null> {
   try {
-    // For now, return a mock user for development
-    // TODO: Implement proper Telegram auth verification using Web Crypto API
     const urlParams = new URLSearchParams(initData);
+    const hash = urlParams.get('hash');
     const userData = urlParams.get('user');
-    
-    if (userData) {
+    const authDate = urlParams.get('auth_date');
+
+    if (!userData) {
+      return null;
+    }
+
+    // In local development or testing without bot token verification
+    if (!botToken || botToken === 'test') {
       return {
         user: JSON.parse(userData),
-        auth_date: Math.floor(Date.now() / 1000),
-        hash: 'mock_hash',
+        auth_date: authDate ? parseInt(authDate, 10) : Math.floor(Date.now() / 1000),
+        hash: hash || 'mock_hash',
       };
     }
-    
-    return null;
+
+    if (!hash) {
+      return null;
+    }
+
+    // Build data-check-string (all keys except hash sorted alphabetically)
+    const checkString = Array.from(urlParams.entries())
+      .filter(([key]) => key !== 'hash')
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([key, val]) => `${key}=${val}`)
+      .join('\n');
+
+    const encoder = new TextEncoder();
+
+    // secret_key = HMAC_SHA256("WebAppData", botToken)
+    const secretKeyMaterial = await crypto.subtle.importKey(
+      'raw',
+      encoder.encode('WebAppData'),
+      { name: 'HMAC', hash: 'SHA-256' },
+      false,
+      ['sign']
+    );
+    const secretKey = await crypto.subtle.sign('HMAC', secretKeyMaterial, encoder.encode(botToken));
+
+    // calculated_hash = HMAC_SHA256(secretKey, checkString)
+    const key = await crypto.subtle.importKey(
+      'raw',
+      secretKey,
+      { name: 'HMAC', hash: 'SHA-256' },
+      false,
+      ['sign']
+    );
+    const signature = await crypto.subtle.sign('HMAC', key, encoder.encode(checkString));
+    const calculatedHash = Array.from(new Uint8Array(signature))
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('');
+
+    if (calculatedHash !== hash) {
+      console.warn('Telegram auth signature mismatch');
+      return null;
+    }
+
+    return {
+      user: JSON.parse(userData),
+      auth_date: parseInt(authDate || '0', 10),
+      hash,
+    };
   } catch (error) {
     console.error('Telegram auth verification failed:', error);
     return null;

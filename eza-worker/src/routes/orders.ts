@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { eq, desc } from 'drizzle-orm';
+import { eq, desc, inArray } from 'drizzle-orm';
 import { z } from 'zod';
 import { createDb } from '../db/connection';
 import { orders, products, settings } from '../db/schema';
@@ -67,7 +67,7 @@ app.post('/', telegramAuth, async (c) => {
     const dbProducts = await db
       .select()
       .from(products)
-      .where(eq(products.id, productIds[0])); // We'll need to adjust this for multiple products
+      .where(inArray(products.id, productIds));
 
     const productMap = new Map(dbProducts.map(p => [p.id, p]));
     
