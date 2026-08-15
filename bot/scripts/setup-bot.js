@@ -6,7 +6,7 @@ dotenv.config({ path: path.join(__dirname, '../.env') });
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
 // Use the production URL for the button (no trailing slash)
-const WEBAPP_URL = 'https://tg-mini-app-webapp.onrender.com';
+const WEBAPP_URL = 'https://main.eza-shop-web.pages.dev';
 
 async function setupBot() {
   if (!BOT_TOKEN) {

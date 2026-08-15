@@ -124,4 +124,32 @@ app.get('/init', telegramAuth, async (c) => {
   }
 });
 
+/**
+ * GET /api/flags - Feature flags
+ */
+app.get('/flags', (c) => {
+  return c.json({
+    success: true,
+    flags: {
+      BETA_WISH_LIST: true,
+      NEW_CHECKOUT_FLOW: false,
+      PREMIUM_ADMIN_STATS: false
+    }
+  });
+});
+
+/**
+ * POST /api/v1/app-state - Telemetry ingestion
+ */
+app.post('/v1/app-state', (c) => {
+  return c.json({ success: true });
+});
+
+/**
+ * POST /api/images/report-broken - Broken image reporting
+ */
+app.post('/images/report-broken', (c) => {
+  return c.json({ success: true });
+});
+
 export default app;

@@ -18,7 +18,7 @@ export const telegramAuth = createMiddleware<{ Bindings: Env; Variables: Variabl
     }
   }
 
-  const initData = c.req.header('X-Telegram-Init-Data');
+  const initData = c.req.header('X-Telegram-Init-Data') || c.req.header('x-tg-data') || c.req.header('X-TG-Data') || c.req.header('x-telegram-init-data');
   const authHeader = c.req.header('Authorization');
 
   let userId: string | null = null;
@@ -67,6 +67,8 @@ export const adminAuth = createMiddleware<{ Bindings: Env; Variables: Variables 
  * CORS middleware
  */
 export const cors = createMiddleware(async (c, next) => {
+  const allowedHeaders = 'Content-Type, Authorization, X-Telegram-Init-Data, X-TG-Data, x-tg-data, X-Debug-Bypass';
+
   // Handle preflight requests
   if (c.req.method === 'OPTIONS') {
     return new Response(null, {
@@ -74,7 +76,7 @@ export const cors = createMiddleware(async (c, next) => {
       headers: {
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Telegram-Init-Data, X-Debug-Bypass',
+        'Access-Control-Allow-Headers': allowedHeaders,
         'Access-Control-Max-Age': '86400',
       },
     });
@@ -85,5 +87,5 @@ export const cors = createMiddleware(async (c, next) => {
   // Add CORS headers to all responses
   c.res.headers.set('Access-Control-Allow-Origin', '*');
   c.res.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  c.res.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Telegram-Init-Data, X-Debug-Bypass');
+  c.res.headers.set('Access-Control-Allow-Headers', allowedHeaders);
 });
