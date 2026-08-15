@@ -13,11 +13,8 @@ export default defineConfig({
   server: {
     port: 5173,
     strictPort: true,
-    host: true, // Needed for exposing via ngrok
-    allowedHosts: ['nonstandard-ashli-pachydermatous.ngrok-free.dev'],
-    proxy: {
-      '/api': 'http://127.0.0.1:5000'
-    }
+    host: true,
+    // No proxy — API calls go directly to Cloudflare Workers
   },
   build: {
     target: 'esnext',
