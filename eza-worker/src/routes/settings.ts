@@ -12,7 +12,7 @@ const app = new Hono<{ Bindings: Env; Variables: Variables }>();
  * GET /api/alive - Keep-alive health check
  */
 app.get('/alive', (c) => {
-  return c.json({ success: true, timestamp: new Date().toISOString(), uptime: process.uptime?.() ?? 0 });
+  return c.json({ success: true, timestamp: new Date().toISOString(), uptime: Date.now() });
 });
 
 /**
