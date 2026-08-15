@@ -2,68 +2,79 @@ import { Hono } from 'hono';
 import { logger } from 'hono/logger';
 import { prettyJSON } from 'hono/pretty-json';
 import { cors } from './middleware/auth';
-import productsRouter from './routes/products';
-import ordersRouter from './routes/orders';
-import adminRouter from './routes/admin';
+
+import productsRouter      from './routes/products';
+import ordersRouter        from './routes/orders';
+import orderExtras         from './routes/orderExtras';
+import adminRouter         from './routes/admin';
+import adminExtras         from './routes/adminExtras';
+import settingsRouter      from './routes/settings';
+import userRouter          from './routes/user';
+import wishlistRouter      from './routes/wishlist';
+import reviewsRouter       from './routes/reviews';
+import faqsRouter          from './routes/faqs';
+import notificationsRouter from './routes/notifications';
+import uploadRouter        from './routes/upload';
+
 import type { Env, Variables } from './types';
 
 const app = new Hono<{ Bindings: Env; Variables: Variables }>();
 
-// Global middleware
+// ── Global middleware ─────────────────────────────────────────────────────────
 app.use('*', logger());
 app.use('*', prettyJSON());
 app.use('*', cors);
 
-// Health check endpoint
-app.get('/health', (c) => {
-  return c.json({
-    success: true,
-    message: 'EZA-SHOP API is running',
-    timestamp: new Date().toISOString(),
-    version: '1.0.0',
-  });
-});
+// ── Health ────────────────────────────────────────────────────────────────────
+app.get('/health', (c) =>
+  c.json({ success: true, message: 'EZA-SHOP API is running', timestamp: new Date().toISOString(), version: '2.0.0' })
+);
 
-// API routes
-app.route('/api/products', productsRouter);
-app.route('/api/orders', ordersRouter);
+// ── Settings / init / alive / ping ────────────────────────────────────────────
+app.route('/api', settingsRouter);          // GET /api/alive, POST /api/ping, GET /api/settings, GET /api/init
+
+// ── Products ──────────────────────────────────────────────────────────────────
+app.route('/api/products', productsRouter); // also handles /:id/reviews via reviewsRouter below
+app.route('/api/products', reviewsRouter);  // GET /api/products/:productId/reviews
+
+// ── Orders ────────────────────────────────────────────────────────────────────
+app.route('/api/orders', ordersRouter);     // POST /, GET /, GET /:orderCode
+app.route('/api/orders', orderExtras);      // GET /status/:code, POST /validate-coupon, POST /receipt
+
+// ── Reviews (POST) ────────────────────────────────────────────────────────────
+app.route('/api/reviews', reviewsRouter);   // POST /api/reviews
+
+// ── User ──────────────────────────────────────────────────────────────────────
+app.route('/api/user', userRouter);         // GET/PUT /profile, GET /orders
+
+// ── Wishlist ──────────────────────────────────────────────────────────────────
+app.route('/api/wishlist', wishlistRouter); // GET /, POST /toggle
+
+// ── FAQs ──────────────────────────────────────────────────────────────────────
+app.route('/api/faqs', faqsRouter);
+
+// ── Notifications ─────────────────────────────────────────────────────────────
+app.route('/api/notifications', notificationsRouter);
+
+// ── Upload ────────────────────────────────────────────────────────────────────
+app.route('/api/upload', uploadRouter);
+
+// ── Admin ─────────────────────────────────────────────────────────────────────
 app.route('/api/admin', adminRouter);
+app.route('/api/admin', adminExtras);
 
-// Catch-all route for undefined endpoints
-app.notFound((c) => {
-  return c.json({
-    success: false,
-    error: 'Not Found',
-    message: 'The requested endpoint does not exist',
-    available_endpoints: [
-      'GET /health',
-      'GET /api/products',
-      'GET /api/products/:id',
-      'GET /api/products/category/:category',
-      'POST /api/orders',
-      'GET /api/orders',
-      'GET /api/orders/:orderCode',
-      'GET /api/admin/dashboard',
-      'GET /api/admin/products',
-      'PUT /api/admin/products/:id/stock',
-      'GET /api/admin/orders',
-      'PUT /api/admin/orders/:id/status',
-      'GET /api/admin/settings',
-    ],
-  }, 404);
-});
+// ── 404 ───────────────────────────────────────────────────────────────────────
+app.notFound((c) =>
+  c.json({ success: false, error: 'Not Found' }, 404)
+);
 
-// Global error handler
+// ── Global error handler ──────────────────────────────────────────────────────
 app.onError((err, c) => {
-  console.error('Global error:', err);
-  
+  console.error('Unhandled error:', err);
   return c.json({
     success: false,
     error: 'Internal Server Error',
-    message: c.env?.NODE_ENV === 'production' 
-      ? 'Something went wrong' 
-      : err.message,
-    ...(c.env?.NODE_ENV !== 'production' && { stack: err.stack }),
+    message: c.env?.NODE_ENV === 'production' ? 'Something went wrong' : err.message,
   }, 500);
 });
 
