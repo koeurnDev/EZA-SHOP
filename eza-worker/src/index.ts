@@ -38,8 +38,8 @@ app.route('/api/products', productsRouter); // also handles /:id/reviews via rev
 app.route('/api/products', reviewsRouter);  // GET /api/products/:productId/reviews
 
 // ── Orders ────────────────────────────────────────────────────────────────────
+app.route('/api/orders', orderExtras);      // GET /status/:code, POST /validate-coupon, POST /receipt  ← MUST be before ordersRouter
 app.route('/api/orders', ordersRouter);     // POST /, GET /, GET /:orderCode
-app.route('/api/orders', orderExtras);      // GET /status/:code, POST /validate-coupon, POST /receipt
 
 // ── Reviews (POST) ────────────────────────────────────────────────────────────
 app.route('/api/reviews', reviewsRouter);   // POST /api/reviews
