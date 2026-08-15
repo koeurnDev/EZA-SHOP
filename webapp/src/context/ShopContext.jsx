@@ -75,7 +75,7 @@ export const ShopProvider = ({ children }) => {
   const [shopPhone, setShopPhone] = useState('');
   const [shopAddress, setShopAddress] = useState('');
   const [shopHours, setShopHours] = useState('');
-  const [shopName, setShopName] = useState('EZA SHOP');
+  const [shopName, setShopName] = useState('Vibe Lifestyle');
 
   const showToast = useCallback((message) => {
     setToast(message);

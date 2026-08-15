@@ -373,7 +373,7 @@ const ProductDetail = ({ product, allProducts = [], onAdd, onClose, onBuyNow, ac
                 <div className="pd-header-top">
                   <div className="pd-header-main">
                     <span className="pd-brand-label">
-                      {formatCategory(displayProduct.category, lang) || shopName || 'EZA SHOP'}
+                      {formatCategory(displayProduct.category, lang) || shopName || 'Vibe Lifestyle'}
                     </span>
                     <div className="pd-title-price-row">
                       <h1 className="pd-name">{product.name}</h1>

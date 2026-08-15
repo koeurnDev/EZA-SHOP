@@ -1,4 +1,4 @@
--- EZA SHOP / MO-MO base schema (fresh Neon DB)
+-- Vibe Lifestyle / MO-MO base schema (fresh Neon DB)
 -- Runs before 000_wishlist.sql (000_base < 000_wish)
 
 CREATE TABLE IF NOT EXISTS products (
@@ -105,7 +105,7 @@ CREATE TABLE IF NOT EXISTS broadcasts (
 
 INSERT INTO settings (key, value) VALUES
   ('shop_status', 'open'),
-  ('receipt_shop_name', 'EZA SHOP'),
+  ('receipt_shop_name', 'Vibe Lifestyle'),
   ('receipt_subtitle', 'អីវ៉ាន់បោះដុំ និងរាយ'),
   ('delivery_fee', '1.50'),
   ('delivery_threshold', '50')

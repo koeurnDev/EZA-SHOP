@@ -29,7 +29,7 @@ const SplashScreen = ({ onComplete }) => {
   return (
     <div className={`splash-screen-container ${stage === 'exiting' ? 'fade-out' : ''}`}>
       <div className="splash-logo-wrapper">
-        <div className="splash-logo-text" data-text="EZA SHOP">EZA SHOP</div>
+        <div className="splash-logo-text" data-text="Vibe Lifestyle">Vibe Lifestyle</div>
         <div className="splash-subtitle">O N L I N E</div>
         <div className="splash-glow"></div>
       </div>

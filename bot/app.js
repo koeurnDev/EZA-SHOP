@@ -111,7 +111,7 @@ app.use(cors({
 }));
 
 // --- Routes ---
-app.get('/', (req, res) => res.send('EZA SHOP API Online! ✨'));
+app.get('/', (req, res) => res.send('Vibe Lifestyle API Online! ✨'));
 app.get('/api/alive', async (req, res) => {
   const cacheService = require('./services/cacheService');
   res.json({

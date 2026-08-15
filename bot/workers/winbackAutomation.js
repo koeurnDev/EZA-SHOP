@@ -47,7 +47,7 @@ const winbackAutomation = {
 
       console.log(`📦 [Win-back Automation] Found ${inactiveUsers.length} inactive users. Processing...`);
 
-      const botUsername = bot?.botInfo?.username || 'EzaShopBot';
+      const botUsername = bot?.botInfo?.username || 'VibeLifestyleBot';
 
       for (const user of inactiveUsers) {
         try {

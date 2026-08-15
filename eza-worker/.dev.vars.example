@@ -1,0 +1,10 @@
+# Development environment variables for Wrangler
+# Copy this file to .dev.vars and fill in your actual values
+
+DATABASE_URL="postgresql://user:pass@host/dbname?sslmode=require"
+BOT_TOKEN="YOUR_BOT_TOKEN"
+SUPERADMIN_ID="YOUR_TELEGRAM_USER_ID"
+SESSION_SECRET="your-strong-random-secret-min-32-chars"
+CLOUDINARY_CLOUD_NAME="your-cloud-name"
+CLOUDINARY_API_KEY="your-api-key"
+CLOUDINARY_API_SECRET="your-api-secret"

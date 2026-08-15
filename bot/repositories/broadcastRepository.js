@@ -26,7 +26,7 @@ const broadcastRepository = {
       if (res.rows.length === 0) {
         return [{
           id: 'welcome-system-notice',
-          message: '🎉 ស្វាគមន៍មកកាន់ EZA SHOP! 🛍️✨\nសូមរីករាយជាមួយការទិញទំនិញគុណភាពល្អ ជាមួយសេវាដឹកជញ្ជូនរហ័ស! 🚚',
+          message: '🎉 ស្វាគមន៍មកកាន់ Vibe Lifestyle! 🛍️✨\nសូមរីករាយជាមួយការទិញទំនិញគុណភាពល្អ ជាមួយសេវាដឹកជញ្ជូនរហ័ស! 🚚',
           photo_url: '',
           created_at: new Date().toISOString()
         }];
@@ -36,7 +36,7 @@ const broadcastRepository = {
       console.error('❌ [BroadcastRepo] getAll error:', e.message);
       return [{
         id: 'welcome-system-notice',
-        message: '🎉 ស្វាគមន៍មកកាន់ EZA SHOP! 🛍️✨\nសូមរីករាយជាមួយការទិញទំនិញគុណភាពល្អ ជាមួយសេវាដឹកជញ្ជូនរហ័ស! 🚚',
+        message: '🎉 ស្វាគមន៍មកកាន់ Vibe Lifestyle! 🛍️✨\nសូមរីករាយជាមួយការទិញទំនិញគុណភាពល្អ ជាមួយសេវាដឹកជញ្ជូនរហ័ស! 🚚',
         photo_url: '',
         created_at: new Date().toISOString()
       }];

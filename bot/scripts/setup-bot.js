@@ -25,7 +25,7 @@ async function setupBot() {
       body: JSON.stringify({
         menu_button: {
           type: 'web_app',
-          text: '🛍️ ចូលហាង EZA SHOP',
+          text: '🛍️ ចូលហាង Vibe Lifestyle',
           web_app: { url: WEBAPP_URL }
         }
       })

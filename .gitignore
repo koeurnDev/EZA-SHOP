@@ -29,3 +29,10 @@ bot/result.txt
 bot/db_res.txt
 /bot/config/dev.json
 /bot/config/production.json
+
+# Cloudflare Workers
+eza-worker/.dev.vars
+eza-worker/node_modules/
+eza-worker/.wrangler/
+worker/node_modules/
+workers/node_modules/

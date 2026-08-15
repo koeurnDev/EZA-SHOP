@@ -154,7 +154,7 @@ const orderService = {
 
         const individualInfo = new IndividualInfo(
           bakongId,
-          merchantName || 'EZA SHOP',
+          merchantName || 'Vibe Lifestyle',
           'Phnom Penh',
           optionalData
         );
@@ -281,7 +281,7 @@ const orderService = {
 
         const individualInfo = new IndividualInfo(
           bakongId,
-          merchantName || 'EZA SHOP',
+          merchantName || 'Vibe Lifestyle',
           'Phnom Penh',
           optionalData
         );
