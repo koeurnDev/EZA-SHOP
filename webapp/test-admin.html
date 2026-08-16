@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Admin API Test</title>
+    <style>
+        body { font-family: Arial; padding: 20px; background: #1a1a1a; color: #fff; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+        pre { background: #2a2a2a; padding: 15px; border-radius: 8px; overflow: auto; max-height: 500px; }
+        .success { color: #10b981; }
+        .error { color: #ef4444; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Admin API Test</h1>
+    
+    <button onclick="testProducts()">Test Products API</button>
+    <button onclick="testDashboard()">Test Dashboard API</button>
+    <button onclick="testCustomers()">Test Customers API</button>
+    <button onclick="testAll()">Test All</button>
+    
+    <div id="results"></div>
+
+    <script>
+        const BACKEND_URL = 'http://localhost:8787';
+        const resultsDiv = document.getElementById('results');
+
+        function log(message, type = 'info') {
+            const color = type === 'success' ? 'success' : type === 'error' ? 'error' : '';
+            resultsDiv.innerHTML += `<div class="${color}">${message}</div>`;
+        }
+
+        function logJson(title, data) {
+            resultsDiv.innerHTML += `<h3>${title}</h3><pre>${JSON.stringify(data, null, 2)}</pre>`;
+        }
+
+        async function testProducts() {
+            resultsDiv.innerHTML = '<h2>Testing Products API...</h2>';
+            try {
+                const res = await fetch(`${BACKEND_URL}/api/admin/products`, {
+                    headers: { 'X-Debug-Bypass': 'true' }
+                });
+                
+                log(`Status: ${res.status} ${res.ok ? '✅' : '❌'}`, res.ok ? 'success' : 'error');
+                
+                const data = await res.json();
+                logJson('Response Data:', data);
+                
+                if (data.success && data.products) {
+                    log(`✅ Found ${data.products.length} products`, 'success');
+                    data.products.slice(0, 3).forEach((p, i) => {
+                        log(`  ${i+1}. ${p.name} - $${p.price} (Stock: ${p.stock})`);
+                    });
+                } else {
+                    log('❌ No products array in response', 'error');
+                }
+            } catch (err) {
+                log(`❌ Error: ${err.message}`, 'error');
+            }
+        }
+
+        async function testDashboard() {
+            resultsDiv.innerHTML = '<h2>Testing Dashboard API...</h2>';
+            try {
+                const res = await fetch(`${BACKEND_URL}/api/admin/dashboard`, {
+                    headers: { 'X-Debug-Bypass': 'true' }
+                });
+                
+                log(`Status: ${res.status} ${res.ok ? '✅' : '❌'}`, res.ok ? 'success' : 'error');
+                
+                const data = await res.json();
+                logJson('Dashboard Data:', data);
+            } catch (err) {
+                log(`❌ Error: ${err.message}`, 'error');
+            }
+        }
+
+        async function testCustomers() {
+            resultsDiv.innerHTML = '<h2>Testing Customers API...</h2>';
+            try {
+                const res = await fetch(`${BACKEND_URL}/api/admin/customers`, {
+                    headers: { 'X-Debug-Bypass': 'true' }
+                });
+                
+                log(`Status: ${res.status} ${res.ok ? '✅' : '❌'}`, res.ok ? 'success' : 'error');
+                
+                const data = await res.json();
+                logJson('Customers Data:', data);
+                
+                if (data.success && data.customers) {
+                    log(`✅ Found ${data.customers.length} customers`, 'success');
+                }
+            } catch (err) {
+                log(`❌ Error: ${err.message}`, 'error');
+            }
+        }
+
+        async function testAll() {
+            await testProducts();
+            await new Promise(r => setTimeout(r, 1000));
+            await testDashboard();
+            await new Promise(r => setTimeout(r, 1000));
+            await testCustomers();
+        }
+
+        // Auto-run on load
+        window.onload = () => {
+            log('🚀 Admin API Tester Ready!');
+            log(`Backend: ${BACKEND_URL}`);
+            log('Click buttons above to test endpoints');
+        };
+    </script>
+</body>
+</html>

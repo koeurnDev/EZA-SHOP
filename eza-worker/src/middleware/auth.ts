@@ -9,13 +9,19 @@ export const telegramAuth = createMiddleware<{ Bindings: Env; Variables: Variabl
   const env = c.env;
   
   // Skip auth in development with DEBUG_ADMIN_BYPASS
-  if (env.NODE_ENV === 'development') {
-    const bypass = c.req.header('X-Debug-Bypass');
-    if (bypass === 'true') {
-      c.set('userId', env.SUPERADMIN_ID);
-      c.set('isAdmin', true);
-      return next();
-    }
+  const bypass = c.req.header('X-Debug-Bypass') || c.req.header('x-debug-bypass');
+  
+  console.log('[AUTH DEBUG]', {
+    nodeEnv: env.NODE_ENV,
+    bypass: bypass,
+    superadminId: env.SUPERADMIN_ID
+  });
+  
+  if (env.NODE_ENV === 'development' && bypass === 'true') {
+    console.log('[AUTH] Using debug bypass mode');
+    c.set('userId', env.SUPERADMIN_ID);
+    c.set('isAdmin', true);
+    return next();
   }
 
   const initData = c.req.header('X-Telegram-Init-Data') || c.req.header('x-tg-data') || c.req.header('X-TG-Data') || c.req.header('x-telegram-init-data');

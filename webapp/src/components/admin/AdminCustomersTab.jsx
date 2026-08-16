@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useTelegram } from '../../context/TelegramContext';
 import { getCustomerAvatarSrc, getUiAvatarUrl } from '../../utils/avatarUtils';
+import { getHeaders } from '../../utils/apiHelpers';
 
 const formatCustomerActive = (user) => {
   if (user.last_seen) {
@@ -95,7 +96,7 @@ const AdminCustomersTab = ({ BACKEND_URL }) => {
     try {
       setLoading(true);
       const res = await fetch(`${BACKEND_URL}/api/admin/customers`, {
-        headers: { 'X-TG-Data': initData || '' }
+        headers: getHeaders(BACKEND_URL, initData)
       });
       const data = await res.json();
       if (data.success) {
@@ -131,7 +132,7 @@ const AdminCustomersTab = ({ BACKEND_URL }) => {
       try {
         const res = await fetch(`${BACKEND_URL}/api/admin/customers/${userId}/role`, {
           method: 'PUT',
-          headers: { 'Content-Type': 'application/json', 'X-TG-Data': initData || '' },
+          headers: getHeaders(BACKEND_URL, initData, { 'Content-Type': 'application/json' }),
           body: JSON.stringify({ role: newRole })
         });
         const data = await res.json();
@@ -158,7 +159,7 @@ const AdminCustomersTab = ({ BACKEND_URL }) => {
       try {
         const res = await fetch(`${BACKEND_URL}/api/admin/customers/${userId}`, {
           method: 'DELETE',
-          headers: { 'X-TG-Data': initData || '' }
+          headers: getHeaders(BACKEND_URL, initData)
         });
         const data = await res.json();
         if (data.success) {
@@ -180,10 +181,7 @@ const AdminCustomersTab = ({ BACKEND_URL }) => {
         const initData = window.Telegram?.WebApp?.initData;
         const res = await fetch(`${BACKEND_URL}/api/admin/customers/${userId}/ban`, {
           method: 'PUT',
-          headers: { 
-            'Content-Type': 'application/json',
-            'X-TG-Data': initData || '' 
-          },
+          headers: getHeaders(BACKEND_URL, initData, { 'Content-Type': 'application/json' }),
           body: JSON.stringify({ isBanned: !isCurrentlyBanned })
         });
         const data = await res.json();

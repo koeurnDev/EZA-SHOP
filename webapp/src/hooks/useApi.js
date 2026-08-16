@@ -1,5 +1,7 @@
 import { useCallback, useState, useMemo } from 'react';
 
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || '';
+
 const DEFAULT_CONFIG = {
   retries: 3,
   retryDelay: 1000,
@@ -19,8 +21,17 @@ export const useApi = (customConfig = {}) => {
     setLoading(true);
     setError(null);
 
+    // 🧪 Development Mode: Bypass authentication for local testing
+    const isDevelopment = BACKEND_URL.includes('localhost') || BACKEND_URL.includes('127.0.0.1');
+
     // Preserve options immutably across retries to prevent reference loss or mutation
-    const fetchOptions = { ...options, headers: { ...options?.headers } };
+    const fetchOptions = { 
+      ...options, 
+      headers: { 
+        ...options?.headers,
+        ...(isDevelopment && { 'X-Debug-Bypass': 'true' }) // Enable bypass in dev mode
+      } 
+    };
     let attempts = 0;
     
     const executeFetch = async () => {

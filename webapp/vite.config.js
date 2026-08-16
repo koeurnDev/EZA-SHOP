@@ -14,6 +14,13 @@ export default defineConfig({
     port: 5173,
     strictPort: true,
     host: true,
+    hmr: {
+      overlay: false, // Disable error overlay
+    },
+    watch: {
+      usePolling: false, // Reduce CPU usage
+      ignored: ['**/node_modules/**', '**/.git/**']
+    },
     // No proxy — API calls go directly to Cloudflare Workers
   },
   build: {

@@ -58,6 +58,7 @@ app.route('/api/notifications', notificationsRouter);
 
 // ── Upload ────────────────────────────────────────────────────────────────────
 app.route('/api/upload', uploadRouter);
+app.route('/api/admin/upload', uploadRouter); // Admin alias for upload
 
 // ── Admin ─────────────────────────────────────────────────────────────────────
 app.route('/api/admin', adminRouter);

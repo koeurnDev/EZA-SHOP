@@ -69,7 +69,7 @@ app.post('/toggle', telegramAuth, async (c) => {
     const userId = c.get('userId');
     const body = await c.req.json();
 
-    const schema = z.object({ productId: z.number().int().positive() });
+    const schema = z.object({ productId: z.coerce.number().int().positive() });
     const parsed = schema.safeParse(body);
     if (!parsed.success) {
       return c.json({ success: false, error: 'Invalid productId' }, 400);

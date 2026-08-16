@@ -139,9 +139,9 @@ app.get('/flags', (c) => {
 });
 
 /**
- * POST /api/v1/app-state - Telemetry ingestion
+ * POST /api/v1/telemetry - Telemetry ingestion (renamed from app-state to avoid ad blockers)
  */
-app.post('/v1/app-state', (c) => {
+app.post('/v1/telemetry', (c) => {
   return c.json({ success: true });
 });
 

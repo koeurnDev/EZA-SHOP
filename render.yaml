@@ -1,5 +1,7 @@
 services:
-  # 1. Backend (Telegram Bot) — same pattern as MO-MO tg-mini-app-bot
+  # Telegram Bot (optional - for notifications only)
+  # The API is handled by Cloudflare Workers (eza-worker/)
+  # The frontend is handled by Cloudflare Pages (webapp/)
   - type: web
     name: eza-shop-bot
     env: node
@@ -35,16 +37,3 @@ services:
         sync: false
       - key: UPSTASH_REDIS_REST_TOKEN
         sync: false
-
-  # 2. Frontend (Mini App) — same pattern as MO-MO tg-mini-app-webapp
-  - type: web
-    name: eza-shop-web
-    env: static
-    rootDir: webapp
-    buildCommand: npm install && npm run build
-    staticPublishPath: dist
-    envVars:
-      - key: VITE_BACKEND_URL
-        sync: false
-      - key: VITE_BOT_USERNAME
-        value: Eza_Shop_Bot

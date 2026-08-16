@@ -102,11 +102,15 @@ function App() {
   // 🟢 Online Status Tracking: Ping server every 2 minutes
   useEffect(() => {
     if (!user?.id) return;
+    const isDevelopment = BACKEND_URL.includes('localhost') || BACKEND_URL.includes('127.0.0.1');
     const pingServer = async () => {
       try {
         await fetch(`${BACKEND_URL}/api/ping`, {
           method: 'POST',
-          headers: { 'x-tg-data': tg?.initData || '' }
+          headers: { 
+            'x-tg-data': tg?.initData || '',
+            ...(isDevelopment && { 'X-Debug-Bypass': 'true' })
+          }
         });
       } catch (err) {
         // Silent fail

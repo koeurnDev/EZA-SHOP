@@ -14,9 +14,14 @@ const apiRequest = async (endpoint, options = {}) => {
   const tg = window.Telegram?.WebApp;
   const initData = tg?.initData || '';
 
+  // 🧪 Development Mode: Bypass authentication for local testing
+  const isDevelopment = BACKEND_URL.includes('localhost') || BACKEND_URL.includes('127.0.0.1');
+
   const headers = {
     'Content-Type': 'application/json',
+    'X-Telegram-Init-Data': initData,
     'X-TG-Data': initData,
+    ...(isDevelopment && { 'X-Debug-Bypass': 'true' }), // Enable bypass in dev mode
     ...options.headers
   };
 
