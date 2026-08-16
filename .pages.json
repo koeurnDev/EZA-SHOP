@@ -1,0 +1,10 @@
+﻿{
+  "build": {
+    "command": "cd webapp && npm install && npm run build",
+    "cwd": ".",
+    "watchPaths": ["webapp/**"]
+  },
+  "deploy": {
+    "outputDirectory": "webapp/dist"
+  }
+}
