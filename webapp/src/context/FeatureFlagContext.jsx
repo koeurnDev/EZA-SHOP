@@ -19,16 +19,25 @@ export const FeatureFlagProvider = ({ children }) => {
   });
 
   const syncFlags = useCallback(async () => {
-    const result = await fetchWithRetry(`${BACKEND_URL}/api/flags`, { method: 'GET' });
-    if (result.success && result.data.flags) {
-      setFlags(result.data.flags);
-      localStorage.setItem('momo_flags', JSON.stringify(result.data.flags));
+    try {
+      const result = await fetchWithRetry(`${BACKEND_URL}/api/flags`, { method: 'GET' });
+      // Optional chaining to safely access nested properties
+      if (result?.success && result?.data?.flags) {
+        setFlags(result.data.flags);
+        localStorage.setItem('momo_flags', JSON.stringify(result.data.flags));
+      }
+    } catch (error) {
+      // Silently fail - keep using default/cached flags
+      console.warn('[FeatureFlags] Sync failed, using cached flags:', error.message);
     }
   }, [fetchWithRetry, BACKEND_URL]);
 
   useEffect(() => {
-    syncFlags();
-  }, [syncFlags]);
+    // Only sync flags if we have a backend URL
+    if (BACKEND_URL) {
+      syncFlags();
+    }
+  }, [syncFlags, BACKEND_URL]);
 
   const isEnabled = useCallback((flagName) => flags[flagName] === true, [flags]);
 

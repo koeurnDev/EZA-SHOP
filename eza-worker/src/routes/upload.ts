@@ -73,32 +73,30 @@ app.post('/', telegramAuth, async (c) => {
       return c.json({ success: false, error: 'No image data provided' }, 400);
     }
 
-    // Generate Cloudinary signature using HMAC-SHA1
+    // Generate Cloudinary signature using SHA-1
+    // Cloudinary docs: https://cloudinary.com/documentation/upload_images#generating_authentication_signatures
     const timestamp = Math.floor(Date.now() / 1000);
     const encoder = new TextEncoder();
     
-    // Cloudinary expects: HMAC-SHA1(params_string, api_secret)
-    // params_string should be alphabetically sorted params
-    const paramsToSign = `folder=${folder}&timestamp=${timestamp}`;
+    // Build params string (sorted alphabetically) and append API secret
+    // Format: "param1=value1&param2=value2{api_secret}"
+    const paramsToSign = `folder=${folder}&timestamp=${timestamp}${CLOUDINARY_API_SECRET}`;
     
-    console.log('[UPLOAD] Generating signature', { paramsToSign, timestamp });
+    console.log('[UPLOAD] Generating signature', { 
+      folder,
+      timestamp,
+      cloudName: CLOUDINARY_CLOUD_NAME,
+      stringToSign: `folder=${folder}&timestamp=${timestamp}` 
+    });
     
-    const keyData = encoder.encode(CLOUDINARY_API_SECRET);
+    // Hash with SHA-1 (NOT HMAC - Cloudinary uses plain SHA-1 with secret appended)
     const msgData = encoder.encode(paramsToSign);
-    
-    const cryptoKey = await crypto.subtle.importKey(
-      'raw', 
-      keyData, 
-      { name: 'HMAC', hash: 'SHA-1' }, 
-      false, 
-      ['sign']
-    );
-    const sigBuffer = await crypto.subtle.sign('HMAC', cryptoKey, msgData);
+    const sigBuffer = await crypto.subtle.digest('SHA-1', msgData);
     const signature = Array.from(new Uint8Array(sigBuffer))
       .map(b => b.toString(16).padStart(2, '0'))
       .join('');
     
-    console.log('[UPLOAD] Signature generated', { signatureLength: signature.length });
+    console.log('[UPLOAD] Signature generated', { signature });
 
     // Upload to Cloudinary
     console.log('[UPLOAD] Uploading to Cloudinary', { 
