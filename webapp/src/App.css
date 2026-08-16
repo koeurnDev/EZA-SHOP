@@ -3059,6 +3059,7 @@ input[type=number] {
   justify-content: center;
   cursor: pointer;
   position: relative;
+  overflow: hidden;
   transition: all 0.2s ease;
   min-height: 80px;
 }
@@ -3073,9 +3074,9 @@ input[type=number] {
 .carrier-check {
   position: absolute;
   top: 8px;
-  right: 10px;
-  width: 18px;
-  height: 18px;
+  right: 8px;
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
   border: 1.5px solid var(--border-subtle);
   display: flex;
@@ -3084,6 +3085,8 @@ input[type=number] {
   font-size: 11px;
   color: transparent;
   font-weight: 900;
+  flex-shrink: 0;
+  z-index: 1;
 }
 .active .carrier-check {
   background: var(--text-main);
