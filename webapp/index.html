@@ -16,9 +16,11 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Kantumruy+Pro:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800;900&display=swap">
   
   <meta name="theme-color" content="#FDFBF0">
-  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <!-- Force cache invalidation for Telegram WebApp -->
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate, max-age=0" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
+  <meta name="cache-version" content="v1.0.1-20260816" />
 
   <!-- 🎀 Grandmaster 50yr: Social Sharing (OpenGraph) Mastery -->
   <meta property="og:title" content="Vibe Lifestyle | Telegram Mini App Store" />
@@ -47,7 +49,7 @@
 
 <body>
   <div id="root"></div>
-  <script type="module" src="/src/main.jsx"></script>
+  <script type="module" src="/src/main.jsx?v=1.0.1"></script>
 </body>
 
 </html>
