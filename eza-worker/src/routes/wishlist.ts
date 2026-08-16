@@ -51,7 +51,8 @@ app.get('/', telegramAuth, async (c) => {
 
     return c.json({
       success: true,
-      wishlist: formatted,
+      wishlist: productIds,        // array of IDs — matches frontend useWishlist hook
+      products: formatted,         // full product details for display
       productIds,
     });
   } catch (error) {
@@ -100,7 +101,12 @@ app.post('/toggle', telegramAuth, async (c) => {
     const all = await db.select().from(wishlist).where(eq(wishlist.user_id, userId));
     const productIds = all.map(i => i.product_id);
 
-    return c.json({ success: true, action, productIds });
+    return c.json({ 
+      success: true, 
+      action,
+      added: action === 'added',   // boolean — matches frontend check
+      productIds,
+    });
   } catch (error) {
     console.error('toggleWishlist error:', error);
     return c.json({ success: false, error: 'Failed to update wishlist' }, 500);
