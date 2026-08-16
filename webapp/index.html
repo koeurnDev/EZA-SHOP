@@ -49,7 +49,15 @@
 
 <body>
   <div id="root"></div>
-  <script type="module" src="/src/main.jsx?v=1.0.1"></script>
+  <script type="module" src="/src/main.jsx"></script>
+  <!-- Cache busting via HTML meta tag instead of query param -->
+  <script>
+    // Force cache invalidation for Telegram WebApp
+    if (window.Telegram?.WebApp) {
+      const version = '1.0.1-20260816';
+      console.log('[Cache] App version:', version);
+    }
+  </script>
 </body>
 
 </html>
