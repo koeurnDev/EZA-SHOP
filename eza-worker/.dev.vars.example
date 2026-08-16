@@ -8,3 +8,7 @@ SESSION_SECRET="your-strong-random-secret-min-32-chars"
 CLOUDINARY_CLOUD_NAME="your-cloud-name"
 CLOUDINARY_API_KEY="your-api-key"
 CLOUDINARY_API_SECRET="your-api-secret"
+# Optional: Test token for browser testing without Telegram auth
+# Generate with: openssl rand -hex 32 (or any random string)
+TEST_TOKEN="test_token_for_development_only"
+NODE_ENV="development"

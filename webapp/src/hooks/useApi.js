@@ -21,15 +21,16 @@ export const useApi = (customConfig = {}) => {
     setLoading(true);
     setError(null);
 
-    // 🧪 Development Mode: Bypass authentication for local testing
-    const isDevelopment = BACKEND_URL.includes('localhost') || BACKEND_URL.includes('127.0.0.1');
+    // 🧪 Development Mode: Bypass authentication ONLY when webapp is running on localhost
+    const isLocalDev = typeof window !== 'undefined' && 
+                       (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
 
     // Preserve options immutably across retries to prevent reference loss or mutation
     const fetchOptions = { 
       ...options, 
       headers: { 
         ...options?.headers,
-        ...(isDevelopment && { 'X-Debug-Bypass': 'true' }) // Enable bypass in dev mode
+        ...(isLocalDev && { 'X-Debug-Bypass': 'true' }) // Enable bypass ONLY in local dev
       } 
     };
     let attempts = 0;
@@ -56,6 +57,12 @@ export const useApi = (customConfig = {}) => {
         }
         
         const data = await response.json();
+        // Return the actual response structure from the backend
+        // If backend already has success/error structure, use it directly
+        if (data && typeof data === 'object' && 'success' in data) {
+          return data;
+        }
+        // Otherwise wrap it
         return { data, success: true };
       } catch (err) {
         attempts++;

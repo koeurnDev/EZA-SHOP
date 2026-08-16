@@ -14,10 +14,16 @@ export const telegramAuth = createMiddleware<{ Bindings: Env; Variables: Variabl
   console.log('[AUTH DEBUG]', {
     nodeEnv: env.NODE_ENV,
     bypass: bypass,
-    superadminId: env.SUPERADMIN_ID
+    superadminId: env.SUPERADMIN_ID,
+    path: c.req.path
   });
   
-  if (env.NODE_ENV === 'development' && bypass === 'true') {
+  // Allow bypass in development OR with special test token
+  const testToken = c.req.header('X-Test-Token');
+  const isDevBypass = env.NODE_ENV === 'development' && bypass === 'true';
+  const isTestToken = testToken === env.TEST_TOKEN && env.TEST_TOKEN; // Only if TEST_TOKEN is set
+  
+  if (isDevBypass || isTestToken) {
     console.log('[AUTH] Using debug bypass mode');
     c.set('userId', env.SUPERADMIN_ID);
     c.set('isAdmin', true);
@@ -89,7 +95,7 @@ export const adminAuth = createMiddleware<{ Bindings: Env; Variables: Variables 
  * CORS middleware
  */
 export const cors = createMiddleware(async (c, next) => {
-  const allowedHeaders = 'Content-Type, Authorization, X-Telegram-Init-Data, X-TG-Data, x-tg-data, X-Debug-Bypass';
+  const allowedHeaders = 'Content-Type, Authorization, X-Telegram-Init-Data, X-TG-Data, x-tg-data, X-Debug-Bypass, X-Test-Token';
 
   // Handle preflight requests
   if (c.req.method === 'OPTIONS') {
