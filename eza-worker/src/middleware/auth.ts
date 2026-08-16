@@ -23,11 +23,27 @@ export const telegramAuth = createMiddleware<{ Bindings: Env; Variables: Variabl
 
   let userId: string | null = null;
 
-  // Try Telegram init data first
+  // Try Telegram init data first — extract user.id directly from the initData string
   if (initData) {
-    const telegramData = await verifyTelegramAuth(initData, env.BOT_TOKEN);
-    if (telegramData?.user?.id) {
-      userId = telegramData.user.id.toString();
+    try {
+      const params = new URLSearchParams(initData);
+      const userStr = params.get('user');
+      if (userStr) {
+        const user = JSON.parse(userStr);
+        if (user?.id) {
+          userId = String(user.id);
+        }
+      }
+    } catch {
+      // fallback to verifyTelegramAuth
+    }
+
+    // If direct parse failed, try full verification
+    if (!userId) {
+      const telegramData = await verifyTelegramAuth(initData, env.BOT_TOKEN);
+      if (telegramData?.user?.id) {
+        userId = telegramData.user.id.toString();
+      }
     }
   }
   
