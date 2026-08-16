@@ -12,7 +12,14 @@ app.post('/', telegramAuth, async (c) => {
   try {
     const { CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET } = c.env;
 
+    console.log('[UPLOAD] Starting upload request', {
+      path: c.req.path,
+      contentType: c.req.header('content-type'),
+      hasCloudinaryConfig: !!(CLOUDINARY_CLOUD_NAME && CLOUDINARY_API_KEY && CLOUDINARY_API_SECRET)
+    });
+
     if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_API_KEY || !CLOUDINARY_API_SECRET) {
+      console.error('[UPLOAD ERROR] Cloudinary not configured');
       return c.json({ success: false, error: 'Image upload not configured' }, 500);
     }
 
@@ -20,17 +27,37 @@ app.post('/', telegramAuth, async (c) => {
     let fileData: string | null = null;
     let fileName = `receipt_${Date.now()}`;
 
+    // Detect folder based on request path (admin uploads go to products folder)
+    const isAdminUpload = c.req.path.includes('/admin/upload');
+    const folder = isAdminUpload ? 'products' : 'receipts';
+
+    console.log('[UPLOAD] Processing file', { folder, contentType });
+
     if (contentType.includes('multipart/form-data')) {
       // Handle multipart form upload
       const formData = await c.req.formData();
       const file = formData.get('image') as File | null;
 
       if (!file) {
+        console.error('[UPLOAD ERROR] No image file in form data');
         return c.json({ success: false, error: 'No image file provided' }, 400);
       }
 
+      console.log('[UPLOAD] File received', { name: file.name, type: file.type, size: file.size });
+
       const buffer = await file.arrayBuffer();
-      const base64 = btoa(String.fromCharCode(...new Uint8Array(buffer)));
+      
+      // Convert to base64 using chunk-based approach to avoid stack overflow
+      const uint8Array = new Uint8Array(buffer);
+      let binary = '';
+      const chunkSize = 8192; // Process 8KB at a time
+      
+      for (let i = 0; i < uint8Array.length; i += chunkSize) {
+        const chunk = uint8Array.subarray(i, Math.min(i + chunkSize, uint8Array.length));
+        binary += String.fromCharCode.apply(null, Array.from(chunk));
+      }
+      
+      const base64 = btoa(binary);
       const mimeType = file.type || 'image/jpeg';
       fileData = `data:${mimeType};base64,${base64}`;
       fileName = file.name || fileName;
@@ -38,31 +65,47 @@ app.post('/', telegramAuth, async (c) => {
       // Handle JSON with base64 or URL
       const body = await c.req.json().catch(() => ({}));
       fileData = body.image || body.file || body.url || null;
+      console.log('[UPLOAD] JSON body received', { hasFileData: !!fileData });
     }
 
     if (!fileData) {
+      console.error('[UPLOAD ERROR] No image data provided');
       return c.json({ success: false, error: 'No image data provided' }, 400);
     }
 
-    // Generate Cloudinary signature
+    // Generate Cloudinary signature using HMAC-SHA1
     const timestamp = Math.floor(Date.now() / 1000);
-    const folder = 'receipts';
-    const paramsToSign = `folder=${folder}&timestamp=${timestamp}`;
-
-    // Sign using Web Crypto API
     const encoder = new TextEncoder();
+    
+    // Cloudinary expects: HMAC-SHA1(params_string, api_secret)
+    // params_string should be alphabetically sorted params
+    const paramsToSign = `folder=${folder}&timestamp=${timestamp}`;
+    
+    console.log('[UPLOAD] Generating signature', { paramsToSign, timestamp });
+    
     const keyData = encoder.encode(CLOUDINARY_API_SECRET);
     const msgData = encoder.encode(paramsToSign);
-
-    const cryptoKey = await crypto.subtle.importKey('raw', keyData, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+    
+    const cryptoKey = await crypto.subtle.importKey(
+      'raw', 
+      keyData, 
+      { name: 'HMAC', hash: 'SHA-1' }, 
+      false, 
+      ['sign']
+    );
     const sigBuffer = await crypto.subtle.sign('HMAC', cryptoKey, msgData);
-
-    // Cloudinary uses SHA-1 for signing — use a simpler approach
-    const signStr = `folder=${folder}&timestamp=${timestamp}${CLOUDINARY_API_SECRET}`;
-    const signHash = await crypto.subtle.digest('SHA-1', encoder.encode(signStr));
-    const signature = Array.from(new Uint8Array(signHash)).map(b => b.toString(16).padStart(2, '0')).join('');
+    const signature = Array.from(new Uint8Array(sigBuffer))
+      .map(b => b.toString(16).padStart(2, '0'))
+      .join('');
+    
+    console.log('[UPLOAD] Signature generated', { signatureLength: signature.length });
 
     // Upload to Cloudinary
+    console.log('[UPLOAD] Uploading to Cloudinary', { 
+      url: `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
+      folder
+    });
+
     const uploadFormData = new FormData();
     uploadFormData.append('file', fileData);
     uploadFormData.append('api_key', CLOUDINARY_API_KEY);
@@ -75,17 +118,44 @@ app.post('/', telegramAuth, async (c) => {
       { method: 'POST', body: uploadFormData }
     );
 
+    console.log('[UPLOAD] Cloudinary response', { 
+      status: uploadRes.status, 
+      statusText: uploadRes.statusText,
+      ok: uploadRes.ok
+    });
+
     const uploadData = await uploadRes.json() as any;
 
     if (!uploadData.secure_url) {
-      console.error('Cloudinary upload failed:', uploadData);
-      return c.json({ success: false, error: 'Image upload failed' }, 500);
+      console.error('[UPLOAD ERROR] Cloudinary upload failed:', {
+        status: uploadRes.status,
+        statusText: uploadRes.statusText,
+        error: uploadData.error,
+        message: uploadData.error?.message,
+        folder: folder,
+        timestamp: timestamp,
+        fullResponse: uploadData
+      });
+      return c.json({ 
+        success: false, 
+        error: uploadData.error?.message || 'Image upload failed',
+        details: uploadData.error || uploadData 
+      }, 500);
     }
 
-    return c.json({ success: true, url: uploadData.secure_url });
+    console.log('[UPLOAD] Success!', { url: uploadData.secure_url });
+    return c.json({ success: true, data: { url: uploadData.secure_url } });
   } catch (error) {
-    console.error('upload error:', error);
-    return c.json({ success: false, error: 'Upload failed' }, 500);
+    console.error('[UPLOAD ERROR] Exception:', {
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      error: error
+    });
+    return c.json({ 
+      success: false, 
+      error: 'Upload failed',
+      message: error instanceof Error ? error.message : String(error)
+    }, 500);
   }
 });
 
