@@ -147,8 +147,8 @@ const AdminDashboard = ({
   }, [localProductSearchTerm]);
 
   useEffect(() => {
-    if (settingsData?.success) {
-      const s = settingsData.settings;
+    if (settingsData?.success && settingsData?.settings) {
+      const s = settingsData.settings || {};
       setShopStatus(s.shop_status || 'open');
       setDeliveryThreshold('delivery_threshold' in s ? String(s.delivery_threshold) : '50');
       setDeliveryFee('delivery_fee' in s ? String(s.delivery_fee) : '1.50');

@@ -37,7 +37,7 @@ app.post('/ping', telegramAuth, async (c) => {
 /**
  * GET /api/settings - Get settings by keys
  */
-app.get('/settings', telegramAuth, async (c) => {
+app.get('/settings', async (c) => {
   try {
     const db = createDb(c.env);
     const keysParam = c.req.query('keys');
@@ -64,7 +64,7 @@ app.get('/settings', telegramAuth, async (c) => {
 /**
  * GET /api/init - Initial app data (products + settings + categories + coupons)
  */
-app.get('/init', telegramAuth, async (c) => {
+app.get('/init', async (c) => {
   try {
     const db = createDb(c.env);
 

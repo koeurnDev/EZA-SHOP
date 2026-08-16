@@ -28,10 +28,16 @@ export function normalizeSocialLink(type, rawValue) {
 
 export function openExternalLink(url) {
   if (!url) return;
-  const tg = window.Telegram?.WebApp;
-  if (tg?.openLink) {
-    tg.openLink(url);
+  if (url.startsWith('tel:') || url.startsWith('mailto:')) {
+    window.location.href = url;
     return;
+  }
+  const tg = window.Telegram?.WebApp;
+  if (tg?.openLink && /^https?:\/\//i.test(url)) {
+    try {
+      tg.openLink(url);
+      return;
+    } catch { /* fallback to window.open */ }
   }
   window.open(url, '_blank', 'noopener,noreferrer');
 }

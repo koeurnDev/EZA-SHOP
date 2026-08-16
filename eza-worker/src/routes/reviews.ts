@@ -10,7 +10,7 @@ const app = new Hono<{ Bindings: Env; Variables: Variables }>();
 /**
  * GET /api/products/:productId/reviews
  */
-app.get('/:productId/reviews', telegramAuth, async (c) => {
+app.get('/:productId/reviews', async (c) => {
   try {
     const productId = parseInt(c.req.param('productId'));
     if (isNaN(productId) || productId <= 0) {

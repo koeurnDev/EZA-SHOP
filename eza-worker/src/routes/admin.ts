@@ -24,6 +24,13 @@ app.get('/dashboard', async (c) => {
     const [orderCount] = await db.select({ count: count() }).from(orders);
     const [userCount] = await db.select({ count: count() }).from(users);
 
+    // Get all settings (needed by AdminSettingsTab)
+    const allSettings = await db.select().from(settings);
+    const settingsMap = allSettings.reduce((acc, s) => {
+      acc[s.key] = s.value || '';
+      return acc;
+    }, {} as Record<string, string>);
+
     // Get recent orders
     const recentOrders = await db
       .select()
@@ -51,6 +58,7 @@ app.get('/dashboard', async (c) => {
 
     return c.json({
       success: true,
+      settings: settingsMap,
       dashboard: {
         stats: {
           products: productCount.count,

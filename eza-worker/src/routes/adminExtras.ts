@@ -433,4 +433,29 @@ app.get('/faqs', async (c) => {
   }
 });
 
+/**
+ * GET /api/admin/advanced-analytics
+ */
+app.get('/advanced-analytics', async (c) => {
+  try {
+    const db = createDb(c.env);
+    const [salesRes, ordersRes, topProductsRes] = await Promise.all([
+      db.execute(sql`SELECT COALESCE(SUM(total::numeric), 0) as total_revenue, COUNT(*) as total_orders FROM orders WHERE status != 'cancelled'`),
+      db.execute(sql`SELECT status, COUNT(*) as count FROM orders GROUP BY status`),
+      db.select().from(products).limit(10),
+    ]);
+    return c.json({
+      success: true,
+      data: {
+        total_revenue: parseFloat((salesRes.rows[0] as any)?.total_revenue || '0'),
+        total_orders: parseInt((salesRes.rows[0] as any)?.total_orders || '0'),
+        order_status: ordersRes.rows,
+        top_products: topProductsRes,
+      }
+    });
+  } catch (error) {
+    return c.json({ success: true, data: {} });
+  }
+});
+
 export default app;

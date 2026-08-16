@@ -11,7 +11,7 @@ const app = new Hono<{ Bindings: Env; Variables: Variables }>();
 /**
  * GET /api/products - Get all products with stock > 0
  */
-app.get('/', telegramAuth, async (c) => {
+app.get('/', async (c) => {
   try {
     const db = createDb(c.env);
     
@@ -63,7 +63,7 @@ app.get('/', telegramAuth, async (c) => {
 /**
  * GET /api/products/:id - Get single product
  */
-app.get('/:id', telegramAuth, async (c) => {
+app.get('/:id', async (c) => {
   try {
     const productId = parseInt(c.req.param('id'));
     if (isNaN(productId)) {
@@ -123,7 +123,7 @@ app.get('/:id', telegramAuth, async (c) => {
 /**
  * GET /api/products/category/:category - Get products by category
  */
-app.get('/category/:category', telegramAuth, async (c) => {
+app.get('/category/:category', async (c) => {
   try {
     const category = decodeURIComponent(c.req.param('category'));
     const db = createDb(c.env);

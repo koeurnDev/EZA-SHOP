@@ -22,9 +22,12 @@
 }
 .splash-logo-text {
   font-family: var(--font-display); 
-  font-size: 48px; 
+  font-size: clamp(24px, 6.5vw, 42px); 
   font-weight: 900; 
-  letter-spacing: 4px;
+  letter-spacing: clamp(1px, 0.8vw, 3px);
+  white-space: nowrap;
+  text-align: center;
+  max-width: 90vw;
   background: linear-gradient(135deg, #2F483A 0%, #617A63 100%); 
   -webkit-background-clip: text; 
   -webkit-text-fill-color: transparent;
@@ -34,12 +37,13 @@
 }
 .splash-subtitle {
   font-family: var(--font-primary); 
-  font-size: 12px; 
+  font-size: 11px; 
   font-weight: 600; 
-  letter-spacing: 12px; 
+  letter-spacing: clamp(6px, 1.5vw, 10px); 
   color: #2F483A; 
   margin-top: 8px; 
-  margin-left: 12px;
+  margin-left: 8px;
+  white-space: nowrap;
   opacity: 0; 
   transform: translateY(10px); 
   animation: splashSubtitleEnter 1.5s cubic-bezier(0.16, 1, 0.3, 1) 0.3s forwards;
