@@ -69,7 +69,7 @@ export async function verifyTelegramAuth(initData: string, botToken: string): Pr
           // Verify auth_date to prevent replay attacks (24 hours expiry)
           const authDateInt = parseInt(authDate || '0', 10);
           const now = Math.floor(Date.now() / 1000);
-          if (now - authDateInt > 86400) {
+          if (now - authDateInt > 604800) { // 7 days (Telegram Mini App initData doesn't auto-refresh)
             console.warn('Telegram auth data expired (Replay Attack protection)');
             return null;
           }

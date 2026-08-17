@@ -23,7 +23,11 @@ app.get('/dashboard', async (c) => {
     const userId = c.get('userId') as string;
     const currentUser = await db.select({ role: users.role }).from(users).where(eq(users.user_id, userId)).limit(1);
     const dbRole = currentUser[0]?.role;
-    const userRole = c.get('isAdmin') ? 'admin' : (dbRole || 'staff');
+    // Compare userId directly with SUPERADMIN_ID as fallback (handles whitespace/quote issues)
+    const superAdminId = (c.env.SUPERADMIN_ID || '').trim().replace(/^["']|["']$/g, '');
+    const isSuperAdmin = c.get('isAdmin') || userId === superAdminId;
+    console.log('[ROLE DEBUG] userId:', JSON.stringify(userId), 'SUPERADMIN_ID:', JSON.stringify(superAdminId), 'isAdmin:', c.get('isAdmin'), 'match:', userId === superAdminId);
+    const userRole = isSuperAdmin ? 'admin' : (dbRole || 'staff');
 
     // Get counts
     const [productCount] = await db.select({ count: count() }).from(products);
