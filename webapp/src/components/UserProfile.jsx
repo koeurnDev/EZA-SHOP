@@ -206,7 +206,21 @@ const UserProfile = ({ user, setView, BACKEND_URL, onViewInvoice, t, lang, toggl
     'delivered':  { label: lang === 'kh' ? 'បានដល់'     : 'Delivered',  color: '#10b981', icon: '🏠', step: 3 }
   };
 
-  if (!user) return <div className="loading-screen"><div className="loader"></div></div>;
+  if (!user) {
+    return (
+      <div style={{ textAlign: 'center', padding: '60px 20px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '60vh' }}>
+        <div style={{ fontSize: 48, marginBottom: 16 }}>📱</div>
+        <h2 style={{ fontSize: 20, fontWeight: 900, marginBottom: 8, color: 'var(--text-bold)' }}>
+          {lang === 'kh' ? 'ត្រូវការកម្មវិធី Telegram' : 'Telegram App Required'}
+        </h2>
+        <p style={{ fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.6 }}>
+          {lang === 'kh' 
+            ? 'សូមបើកកម្មវិធីនេះតាមរយៈ Telegram Mini App ដើម្បីចូលមើលគណនីរបស់អ្នក។' 
+            : 'Please open this app inside Telegram to view your profile and order history.'}
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="history-page-luxury">
