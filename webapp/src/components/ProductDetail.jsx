@@ -137,10 +137,10 @@ const ProductDetail = ({ product, allProducts = [], onAdd, onClose, onBuyNow, ac
   }, [fullProduct.image, fullProduct.additional_images]);
 
   const bestDiscount = calculateBestDiscount(product, activeDiscounts);
+  const displayProduct = fullProduct || product;
   const hasFlashSale = displayProduct.flash_sale_price && displayProduct.flash_sale_end && new Date(displayProduct.flash_sale_end) > new Date();
   const discountedPriceValue = hasFlashSale ? displayProduct.flash_sale_price : getDiscountedPrice(product, bestDiscount);
   const isDiscounted = hasFlashSale || bestDiscount !== null || discountedPriceValue < product.price;
-  const displayProduct = fullProduct || product;
   const hasReviews = Number(displayProduct.review_count) > 0;
   const isSkincare = isSkincareProduct({
     category: displayProduct.category || product.category || '',
