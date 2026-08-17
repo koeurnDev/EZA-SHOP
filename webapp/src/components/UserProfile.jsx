@@ -14,6 +14,7 @@ const UserProfile = ({ user, setView, BACKEND_URL, onViewInvoice, t, lang, toggl
   const {
     socialFb, socialTg, socialIg, socialTt, socialEmail, socialWa,
     shopPhone, shopAddress, shopHours, shopLogoUrl, shopName,
+    settings,
   } = useShopState();
   const socialLinks = useMemo(
     () => buildSocialLinkItems({ socialFb, socialTg, socialIg, socialTt, socialEmail, socialWa }),
@@ -34,6 +35,10 @@ const UserProfile = ({ user, setView, BACKEND_URL, onViewInvoice, t, lang, toggl
   const [editPhone, setEditPhone] = useState('');
   const [editAddress, setEditAddress] = useState('');
   const [isSavingProfile, setIsSavingProfile] = useState(false);
+  
+  // Redeem Points State
+  const [isRedeeming, setIsRedeeming] = useState(false);
+  const [redeemedCoupon, setRedeemedCoupon] = useState(null);
 
   useEffect(() => {
     fetchOrders();
@@ -95,6 +100,39 @@ const UserProfile = ({ user, setView, BACKEND_URL, onViewInvoice, t, lang, toggl
       console.error('Failed to save profile:', err);
     } finally {
       setIsSavingProfile(false);
+    }
+  };
+
+  const handleRedeemPoints = async () => {
+    if ((dbProfile?.loyalty_points || 0) < 100) return;
+    
+    if (!window.confirm(lang === 'kh' ? 'តើអ្នកពិតជាចង់ប្ដូរ ១០០ពិន្ទុ យកគូប៉ុងបញ្ចុះតម្លៃ $2 មែនទេ?' : 'Exchange 100 points for a $2 discount coupon?')) return;
+
+    setIsRedeeming(true);
+    try {
+      const tgInitData = window.Telegram?.WebApp?.initData || '';
+      const res = await fetch(`${BACKEND_URL}/api/user/redeem-points`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'X-TG-Data': tgInitData,
+          'X-Debug-Bypass': 'true'
+        }
+      });
+      const data = await res.json();
+      if (data.success) {
+        setDbProfile(prev => ({ ...prev, loyalty_points: data.new_balance }));
+        setRedeemedCoupon(data.coupon_code);
+        const tg = window.Telegram?.WebApp;
+        if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+      } else {
+        alert(data.error || (lang === 'kh' ? 'ប្ដូរពិន្ទុមិនជោគជ័យ' : 'Failed to redeem points'));
+      }
+    } catch (err) {
+      console.error('Redeem points error:', err);
+      alert(lang === 'kh' ? 'មានបញ្ហាក្នុងការប្ដូរពិន្ទុ' : 'Error redeeming points');
+    } finally {
+      setIsRedeeming(false);
     }
   };
 
@@ -198,6 +236,41 @@ const UserProfile = ({ user, setView, BACKEND_URL, onViewInvoice, t, lang, toggl
         imageUrl={user?.photo_url || `https://ui-avatars.com/api/?name=${user?.first_name || 'User'}&background=random`}
       />
 
+      {dbProfile && (
+        <div style={{ margin: '0 20px 20px', padding: '16px', background: 'var(--bg-surface)', borderRadius: '20px', border: '1px solid var(--border-subtle)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <h3 style={{ fontSize: 16, fontWeight: 900, display: 'flex', alignItems: 'center', gap: 6, margin: 0 }}>
+              {dbProfile.vip_tier === 'diamond' ? '💎 Diamond VIP' : dbProfile.vip_tier === 'gold' ? '🥇 Gold VIP' : dbProfile.vip_tier === 'silver' ? '🥈 Silver VIP' : '🔰 Standard Member'}
+            </h3>
+            {dbProfile.vip_tier !== 'none' && (
+               <span style={{ fontSize: 12, fontWeight: 800, color: '#8b5cf6' }}>
+                  {dbProfile.vip_tier === 'diamond' ? '15% OFF' : dbProfile.vip_tier === 'gold' ? '10% OFF' : '5% OFF'}
+               </span>
+            )}
+          </div>
+          
+          {dbProfile.vip_tier !== 'diamond' && (
+            <>
+               <div style={{ height: 8, background: 'var(--bg-soft)', borderRadius: 4, overflow: 'hidden', marginBottom: 8 }}>
+                  <div style={{ 
+                     height: '100%', 
+                     background: 'linear-gradient(90deg, #8b5cf6, #ec4899)', 
+                     width: `${Math.min(100, (dbProfile.total_spent / (dbProfile.vip_tier === 'none' ? 100 : dbProfile.vip_tier === 'silver' ? 500 : 1000)) * 100)}%` 
+                  }}></div>
+               </div>
+               <p style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600, margin: 0 }}>
+                  {lang === 'kh' ? 'ទិញបន្ថែម ' : 'Spend '}
+                  <b style={{ color: 'var(--text-main)' }}>
+                     ${Math.max(0, (dbProfile.vip_tier === 'none' ? 100 : dbProfile.vip_tier === 'silver' ? 500 : 1000) - dbProfile.total_spent).toFixed(2)}
+                  </b>
+                  {lang === 'kh' ? ' ទៀតដើម្បីឡើងកម្រិត ' : ' more to reach '}
+                  <b>{dbProfile.vip_tier === 'none' ? 'Silver' : dbProfile.vip_tier === 'silver' ? 'Gold' : 'Diamond'}</b>
+               </p>
+            </>
+          )}
+        </div>
+      )}
+
       <button type="button" className="profile-favorites-link" onClick={() => setView('wishlist')}>
         <span className="profile-favorites-icon" aria-hidden="true">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -212,6 +285,33 @@ const UserProfile = ({ user, setView, BACKEND_URL, onViewInvoice, t, lang, toggl
           <polyline points="9 18 15 12 9 6" />
         </svg>
       </button>
+
+      <div className="referral-card-lux" style={{ margin: '0 16px 20px', padding: 16, background: 'var(--surface)', borderRadius: 16, boxShadow: '0 4px 12px rgba(0,0,0,0.05)', textAlign: 'center' }}>
+        <h3 style={{ fontSize: 16, marginBottom: 8 }}>{lang === 'kh' ? 'ណែនាំមិត្តភក្ដិ (ទទួលបាន 10 ពិន្ទុ)' : 'Refer a Friend (Get 10 Points)'}</h3>
+        <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 12 }}>
+          {lang === 'kh' ? 'ចម្លងតំណភ្ជាប់ខាងក្រោមផ្ញើទៅមិត្តភក្ដិរបស់អ្នក។ អ្នកទាំងពីរនឹងទទួលបាន 10 ពិន្ទុបន្ទាប់ពីពួកគេទិញទំនិញលើកដំបូង!' : 'Copy the link below and send it to your friends. You both get 10 points after their first purchase!'}
+        </p>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <input 
+            type="text" 
+            readOnly 
+            value={`https://t.me/${import.meta.env.VITE_BOT_USERNAME || 'Eza_Shop_Bot'}/app?startapp=ref_${user?.id}`} 
+            style={{ flex: 1, padding: '10px 12px', borderRadius: 8, border: '1px solid var(--border-color)', background: 'var(--bg-color)', fontSize: 13, color: 'var(--text-primary)' }}
+          />
+          <button 
+            className="order-action-btn-primary"
+            style={{ padding: '10px 16px', borderRadius: 8, whiteSpace: 'nowrap', border: 'none' }}
+            onClick={() => {
+              navigator.clipboard.writeText(`https://t.me/${import.meta.env.VITE_BOT_USERNAME || 'Eza_Shop_Bot'}/app?startapp=ref_${user?.id}`);
+              const tg = window.Telegram?.WebApp;
+              if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+              alert(lang === 'kh' ? 'បានចម្លង!' : 'Copied!');
+            }}
+          >
+            📋 {lang === 'kh' ? 'ចម្លង' : 'Copy'}
+          </button>
+        </div>
+      </div>
 
       {dbProfile && (
         <div className="glass-card-luxury profile-info-card">
@@ -228,12 +328,45 @@ const UserProfile = ({ user, setView, BACKEND_URL, onViewInvoice, t, lang, toggl
             )}
           </div>
 
-          <div className="profile-loyalty-row">
-            <div className="profile-loyalty-icon">pts</div>
-            <div>
-              <div className="profile-loyalty-label">{lang === 'kh' ? 'ពិន្ទុសន្សំ' : 'Loyalty Points'}</div>
-              <div className="profile-loyalty-value">{dbProfile.loyalty_points || 0} pts</div>
+          <div className="profile-loyalty-row" style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+              <div className="profile-loyalty-icon">pts</div>
+              <div style={{ flex: 1 }}>
+                <div className="profile-loyalty-label">{lang === 'kh' ? 'ពិន្ទុសន្សំ' : 'Loyalty Points'}</div>
+                <div className="profile-loyalty-value">{dbProfile.loyalty_points || 0} pts</div>
+              </div>
+              {dbProfile.loyalty_points >= 100 && !redeemedCoupon && (
+                <button 
+                  type="button" 
+                  className="profile-save-btn" 
+                  style={{ width: 'auto', padding: '8px 16px', fontSize: '13px', margin: 0, height: 'auto' }}
+                  onClick={handleRedeemPoints}
+                  disabled={isRedeeming}
+                >
+                  {isRedeeming ? '...' : (lang === 'kh' ? 'ប្ដូរយកគូប៉ុង $2' : 'Redeem $2')}
+                </button>
+              )}
             </div>
+            
+            {redeemedCoupon && (
+              <div style={{ background: 'var(--bg-app)', padding: '15px', borderRadius: '12px', border: '1px dashed var(--primary-accent)', textAlign: 'center' }}>
+                <div style={{ fontSize: '13px', fontWeight: 800, color: 'var(--text-muted)', marginBottom: '8px' }}>
+                  {lang === 'kh' ? 'គូប៉ុងបញ្ចុះតម្លៃ $2 របស់អ្នក' : 'Your $2 Discount Coupon'}
+                </div>
+                <div style={{ fontSize: '20px', fontWeight: 950, color: 'var(--primary-accent)', letterSpacing: '2px' }}>
+                  {redeemedCoupon}
+                </div>
+                <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '8px' }}>
+                  {lang === 'kh' ? 'សូមចម្លងកូដនេះទៅប្រើនៅពេលទូទាត់ប្រាក់' : 'Copy this code to use at checkout'}
+                </div>
+              </div>
+            )}
+            
+            {dbProfile.loyalty_points < 100 && !redeemedCoupon && (
+               <div style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 600 }}>
+                 {lang === 'kh' ? `ត្រូវការ ${100 - dbProfile.loyalty_points} ពិន្ទុទៀត ដើម្បីប្ដូរយកគូប៉ុង $2` : `Need ${100 - dbProfile.loyalty_points} more points to redeem a $2 coupon`}
+               </div>
+            )}
           </div>
 
           {!isEditingProfile ? (
@@ -457,6 +590,19 @@ const UserProfile = ({ user, setView, BACKEND_URL, onViewInvoice, t, lang, toggl
            </div>
         </div>
       )}
+
+      {/* About Us Section */}
+      {(settings?.shop_history_kh || settings?.shop_history_en) && (
+        <div className="faq-section-lux" style={{ marginTop: 30 }}>
+          <div className="section-header" style={{ padding: '0 0 20px' }}>
+            <h2 style={{ fontSize: 20, fontWeight: 950, color: 'var(--text-bold)' }}>{lang === 'kh' ? 'អំពីយើង' : 'About Us'}</h2>
+          </div>
+          <div className="glass-card-luxury" style={{ padding: '20px', whiteSpace: 'pre-wrap', lineHeight: '1.6', fontSize: 14 }}>
+            {lang === 'kh' ? (settings.shop_history_kh || settings.shop_history_en) : (settings.shop_history_en || settings.shop_history_kh)}
+          </div>
+        </div>
+      )}
+
       {faqs.length > 0 && (
          <div className="faq-section-lux" style={{ marginTop: 30 }}>
             <div className="section-header" style={{ padding: '0 0 20px' }}>

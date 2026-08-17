@@ -17,18 +17,34 @@ const CartPage = ({
 }) => {
   const { cart, totalPrice, totalItemsCount } = useCartState();
   const { updateQty, clearCart } = useCartDispatch();
-  const { activeDiscounts, deliveryThreshold, deliveryFee, products } = useShopState();
+  const { activeDiscounts, deliveryThreshold, deliveryFee, products, settings } = useShopState();
   const { setView } = useShopDispatch();
   const { t, lang, user } = useUserState();
   const { tg } = useTelegram();
 
   const [step, setStep] = useState(1); // 1: Review, 2: Info/Payment
-  const [usePoints, setUsePoints] = useState(false);
   const [promoInput, setPromoInput] = useState('');
   const [validatedPromo, setValidatedPromo] = useState(null);
   const [promoLoading, setPromoLoading] = useState(false);
   const [promoError, setPromoError] = useState('');
+  const [vipTier, setVipTier] = useState('none');
   const threshold = parseDeliverySetting(deliveryThreshold, 50);
+  const provincialDeliveryFee = settings?.provincial_delivery_fee || '2.50';
+
+  // Fetch VIP Status
+  React.useEffect(() => {
+    const tgInitData = window.Telegram?.WebApp?.initData || '';
+    fetch(`${import.meta.env.VITE_BACKEND_URL}/api/user/profile`, {
+      headers: { 'X-TG-Data': tgInitData }
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success && data.profile) {
+          setVipTier(data.profile.vip_tier || 'none');
+        }
+      })
+      .catch(err => console.error('Failed to fetch VIP tier', err));
+  }, []);
 
   const productById = useMemo(
     () => new Map((products || []).map((p) => [String(p.id), p])),
@@ -67,17 +83,19 @@ const CartPage = ({
   
   const subTotalAfterPromo = Math.max(0, subTotal - manualDiscount);
   
-  const loyaltyPoints = user?.loyalty_points || 0;
-  let pointsDiscount = 0;
-  if (usePoints && loyaltyPoints > 0) {
-     pointsDiscount = Math.min(subTotalAfterPromo, loyaltyPoints / 100);
-  }
-
-  const appliedFee = calculateDeliveryFee(subTotalAfterPromo, deliveryFee, deliveryThreshold);
+  let vipDiscountRate = 0;
+  if (vipTier === 'silver') vipDiscountRate = 0.05;
+  if (vipTier === 'gold') vipDiscountRate = 0.10;
+  if (vipTier === 'diamond') vipDiscountRate = 0.15;
+  
+  const vipDiscountAmount = subTotalAfterPromo * vipDiscountRate;
+  const finalSubTotal = Math.max(0, subTotalAfterPromo - vipDiscountAmount);
+  
+  const appliedFee = calculateDeliveryFee(finalSubTotal, deliveryFee, deliveryThreshold, formData?.province, provincialDeliveryFee);
   const isFreeDelivery = appliedFee <= 0;
-  const finalTotal = Math.max(0, subTotalAfterPromo - pointsDiscount) + appliedFee;
+  const finalTotal = finalSubTotal + appliedFee;
   const amountToFreeDelivery = !isAlwaysFreeDelivery(deliveryFee) && !isFreeDelivery
-    ? Math.max(0, threshold - subTotalAfterPromo)
+    ? Math.max(0, threshold - finalSubTotal)
     : 0;
 
   const handleApplyPromo = async () => {
@@ -125,7 +143,7 @@ const CartPage = ({
     }
 
     if (!isPlacingOrder && isPhoneValid && isAddressValid) {
-      const success = await onCheckout(finalTotal, validatedPromo ? validatedPromo.code : null, usePoints);
+      const success = await onCheckout(finalTotal, validatedPromo ? validatedPromo.code : null);
       if (success) {
         setValidatedPromo(null);
         setPromoInput('');
@@ -378,29 +396,15 @@ const CartPage = ({
             </div>
           )}
 
-          {loyaltyPoints > 0 && (
-            <div className="mt-4 p-3 bg-[var(--bg-soft)] rounded-xl border border-[var(--border-subtle)]">
-              <div className="flex justify-between items-center">
-                <div className="flex flex-col">
-                  <span className="text-[14px] font-bold">{lang === 'kh' ? 'ពិន្ទុសន្សំ' : 'Loyalty Points'}</span>
-                  <span className="text-[12px] text-[var(--text-muted)] font-semibold">
-                    {lang === 'kh' ? `អ្នកមាន ${loyaltyPoints} ពិន្ទុ (-$${(loyaltyPoints / 100).toFixed(2)})` : `You have ${loyaltyPoints} points (-$${(loyaltyPoints / 100).toFixed(2)})`}
-                  </span>
-                </div>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input type="checkbox" className="sr-only peer" checked={usePoints} onChange={() => setUsePoints(!usePoints)} />
-                  <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#059669]"></div>
-                </label>
+          {vipTier !== 'none' && vipDiscountAmount > 0 && (
+            <div className="flex justify-between items-center text-[15px] font-bold mt-2 text-[#8b5cf6]">
+              <div className="uppercase tracking-tight flex items-center gap-1">
+                {vipTier === 'diamond' ? '💎' : vipTier === 'gold' ? '🥇' : '🥈'} VIP DISCOUNT ({vipDiscountRate * 100}%)
               </div>
+              <div className="font-black tabular-nums">-${vipDiscountAmount.toFixed(2)}</div>
             </div>
           )}
 
-          {usePoints && pointsDiscount > 0 && (
-            <div className="flex justify-between items-center text-[15px] font-bold mt-2 text-[#059669]">
-              <div className="uppercase tracking-tight flex items-center gap-1">🎁 {lang === 'kh' ? 'បញ្ចុះតម្លៃពីពិន្ទុ' : 'Points Discount'}</div>
-              <div className="font-black tabular-nums">-${pointsDiscount.toFixed(2)}</div>
-            </div>
-          )}
 
           <div className="flex justify-between items-center text-[15px] font-bold mt-2">
             <div className="uppercase tracking-tight">{lang === 'kh' ? 'សេវាដឹកជញ្ជូន' : 'DELIVERY'}</div>

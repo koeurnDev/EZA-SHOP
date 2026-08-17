@@ -22,7 +22,8 @@ export async function verifyTelegramAuth(initData: string, botToken: string): Pr
     const parsedUser = JSON.parse(userData);
 
     // If bot token is not configured or in dev, return parsed user
-    if (!botToken || botToken === 'test') {
+    // Only allow this bypass if explicitly using a test token or in a specific test scenario
+    if (botToken === 'test') {
       return {
         user: parsedUser,
         auth_date: authDate ? parseInt(authDate, 10) : Math.floor(Date.now() / 1000),
@@ -65,23 +66,30 @@ export async function verifyTelegramAuth(initData: string, botToken: string): Pr
           .join('');
 
         if (calculatedHash === hash) {
+          // Verify auth_date to prevent replay attacks (24 hours expiry)
+          const authDateInt = parseInt(authDate || '0', 10);
+          const now = Math.floor(Date.now() / 1000);
+          if (now - authDateInt > 86400) {
+            console.warn('Telegram auth data expired (Replay Attack protection)');
+            return null;
+          }
+
           return {
             user: parsedUser,
-            auth_date: parseInt(authDate || '0', 10),
+            auth_date: authDateInt,
             hash,
           };
+        } else {
+          console.warn('Invalid Telegram auth signature');
+          return null;
         }
       } catch (err) {
-        console.warn('Crypto verification error, falling back to parsed user:', err);
+        console.warn('Crypto verification error:', err);
+        return null;
       }
     }
 
-    // Return parsed user if present
-    return {
-      user: parsedUser,
-      auth_date: parseInt(authDate || '0', 10),
-      hash: hash || '',
-    };
+    return null;
   } catch (error) {
     console.error('Telegram auth verification failed:', error);
     return null;

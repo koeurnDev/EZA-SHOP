@@ -30,6 +30,7 @@ const AdminSettingsContainer = ({
   const [shopStatus, setShopStatus] = useState('open');
   const [deliveryThreshold, setDeliveryThreshold] = useState('50');
   const [deliveryFee, setDeliveryFee] = useState('1.50');
+  const [provincialDeliveryFee, setProvincialDeliveryFee] = useState('2.50');
   const [promoText, setPromoText] = useState('');
   const [promoBannerUrl, setPromoBannerUrl] = useState('');
   const [shopLogoUrl, setShopLogoUrl] = useState('');
@@ -47,12 +48,15 @@ const AdminSettingsContainer = ({
   const [shopPhone, setShopPhone] = useState('');
   const [shopAddress, setShopAddress] = useState('');
   const [shopHours, setShopHours] = useState('');
+  const [telegramChannelId, setTelegramChannelId] = useState('');
+  const [shopHistoryKh, setShopHistoryKh] = useState('');
+  const [shopHistoryEn, setShopHistoryEn] = useState('');
 
   // Fresh fetch on every mount to avoid stale data
   useEffect(() => {
     const tgData = window.Telegram?.WebApp?.initData || '';
     fetch(`${BACKEND_URL}/api/settings`, {
-      headers: { 'X-TG-Data': tgData, 'X-Debug-Bypass': 'true' }
+      headers: { 'X-TG-Data': tgData }
     })
       .then(r => r.json())
       .then(data => {
@@ -61,6 +65,7 @@ const AdminSettingsContainer = ({
           setShopStatus(s.shop_status || 'open');
           setDeliveryThreshold(s.delivery_threshold !== undefined ? String(s.delivery_threshold) : '50');
           setDeliveryFee(s.delivery_fee !== undefined ? String(s.delivery_fee) : '1.50');
+          setProvincialDeliveryFee(s.provincial_delivery_fee !== undefined ? String(s.provincial_delivery_fee) : '2.50');
           setPromoText(s.promo_text || '');
           setPromoBannerUrl(s.promo_banner_url || '');
           setShopLogoUrl(s.shop_logo_url || '');
@@ -78,6 +83,9 @@ const AdminSettingsContainer = ({
           setShopPhone(s.shop_phone || '');
           setShopAddress(s.shop_address || '');
           setShopHours(s.shop_hours || '');
+          setTelegramChannelId(s.telegram_channel_id || '');
+          setShopHistoryKh(s.shop_history_kh || '');
+          setShopHistoryEn(s.shop_history_en || '');
         }
       })
       .catch(err => console.warn('Failed to fetch fresh settings:', err));
@@ -90,6 +98,7 @@ const AdminSettingsContainer = ({
       setShopStatus(s.shop_status || 'open');
       setDeliveryThreshold(s.delivery_threshold !== undefined ? String(s.delivery_threshold) : '50');
       setDeliveryFee(s.delivery_fee !== undefined ? String(s.delivery_fee) : '1.50');
+      setProvincialDeliveryFee(s.provincial_delivery_fee !== undefined ? String(s.provincial_delivery_fee) : '2.50');
       setPromoText(s.promo_text || '');
       setPromoBannerUrl(s.promo_banner_url || '');
       setShopLogoUrl(s.shop_logo_url || '');
@@ -107,6 +116,9 @@ const AdminSettingsContainer = ({
       setShopPhone(s.shop_phone || '');
       setShopAddress(s.shop_address || '');
       setShopHours(s.shop_hours || '');
+      setTelegramChannelId(s.telegram_channel_id || '');
+      setShopHistoryKh(s.shop_history_kh || '');
+      setShopHistoryEn(s.shop_history_en || '');
     }
   }, [settingsData]);
 
@@ -245,6 +257,7 @@ const AdminSettingsContainer = ({
     <AdminSettingsTab
       shopStatus={shopStatus} setShopStatus={setShopStatus} showConfirm={showConfirm}
       deliveryFee={deliveryFee} setDeliveryFee={setDeliveryFee} deliveryThreshold={deliveryThreshold} setDeliveryThreshold={setDeliveryThreshold}
+      provincialDeliveryFee={provincialDeliveryFee} setProvincialDeliveryFee={setProvincialDeliveryFee}
       promoBannerUrl={promoBannerUrl} removeBanner={removeBanner} handleBannerUpload={handleBannerUpload} updateBannerProduct={updateBannerProduct} products={products} categories={categories}
       shopLogoUrl={shopLogoUrl} handleLogoUpload={handleLogoUpload}
       paymentQrUrl={paymentQrUrl} handleQrUpload={handleQrUpload} paymentInfo={paymentInfo} setPaymentInfo={setPaymentInfo}
@@ -260,6 +273,9 @@ const AdminSettingsContainer = ({
       shopPhone={shopPhone} setShopPhone={setShopPhone}
       shopAddress={shopAddress} setShopAddress={setShopAddress}
       shopHours={shopHours} setShopHours={setShopHours}
+      telegramChannelId={telegramChannelId} setTelegramChannelId={setTelegramChannelId}
+      shopHistoryKh={shopHistoryKh} setShopHistoryKh={setShopHistoryKh}
+      shopHistoryEn={shopHistoryEn} setShopHistoryEn={setShopHistoryEn}
       updateSettingValue={updateSettingValue}
       settingsReady={!!settingsData?.settings}
     />

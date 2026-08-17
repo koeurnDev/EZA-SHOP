@@ -81,11 +81,13 @@ app.post('/', telegramAuth, async (c) => {
     }
 
     // Verified purchaser?
+    // Use JSONB contains operator (@>) instead of text LIKE to prevent substring matching bugs (e.g. product 10 matching "id":1)
+    const searchJson = JSON.stringify([{ id: product_id }]);
     const purchaseRes = await db.execute(sql`
       SELECT id FROM orders
       WHERE user_id = ${userId}
         AND status IN ('paid','processing','shipped','delivered')
-        AND items::text LIKE ${'%"id":' + product_id + '%'}
+        AND items @> ${searchJson}::jsonb
       LIMIT 1
     `);
     if (!(purchaseRes.rows as any[]).length) {

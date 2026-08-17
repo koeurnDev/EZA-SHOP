@@ -47,7 +47,7 @@ app.get('/status/:orderCode', telegramAuth, async (c) => {
         console.log(`[Status API] Payment verified on-the-fly for order ${orderCode}! Updating status...`);
         await db
           .update(orders)
-          .set({ status: 'paid', last_updated: new Date() })
+          .set({ status: 'paid' })
           .where(eq(orders.id, order.id));
         
         // Update the local object so the response reflects the new status

@@ -36,6 +36,10 @@ export const users = pgTable('users', {
   telegram_avatar_file_id: text('telegram_avatar_file_id'),
   last_seen: timestamp('last_seen', { withTimezone: true }),
   last_updated: timestamp('last_updated', { withTimezone: true }).defaultNow(),
+  referred_by: text('referred_by'),
+  cart_state: text('cart_state'),
+  cart_updated_at: timestamp('cart_updated_at', { withTimezone: true }),
+  is_cart_reminded: boolean('is_cart_reminded').default(false),
 });
 
 export const orders = pgTable('orders', {
@@ -90,4 +94,24 @@ export const wishlist = pgTable('wishlist', {
   user_id: text('user_id').notNull(),
   product_id: integer('product_id').notNull(),
   added_at: timestamp('added_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const reviews = pgTable('reviews', {
+  id: serial('id').primaryKey(),
+  product_id: integer('product_id').notNull(),
+  user_id: text('user_id').notNull(),
+  user_name: text('user_name').notNull(),
+  rating: integer('rating').notNull(),
+  comment: text('comment').default(''),
+  created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const faqs = pgTable('faqs', {
+  id: serial('id').primaryKey(),
+  q_kh: text('q_kh').default(''),
+  q_en: text('q_en').default(''),
+  a_kh: text('a_kh').default(''),
+  a_en: text('a_en').default(''),
+  sort_order: integer('sort_order').default(0),
+  is_active: boolean('is_active').default(true),
 });

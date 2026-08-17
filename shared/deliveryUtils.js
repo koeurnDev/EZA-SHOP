@@ -10,16 +10,21 @@ export function parseDeliverySetting(value, fallback) {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
-export function calculateDeliveryFeeCents(subtotalCents, deliveryFeeSetting, deliveryThresholdSetting) {
-  const fee = parseDeliverySetting(deliveryFeeSetting, 1.5);
+export function calculateDeliveryFeeCents(subtotalCents, deliveryFeeSetting, deliveryThresholdSetting, province = 'Phnom Penh', provincialDeliveryFeeSetting = null) {
+  const feePP = parseDeliverySetting(deliveryFeeSetting, 1.5);
+  const feeProvincial = parseDeliverySetting(provincialDeliveryFeeSetting, 2.5);
   const threshold = parseDeliverySetting(deliveryThresholdSetting, 50);
+  
+  const isPhnomPenh = !province || province.toLowerCase().includes('phnom penh') || province.trim() === '';
+  const fee = isPhnomPenh ? feePP : feeProvincial;
+
   if (fee <= 0) return 0;
   if (subtotalCents >= toCents(threshold)) return 0;
   return toCents(fee);
 }
 
-export function calculateDeliveryFee(subtotal, deliveryFeeSetting, deliveryThresholdSetting) {
+export function calculateDeliveryFee(subtotal, deliveryFeeSetting, deliveryThresholdSetting, province = 'Phnom Penh', provincialDeliveryFeeSetting = null) {
   return fromCents(
-    calculateDeliveryFeeCents(toCents(subtotal), deliveryFeeSetting, deliveryThresholdSetting)
+    calculateDeliveryFeeCents(toCents(subtotal), deliveryFeeSetting, deliveryThresholdSetting, province, provincialDeliveryFeeSetting)
   );
 }

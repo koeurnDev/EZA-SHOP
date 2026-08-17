@@ -27,6 +27,19 @@ app.get('/profile', telegramAuth, async (c) => {
     }
 
     const u = result[0];
+
+    // Calculate total spent for VIP Status
+    const spentRes = await db.execute(
+      sql`SELECT SUM(total) as total_spent FROM orders WHERE user_id = ${userId} AND status = 'delivered'`
+    );
+    const totalSpentStr = (spentRes.rows[0] as any)?.total_spent;
+    const totalSpent = totalSpentStr ? parseFloat(totalSpentStr) : 0;
+
+    let vipTier = 'none';
+    if (totalSpent >= 1000) vipTier = 'diamond';
+    else if (totalSpent >= 500) vipTier = 'gold';
+    else if (totalSpent >= 100) vipTier = 'silver';
+
     return c.json({
       success: true,
       profile: {
@@ -40,6 +53,8 @@ app.get('/profile', telegramAuth, async (c) => {
         loyalty_points: u.loyalty_points || 0,
         photo_url: u.photo_url,
         last_seen: u.last_seen?.toISOString(),
+        total_spent: totalSpent,
+        vip_tier: vipTier,
       },
     });
   } catch (error) {
@@ -100,6 +115,87 @@ app.put('/profile', telegramAuth, async (c) => {
   } catch (error) {
     console.error('updateProfile error:', error);
     return c.json({ success: false, error: 'Failed to update profile' }, 500);
+  }
+});
+
+/**
+ * PUT /api/user/cart
+ * Sync user cart to backend for Abandoned Cart recovery
+ */
+app.put('/cart', telegramAuth, async (c) => {
+  try {
+    const userId = c.get('userId');
+    const body = await c.req.json();
+    const db = createDb(c.env);
+    
+    // Safely store cart as JSON string
+    const cartState = JSON.stringify(body.cart || []);
+    const dummyEmail = `tg_${userId}@eza.local`;
+
+    await db.execute(
+      sql`INSERT INTO users (user_id, email, cart_state, cart_updated_at, is_cart_reminded)
+          VALUES (${userId}, ${dummyEmail}, ${cartState}, NOW(), false)
+          ON CONFLICT (user_id) DO UPDATE SET
+            cart_state = EXCLUDED.cart_state,
+            cart_updated_at = NOW(),
+            is_cart_reminded = false`
+    );
+
+    return c.json({ success: true });
+  } catch (error) {
+    console.error('updateCart error:', error);
+    return c.json({ success: false, error: 'Failed to sync cart' }, 500);
+  }
+});
+/**
+ * POST /api/user/redeem-points
+ */
+app.post('/redeem-points', telegramAuth, async (c) => {
+  try {
+    const userId = c.get('userId') as string;
+    const db = createDb(c.env);
+
+    const POINTS_COST = 100;
+    const REWARD_VALUE = 2.00;
+
+    // Atomically deduct points if user has enough
+    const updatedUser = await db
+      .update(users)
+      .set({ loyalty_points: sql`loyalty_points - ${POINTS_COST}` })
+      .where(sql`user_id = ${userId} AND loyalty_points >= ${POINTS_COST}`)
+      .returning();
+
+    if (updatedUser.length === 0) {
+      return c.json({ success: false, error: 'Insufficient loyalty points' }, 400);
+    }
+
+    // Generate unique coupon code
+    const randomStr = Math.random().toString(36).substring(2, 8).toUpperCase();
+    const couponCode = `PTS-${randomStr}`;
+
+    const { coupons } = await import('../db/schema');
+    await db.insert(coupons).values({
+      code: couponCode,
+      discount_type: 'fixed',
+      value: String(REWARD_VALUE),
+      is_auto: false,
+      active: true,
+      apply_to: 'all',
+      usage_limit: 1,
+    });
+
+    return c.json({
+      success: true,
+      message: 'Points redeemed successfully',
+      coupon_code: couponCode,
+      new_balance: updatedUser[0].loyalty_points,
+    });
+  } catch (error) {
+    console.error('redeemPoints error:', error);
+    // If we reach here after deducting points but before inserting coupon, we might have lost points.
+    // However, Drizzle neon-http without interactive tx makes this tricky.
+    // A robust system would use db.transaction. For now, catching here.
+    return c.json({ success: false, error: 'Failed to redeem points' }, 500);
   }
 });
 

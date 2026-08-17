@@ -78,10 +78,41 @@ app.get('/dashboard', async (c) => {
       .from(orders)
       .groupBy(orders.status);
 
+    // Daily Analytics (last 14 days)
+    const dailyAnalytics = await db.execute(sql`
+      SELECT 
+        DATE(created_at) as date,
+        SUM(total::numeric) as revenue,
+        COUNT(*) as orders
+      FROM orders
+      WHERE created_at >= NOW() - INTERVAL '14 days'
+      GROUP BY DATE(created_at)
+      ORDER BY DATE(created_at) ASC
+    `);
+
+    // Calculate Summary stats
+    const totalRevenue = orderStats.filter(s => s.status === 'completed').reduce((sum, s) => sum + parseFloat(s.total || '0'), 0);
+    const activeOrders = orderStats.filter(s => s.status && ['pending', 'paid', 'processing', 'shipped', 'delivering'].includes(s.status)).reduce((sum, s) => sum + Number(s.count), 0);
+
     return c.json({
       success: true,
       userRole,
       settings: settingsMap,
+      summary: {
+        totalRevenue: totalRevenue,
+        totalOrders: Number(orderCount.count),
+        activeOrders: activeOrders,
+        totalCustomers: Number(userCount.count),
+        businessHealth: 100
+      },
+      analytics: {
+        daily: dailyAnalytics.rows || [],
+        status: orderStats.map(stat => ({
+          status: stat.status,
+          count: stat.count,
+          total: parseFloat(stat.total || '0'),
+        }))
+      },
       products: allProducts.map(product => ({
         id: product.id,
         name: product.name,
@@ -343,7 +374,14 @@ app.put('/orders/:id/status', async (c) => {
     }
 
     const db = createDb(c.env);
-    const updateData: any = { status: validationResult.data.status };
+
+    // Get old order to prevent double awarding points
+    const [oldOrder] = await db.select().from(orders).where(eq(orders.id, orderId));
+    if (!oldOrder) {
+      return c.json({ success: false, error: 'Order not found' }, 404);
+    }
+
+    const updateData: any = { status: validationResult.data.status, last_updated: new Date() };
     
     if (validationResult.data.tracking_number) {
       updateData.tracking_number = validationResult.data.tracking_number;
@@ -355,12 +393,64 @@ app.put('/orders/:id/status', async (c) => {
       .where(eq(orders.id, orderId))
       .returning();
 
-    if (updatedOrder.length === 0) {
-      return c.json({ success: false, error: 'Order not found' }, 404);
+    // --- LOYALTY POINTS EARNING LOGIC ---
+    const targetUserId = updatedOrder[0].user_id;
+    let referralBonusGiven = false;
+    if (targetUserId) {
+      const newStatus = validationResult.data.status;
+      const oldStatus = oldOrder.status;
+      const pointsToAward = Math.floor(parseFloat(updatedOrder[0].gross_total || updatedOrder[0].total));
+
+      if (pointsToAward > 0) {
+        if (oldStatus !== 'delivered' && newStatus === 'delivered') {
+          // Add points
+          await db.update(users)
+            .set({ loyalty_points: sql`COALESCE(loyalty_points, 0) + ${pointsToAward}` })
+            .where(eq(users.user_id, targetUserId));
+            
+          // Check for Referral
+          try {
+            const buyer = await db.select().from(users).where(eq(users.user_id, targetUserId)).limit(1);
+            if (buyer.length > 0 && buyer[0].referred_by) {
+              const orderCountRes = await db.execute(sql`SELECT COUNT(*) as count FROM orders WHERE user_id = ${targetUserId} AND status = 'delivered'`);
+              const count = parseInt((orderCountRes.rows[0] as any).count || '0');
+              if (count === 1) { // This is the first delivered order
+                const referrerId = buyer[0].referred_by;
+                referralBonusGiven = true;
+                
+                // Give 10 points to referrer
+                await db.update(users)
+                  .set({ loyalty_points: sql`COALESCE(loyalty_points, 0) + 10` })
+                  .where(eq(users.user_id, referrerId));
+                  
+                // Give 10 points to buyer
+                await db.update(users)
+                  .set({ loyalty_points: sql`COALESCE(loyalty_points, 0) + 10` })
+                  .where(eq(users.user_id, targetUserId));
+                  
+                // Notify referrer
+                try {
+                  await fetch(`https://api.telegram.org/bot${c.env.BOT_TOKEN}/sendMessage`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ chat_id: referrerId, text: `🎉 អបអរសាទរ! មិត្តភក្ដិដែលអ្នកបានណែនាំបានទិញទំនិញជោគជ័យ អ្នកទទួលបាន 10 ពិន្ទុ!`, parse_mode: 'Markdown' }),
+                  });
+                } catch (e) {}
+              }
+            }
+          } catch(e) {
+            console.error('Referral logic error:', e);
+          }
+        } else if (oldStatus === 'delivered' && newStatus !== 'delivered') {
+          // Remove points (clamp to 0)
+          await db.update(users)
+            .set({ loyalty_points: sql`GREATEST(0, COALESCE(loyalty_points, 0) - ${pointsToAward})` })
+            .where(eq(users.user_id, targetUserId));
+        }
+      }
     }
 
     // --- TELEGRAM NOTIFICATION ---
-    const targetUserId = updatedOrder[0].user_id;
     if (targetUserId) {
       const statusMap: Record<string, string> = {
         paid: 'បានបង់ប្រាក់រួចរាល់ ✅',
@@ -369,7 +459,17 @@ app.put('/orders/:id/status', async (c) => {
         delivered: 'បានដល់ដៃអតិថិជន 🎉',
         cancelled: 'បោះបង់ ❌',
       };
-      const msg = `🛍️ ការបញ្ជាទិញរបស់បង លេខសម្គាល់  ${updatedOrder[0].order_code} ត្រូវបានប្តូរទៅ ${statusMap[updatedOrder[0].status] || updatedOrder[0].status}`;
+      let msg = `🛍️ ការបញ្ជាទិញរបស់បង លេខសម្គាល់  ${updatedOrder[0].order_code} ត្រូវបានប្តូរទៅ ${statusMap[updatedOrder[0].status || ''] || updatedOrder[0].status}`;
+
+      if (validationResult.data.status === 'delivered') {
+         const pointsToAward = Math.floor(parseFloat(updatedOrder[0].gross_total || updatedOrder[0].total));
+         if (pointsToAward > 0) {
+            msg += `\n\n🎁 អបអរសាទរ! អ្នកទទួលបាន ${pointsToAward} ពិន្ទុពីការបញ្ជាទិញនេះ។`;
+         }
+         if (referralBonusGiven) {
+            msg += `\n🌟 អ្នកក៏ទទួលបាន 10 ពិន្ទុបន្ថែមពីការទិញលើកដំបូងរបស់អ្នកតាមរយៈ Link ណែនាំ!`;
+         }
+      }
 
       try {
         await fetch(`https://api.telegram.org/bot${c.env.BOT_TOKEN}/sendMessage`, {

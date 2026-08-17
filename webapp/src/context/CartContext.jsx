@@ -50,6 +50,23 @@ export const CartProvider = ({ children }) => {
     // sufficient to invalidate the key for a new checkout attempt.
     localStorage.removeItem('momo_idemp_key');
     setIdempotencyKey(null);
+
+    // 🔄 Sync Cart to Backend for Abandoned Cart Recovery
+    const tgInitData = window.Telegram?.WebApp?.initData;
+    if (tgInitData) {
+      // Debounce the fetch call slightly to avoid spamming the backend when rapidly changing qty
+      const timeoutId = setTimeout(() => {
+        fetch(`${import.meta.env.VITE_BACKEND_URL}/api/user/cart`, {
+          method: 'PUT',
+          headers: { 
+            'Content-Type': 'application/json',
+            'X-TG-Data': tgInitData
+          },
+          body: JSON.stringify({ cart })
+        }).catch(err => console.warn('Failed to sync cart to backend:', err));
+      }, 1000);
+      return () => clearTimeout(timeoutId);
+    }
   }, [cart, tg]); // ✅ idempotencyKey intentionally excluded from deps
 
   // ☁️ Initial Sync from Telegram Cloud Storage on Mount

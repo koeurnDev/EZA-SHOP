@@ -143,6 +143,7 @@ export const ShopProvider = ({ children }) => {
     
     return {
       products,
+      settings,
       shopStatus,
       isSettingsLoaded: Boolean(initData) || !isInitLoading,
       selectedCategory,

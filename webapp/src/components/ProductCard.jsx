@@ -2,6 +2,7 @@ import React, { useState, memo } from 'react';
 import { getDiscountedPrice } from '../utils/discountUtils';
 import { resolveProductImageUrl } from '../utils/imageUtils';
 import ProductImage from './ProductImage';
+import CountdownTimer from './ui/CountdownTimer';
 import { useUser } from '../context/UserContext';
 import { useShopDispatch } from '../context/ShopContext';
 
@@ -53,11 +54,12 @@ const ProductCard = memo(({
       className={`product-card-standard-green ${isOutOfStock ? 'pc-out-of-stock' : ''}`}
       onClick={handleClick}
     >
-      {/* Flash Sale Tag */}
+      {/* Flash Sale Countdown */}
       {hasFlashSale && (
-        <div style={{ position: 'absolute', top: 12, right: 12, background: '#ef4444', color: 'white', padding: '2px 8px', borderRadius: 4, fontSize: 10, fontWeight: 'bold', zIndex: 10 }}>
-           SALE
-        </div>
+        <CountdownTimer 
+          endTime={product.flash_sale_end} 
+          style={{ position: 'absolute', top: 8, right: 8, zIndex: 10 }}
+        />
       )}
 
       {/* Image Wrapper */}

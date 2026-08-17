@@ -10,8 +10,11 @@ export function generateOrderCode(): string {
 /**
  * Calculate delivery fee based on settings
  */
-export function calculateDeliveryFee(subtotal: number, deliveryFee: number, threshold: number): number {
-  return subtotal >= threshold ? 0 : deliveryFee;
+export function calculateDeliveryFee(subtotal: number, deliveryFee: number, threshold: number, province: string = 'Phnom Penh', provincialDeliveryFee: number = 2.50): number {
+  const isPhnomPenh = !province || province.toLowerCase().includes('phnom penh') || province.trim() === '';
+  const fee = isPhnomPenh ? deliveryFee : provincialDeliveryFee;
+  if (fee <= 0) return 0;
+  return subtotal >= threshold ? 0 : fee;
 }
 
 /**

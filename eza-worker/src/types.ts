@@ -10,6 +10,9 @@ export interface Env {
   
   // Environment variables
   NODE_ENV: string;
+  TEST_TOKEN?: string;
+  BAKONG_ACCOUNT_ID?: string;
+  BAKONG_MERCHANT_NAME?: string;
 }
 
 export interface Variables {

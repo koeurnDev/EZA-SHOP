@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { eq, inArray, sql } from 'drizzle-orm';
+import { eq, inArray, sql, and } from 'drizzle-orm';
 import { createDb } from '../db/connection';
 import { settings, categories, products, coupons } from '../db/schema';
 import { telegramAuth } from '../middleware/auth';
@@ -22,13 +22,25 @@ app.post('/ping', telegramAuth, async (c) => {
   // Fire-and-forget last_seen update — respond immediately
   const userId = c.get('userId');
   const db = createDb(c.env);
+  
+  let referredBy = null;
+  try {
+    const body = await c.req.json();
+    if (body.referred_by && typeof body.referred_by === 'string') {
+      referredBy = body.referred_by;
+    }
+  } catch (e) {
+    // ignore
+  }
 
   c.executionCtx.waitUntil(
     db.execute(
-      sql`INSERT INTO users (user_id, last_seen, last_updated, email, phone, address, loyalty_points)
-          VALUES (${userId}, NOW(), NOW(), ${'tg_' + userId + '@eza.local'}, '', '', 0)
+      sql`INSERT INTO users (user_id, last_seen, last_updated, email, phone, address, loyalty_points, referred_by)
+          VALUES (${userId}, NOW(), NOW(), ${'tg_' + userId + '@eza.local'}, '', '', 0, ${referredBy})
           ON CONFLICT (user_id) DO UPDATE SET last_seen = NOW(), last_updated = NOW()`
-    ).catch(() => {})
+    ).catch((err) => {
+      console.error('[PING ERROR]', err);
+    })
   );
 
   return c.json({ success: true });
@@ -72,7 +84,7 @@ app.get('/init', async (c) => {
       db.select().from(products),
       db.select().from(settings),
       db.select().from(categories),
-      db.select().from(coupons).where(eq(coupons.active, true)),
+      db.select().from(coupons).where(and(eq(coupons.active, true), eq(coupons.is_auto, true))),
     ]);
 
     const settingsMap = allSettings.reduce((acc, s) => {

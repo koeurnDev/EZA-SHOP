@@ -35,27 +35,11 @@ export const telegramAuth = createMiddleware<{ Bindings: Env; Variables: Variabl
 
   let userId: string | null = null;
 
-  // Try Telegram init data first — extract user.id directly from the initData string
+  // Verify Telegram init data cryptographically
   if (initData) {
-    try {
-      const params = new URLSearchParams(initData);
-      const userStr = params.get('user');
-      if (userStr) {
-        const user = JSON.parse(userStr);
-        if (user?.id) {
-          userId = String(user.id);
-        }
-      }
-    } catch {
-      // fallback to verifyTelegramAuth
-    }
-
-    // If direct parse failed, try full verification
-    if (!userId) {
-      const telegramData = await verifyTelegramAuth(initData, env.BOT_TOKEN);
-      if (telegramData?.user?.id) {
-        userId = telegramData.user.id.toString();
-      }
+    const telegramData = await verifyTelegramAuth(initData, env.BOT_TOKEN);
+    if (telegramData?.user?.id) {
+      userId = telegramData.user.id.toString();
     }
   }
   
@@ -78,17 +62,33 @@ export const telegramAuth = createMiddleware<{ Bindings: Env; Variables: Variabl
   await next();
 });
 
+import { createDb } from '../db/connection';
+import { users } from '../db/schema';
+import { eq } from 'drizzle-orm';
+
 /**
  * Admin-only middleware
  */
 export const adminAuth = createMiddleware<{ Bindings: Env; Variables: Variables }>(async (c, next) => {
   const userIsAdmin = c.get('isAdmin');
   
-  if (!userIsAdmin) {
-    return c.json({ error: 'Forbidden', message: 'Admin access required' }, 403);
+  if (userIsAdmin) {
+    return next();
   }
   
-  await next();
+  const userId = c.get('userId');
+  if (!userId) {
+    return c.json({ error: 'Unauthorized', message: 'Valid authentication required' }, 401);
+  }
+
+  const db = createDb(c.env);
+  const currentUser = await db.select({ role: users.role }).from(users).where(eq(users.user_id, userId)).limit(1);
+  
+  if (currentUser.length > 0 && (currentUser[0].role === 'admin' || currentUser[0].role === 'staff')) {
+    return next();
+  }
+  
+  return c.json({ error: 'Forbidden', message: 'Admin access required' }, 403);
 });
 
 /**

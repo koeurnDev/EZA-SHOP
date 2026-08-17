@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { telegramAuth } from '../middleware/auth';
+import { telegramAuth, adminAuth } from '../middleware/auth';
 import type { Env, Variables } from '../types';
 
 const app = new Hono<{ Bindings: Env; Variables: Variables }>();
@@ -29,6 +29,10 @@ app.post('/', telegramAuth, async (c) => {
 
     // Detect folder based on request path (admin uploads go to products folder)
     const isAdminUpload = c.req.path.includes('/admin/upload');
+    if (isAdminUpload && !c.get('isAdmin')) {
+      // Must be admin to upload to products folder
+      return c.json({ success: false, error: 'Admin access required' }, 403);
+    }
     const folder = isAdminUpload ? 'products' : 'receipts';
 
     console.log('[UPLOAD] Processing file', { folder, contentType });
@@ -160,7 +164,7 @@ app.post('/', telegramAuth, async (c) => {
 /**
  * POST /api/upload/delete - Delete image from Cloudinary
  */
-app.post('/delete', telegramAuth, async (c) => {
+app.post('/delete', telegramAuth, adminAuth, async (c) => {
   try {
     const body = await c.req.json();
     const { url } = body;

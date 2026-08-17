@@ -15,6 +15,7 @@ import reviewsRouter       from './routes/reviews';
 import faqsRouter          from './routes/faqs';
 import notificationsRouter from './routes/notifications';
 import uploadRouter        from './routes/upload';
+import webhookRouter       from './routes/webhook';
 
 import type { Env, Variables } from './types';
 
@@ -63,6 +64,9 @@ app.route('/api/admin/upload', uploadRouter); // Admin alias for upload
 // ── Admin ─────────────────────────────────────────────────────────────────────
 app.route('/api/admin', adminRouter);
 app.route('/api/admin', adminExtras);
+
+// ── Webhook ───────────────────────────────────────────────────────────────────
+app.route('/api/webhook', webhookRouter);
 
 // ── 404 ───────────────────────────────────────────────────────────────────────
 app.notFound((c) =>

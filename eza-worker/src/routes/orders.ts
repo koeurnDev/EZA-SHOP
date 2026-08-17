@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
-import { eq, desc, inArray } from 'drizzle-orm';
+import { eq, desc, inArray, sql, and } from 'drizzle-orm';
 import { z } from 'zod';
+// @ts-ignore
 import { BakongKHQR, IndividualInfo, khqrData } from 'bakong-khqr';
 import { BakongService } from '../services/bakongService';
 import { createDb } from '../db/connection';
@@ -37,6 +38,7 @@ const createOrderSchema = z.object({
   payment_method: z.string().default('Bakong KHQR'),
   userName: z.string().optional(),
   redeem_points: z.boolean().optional(),
+  coupon_code: z.string().optional(),
 });
 
 /**
@@ -57,7 +59,7 @@ app.post('/', telegramAuth, async (c) => {
       }, 400);
     }
 
-    const { items, phone, address, province, note, delivery_company, payment_method, userName, redeem_points } = validationResult.data;
+    const { items, phone, address, province, note, delivery_company, payment_method, userName, redeem_points, coupon_code } = validationResult.data;
 
     // Validate phone
     if (!validatePhone(phone)) {
@@ -65,6 +67,17 @@ app.post('/', telegramAuth, async (c) => {
     }
 
     const db = createDb(c.env);
+
+    // Prevent Order Spam / Inventory Blocking
+    if (userId && userId !== c.env.SUPERADMIN_ID) {
+      const pendingCountRes = await db.execute(
+        sql`SELECT COUNT(*) as count FROM orders WHERE user_id = ${userId} AND status = 'pending'`
+      );
+      const pendingCount = parseInt((pendingCountRes.rows[0] as any)?.count || '0');
+      if (pendingCount >= 3) {
+        return c.json({ success: false, error: 'អ្នកមានការកម្ម៉ង់ដែលមិនទាន់ទូទាត់ប្រាក់ចំនួន ៣ រួចហើយ។ សូមបញ្ចប់ការទូទាត់ ឬបោះបង់ការកម្ម៉ង់ចាស់សិនទើបអាចកម្ម៉ង់ថ្មីបាន។ (Too many pending orders)' }, 400);
+      }
+    }
 
     // Verify products and stock
     const productIds = items.map(item => item.id);
@@ -75,16 +88,22 @@ app.post('/', telegramAuth, async (c) => {
 
     const productMap = new Map(dbProducts.map(p => [p.id, p]));
     
-    // Validate each item
+    // Aggregate quantities by product ID to prevent stock bypass via duplicate items
+    const aggregatedItems = new Map<number, number>();
     for (const item of items) {
-      const dbProduct = productMap.get(item.id);
+      aggregatedItems.set(item.id, (aggregatedItems.get(item.id) || 0) + item.quantity);
+    }
+
+    // Validate each item's total requested quantity against stock
+    for (const [id, totalQuantity] of aggregatedItems.entries()) {
+      const dbProduct = productMap.get(id);
       if (!dbProduct) {
-        return c.json({ success: false, error: `Product ${item.id} not found` }, 400);
+        return c.json({ success: false, error: `Product ${id} not found` }, 400);
       }
-      if (dbProduct.stock < item.quantity) {
+      if (dbProduct.stock < totalQuantity) {
         return c.json({ 
           success: false, 
-          error: `Insufficient stock for ${dbProduct.name}. Available: ${dbProduct.stock}, Requested: ${item.quantity}` 
+          error: `Insufficient stock for ${dbProduct.name}. Available: ${dbProduct.stock}, Requested: ${totalQuantity}` 
         }, 400);
       }
     }
@@ -93,8 +112,8 @@ app.post('/', telegramAuth, async (c) => {
     let subtotal = 0;
     const validatedItems: OrderItem[] = [];
 
-    for (const item of items) {
-      const dbProduct = productMap.get(item.id);
+    for (const [id, totalQuantity] of aggregatedItems.entries()) {
+      const dbProduct = productMap.get(id);
       if (dbProduct) {
         const effectivePrice = getEffectivePrice(
           parseFloat(dbProduct.price),
@@ -102,56 +121,146 @@ app.post('/', telegramAuth, async (c) => {
           dbProduct.flash_sale_end?.toISOString()
         );
         
-        const itemTotal = effectivePrice * item.quantity;
+        const itemTotal = effectivePrice * totalQuantity;
         subtotal += itemTotal;
 
         validatedItems.push({
-          id: item.id,
+          id: id,
           name: dbProduct.name,
           price: effectivePrice,
-          quantity: item.quantity,
+          quantity: totalQuantity,
           image: dbProduct.image || undefined,
         });
       }
     }
 
-    // Get delivery settings
     const deliverySettings = await db
       .select()
       .from(settings)
-      .where(eq(settings.key, 'delivery_fee'));
+      .where(inArray(settings.key, ['delivery_fee', 'delivery_threshold', 'provincial_delivery_fee']));
     
-    const deliveryThresholdSettings = await db
-      .select()
-      .from(settings)
-      .where(eq(settings.key, 'delivery_threshold'));
+    const settingsMap = deliverySettings.reduce((acc, s) => {
+      acc[s.key] = s.value;
+      return acc;
+    }, {} as Record<string, string | null>);
 
-    const deliveryFee = parseFloat(deliverySettings[0]?.value || '1.50');
-    const deliveryThreshold = parseFloat(deliveryThresholdSettings[0]?.value || '50');
+    const deliveryFee = parseFloat(settingsMap['delivery_fee'] || '1.50');
+    const deliveryThreshold = parseFloat(settingsMap['delivery_threshold'] || '50');
+    const provincialDeliveryFee = parseFloat(settingsMap['provincial_delivery_fee'] || '2.50');
     
-    const finalDeliveryFee = calculateDeliveryFee(subtotal, deliveryFee, deliveryThreshold);
-    let discountAmount = 0; // No coupon discount for now
+    const finalDeliveryFee = calculateDeliveryFee(subtotal, deliveryFee, deliveryThreshold, province, provincialDeliveryFee);
+    let discountAmount = 0;
     
-    // Loyalty Points Redemption (100 points = $1)
-    let pointsDiscount = 0;
-    let pointsToDeduct = 0;
-    if (redeem_points) {
-      const userResult = await db.select().from(users).where(eq(users.user_id, userId));
-      const userRecord = userResult[0];
-      if (userRecord && (userRecord.loyalty_points || 0) > 0) {
-        pointsToDeduct = userRecord.loyalty_points || 0;
-        pointsDiscount = pointsToDeduct / 100;
+    // --- Pre-calculate Coupon Redemption Logic ---
+    let targetCouponId: number | null = null;
+    if (coupon_code) {
+      const { coupons } = await import('../db/schema');
+      const couponResult = await db.select().from(coupons).where(eq(coupons.code, coupon_code.toUpperCase().trim())).limit(1);
+      if (couponResult.length > 0 && couponResult[0].active) {
+        const coupon = couponResult[0];
+        const now = new Date();
+        const isActive = (!coupon.start_date || new Date(coupon.start_date) <= now) &&
+                         (!coupon.end_date || new Date(coupon.end_date) >= now) &&
+                         (!coupon.usage_limit || (coupon.used_count || 0) < coupon.usage_limit);
         
-        // Ensure discount doesn't exceed subtotal
-        if (pointsDiscount > subtotal) {
-          pointsDiscount = subtotal;
-          pointsToDeduct = Math.floor(subtotal * 100);
+        if (isActive) {
+          let cpnDiscount = 0;
+          const couponVal = parseFloat(coupon.value);
+          if (coupon.discount_type === 'percent') {
+            cpnDiscount = subtotal * (couponVal / 100);
+          } else if (coupon.discount_type === 'fixed') {
+            cpnDiscount = couponVal;
+          }
+          
+          discountAmount += cpnDiscount;
+          if (discountAmount > subtotal) discountAmount = subtotal;
+          
+          targetCouponId = coupon.id;
         }
       }
     }
     
-    discountAmount += pointsDiscount;
+    const grossTotalWithoutVIP = Math.max(0, subtotal - discountAmount);
+
+    // --- Calculate VIP Discount ---
+    let vipDiscount = 0;
+    if (userId) {
+      const spentRes = await db.execute(
+        sql`SELECT SUM(total) as total_spent FROM orders WHERE user_id = ${userId} AND status = 'delivered'`
+      );
+      const totalSpentStr = (spentRes.rows[0] as any)?.total_spent;
+      const totalSpent = totalSpentStr ? parseFloat(totalSpentStr) : 0;
+      
+      let vipDiscountRate = 0;
+      if (totalSpent >= 1000) vipDiscountRate = 0.15;
+      else if (totalSpent >= 500) vipDiscountRate = 0.10;
+      else if (totalSpent >= 100) vipDiscountRate = 0.05;
+
+      vipDiscount = grossTotalWithoutVIP * vipDiscountRate;
+      discountAmount += vipDiscount;
+    }
+
     const grossTotal = Math.max(0, subtotal - discountAmount + finalDeliveryFee);
+
+    // --- ATOMIC MUTATIONS WITH ROLLBACK (Compensating Transactions) ---
+    let rolledBack = false;
+
+    // 1. Deduct Coupon Atomically
+    let couponDeducted = false;
+    if (targetCouponId) {
+      const { coupons } = await import('../db/schema');
+      const updatedCoupon = await db
+        .update(coupons)
+        .set({ used_count: sql`COALESCE(used_count, 0) + 1` })
+        .where(and(
+          eq(coupons.id, targetCouponId),
+          sql`usage_limit IS NULL OR COALESCE(used_count, 0) < usage_limit`
+        ))
+        .returning();
+      if (updatedCoupon.length === 0) {
+        rolledBack = true;
+      } else {
+        couponDeducted = true;
+      }
+    }
+
+    // 3. Deduct Stock Atomically
+    let stockError = '';
+    const successfulStockDeductions: { id: number, qty: number }[] = [];
+    
+    if (!rolledBack) {
+      for (const item of validatedItems) {
+        const updatedStock = await db.update(products)
+          .set({ stock: sql`stock - ${item.quantity}` })
+          .where(and(eq(products.id, item.id), sql`stock >= ${item.quantity}`))
+          .returning();
+          
+        if (updatedStock.length === 0) {
+          stockError = `Insufficient stock for ${item.name} or item modified concurrently.`;
+          rolledBack = true;
+          break;
+        }
+        successfulStockDeductions.push({ id: item.id, qty: item.quantity });
+      }
+    }
+
+    // --- ROLLBACK LOGIC ---
+    if (rolledBack) {
+      // Rollback stock
+      for (const rollbackItem of successfulStockDeductions) {
+        await db.update(products)
+          .set({ stock: sql`stock + ${rollbackItem.qty}` })
+          .where(eq(products.id, rollbackItem.id));
+      }
+      // Rollback coupon
+      if (couponDeducted && targetCouponId) {
+        const { coupons } = await import('../db/schema');
+        await db.update(coupons)
+          .set({ used_count: sql`COALESCE(used_count, 0) - 1` })
+          .where(eq(coupons.id, targetCouponId));
+      }
+      return c.json({ success: false, error: stockError || 'Transaction failed due to concurrent modification' }, 400);
+    }
 
     // Generate order code and expiry
     const orderCode = generateOrderCode();
@@ -160,7 +269,7 @@ app.post('/', telegramAuth, async (c) => {
     // Generate KHQR String
     let qrString = '';
     const allSettings = await db.select().from(settings);
-    const dbSettings = allSettings.reduce((acc, s) => { acc[s.key] = s.value; return acc; }, {} as Record<string, string>);
+    const dbSettings = allSettings.reduce((acc, s) => { acc[s.key] = s.value || ''; return acc; }, {} as Record<string, string>);
     
     const bakongId = c.env.BAKONG_ACCOUNT_ID || dbSettings.bakong_account_id;
     const merchantName = c.env.BAKONG_MERCHANT_NAME || dbSettings.bakong_merchant_name;
@@ -190,47 +299,40 @@ app.post('/', telegramAuth, async (c) => {
       }
     }
 
-    // Create order
-    const newOrder = await db.insert(orders).values({
-      user_id: userId,
-      user_name: userName || 'Guest',
-      items: JSON.stringify(validatedItems),
-      total: (subtotal + finalDeliveryFee).toString(),
-      subtotal: subtotal.toString(),
-      discount_amount: discountAmount.toString(),
-      delivery_fee: finalDeliveryFee.toString(),
-      gross_total: grossTotal.toString(),
-      qr_string: qrString,
-      phone: sanitizeString(phone),
-      address: sanitizeString(address),
-      province: sanitizeString(province),
-      note: note ? sanitizeString(note) : null,
-      delivery_company: sanitizeString(delivery_company),
-      payment_method: sanitizeString(payment_method),
-      order_code: orderCode,
-      status: 'pending',
-      expires_at: expiresAt,
-    }).returning();
-
-    // Update stock (subtract ordered quantities)
-    for (const item of validatedItems) {
-      await db
-        .update(products)
-        .set({ 
-          stock: dbProducts.find(p => p.id === item.id)!.stock - item.quantity 
-        })
-        .where(eq(products.id, item.id));
-    }
-
-    // Deduct Loyalty Points if used
-    if (pointsToDeduct > 0) {
-      const userRecord = await db.select().from(users).where(eq(users.user_id, userId));
-      if (userRecord[0]) {
-        await db
-          .update(users)
-          .set({ loyalty_points: Math.max(0, (userRecord[0].loyalty_points || 0) - pointsToDeduct) })
-          .where(eq(users.user_id, userId));
+    // 4. Create order
+    let newOrder;
+    try {
+      newOrder = await db.insert(orders).values({
+        user_id: userId,
+        user_name: userName || 'Guest',
+        items: JSON.stringify(validatedItems),
+        total: (subtotal + finalDeliveryFee).toString(),
+        subtotal: subtotal.toString(),
+        discount_amount: discountAmount.toString(),
+        delivery_fee: finalDeliveryFee.toString(),
+        gross_total: grossTotal.toString(),
+        qr_string: qrString,
+        phone: sanitizeString(phone),
+        address: sanitizeString(address),
+        province: sanitizeString(province),
+        note: note ? sanitizeString(note) : null,
+        delivery_company: sanitizeString(delivery_company),
+        payment_method: sanitizeString(payment_method),
+        order_code: orderCode,
+        status: 'pending',
+        expires_at: expiresAt,
+      }).returning();
+    } catch (insertError) {
+      console.error('Failed to insert order, rolling back...', insertError);
+      // Hard rollback if DB insert fails
+      for (const rollbackItem of successfulStockDeductions) {
+        await db.update(products).set({ stock: sql`stock + ${rollbackItem.qty}` }).where(eq(products.id, rollbackItem.id));
       }
+      if (couponDeducted && targetCouponId) {
+        const { coupons } = await import('../db/schema');
+        await db.update(coupons).set({ used_count: sql`COALESCE(used_count, 0) - 1` }).where(eq(coupons.id, targetCouponId));
+      }
+      return c.json({ success: false, error: 'Database error while creating order' }, 500);
     }
 
     // Send Telegram Notification to Admin
@@ -430,7 +532,7 @@ app.post('/:id/verify-payment', telegramAuth, async (c) => {
     if (result.success) {
       // Mark as paid
       await db.update(orders)
-        .set({ status: 'paid', last_updated: new Date() })
+        .set({ status: 'paid' })
         .where(eq(orders.id, orderId));
       
       return c.json({ success: true, message: 'Payment verified successfully!' });

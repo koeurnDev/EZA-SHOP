@@ -11,6 +11,77 @@ const app = new Hono<{ Bindings: Env; Variables: Variables }>();
 
 app.use('*', telegramAuth, adminAuth);
 
+/* ─────────────────── BROADCAST ─────────────────── */
+app.post('/broadcast', async (c) => {
+  try {
+    const db = createDb(c.env);
+    const body = await c.req.json();
+    const { message, photoUrl, buttonUrl } = body;
+
+    if (!message && !photoUrl) {
+      return c.json({ success: false, error: 'Message or Photo is required' }, 400);
+    }
+
+    // Fetch all unique users who have interacted with the bot
+    const allUsers = await db.select({ user_id: users.user_id }).from(users).where(sql`${users.user_id} IS NOT NULL`);
+    
+    const sendBroadcast = async () => {
+      let successCount = 0;
+      let failCount = 0;
+      
+      const replyMarkup = buttonUrl ? {
+        inline_keyboard: [[{ text: '🛍️ Open Shop', url: buttonUrl }]]
+      } : undefined;
+
+      for (const u of allUsers) {
+        if (!u.user_id) continue;
+        
+        try {
+          let apiUrl = `https://api.telegram.org/bot${c.env.BOT_TOKEN}/sendMessage`;
+          let payload: any = {
+            chat_id: u.user_id,
+            text: message,
+            parse_mode: 'HTML',
+            reply_markup: replyMarkup
+          };
+
+          if (photoUrl) {
+            apiUrl = `https://api.telegram.org/bot${c.env.BOT_TOKEN}/sendPhoto`;
+            payload = {
+              chat_id: u.user_id,
+              photo: photoUrl,
+              caption: message || '',
+              parse_mode: 'HTML',
+              reply_markup: replyMarkup
+            };
+          }
+
+          const res = await fetch(apiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          
+          if (res.ok) successCount++;
+          else failCount++;
+          
+          await new Promise(r => setTimeout(r, 50)); 
+        } catch (e) {
+          failCount++;
+        }
+      }
+      console.log(`Broadcast finished. Success: ${successCount}, Fail: ${failCount}`);
+    };
+
+    c.executionCtx.waitUntil(sendBroadcast());
+
+    return c.json({ success: true, data: { count: allUsers.length } });
+  } catch (error: any) {
+    console.error('Broadcast Error:', error);
+    return c.json({ success: false, error: error.message }, 500);
+  }
+});
+
 /* ─────────────────── CUSTOMERS ─────────────────── */
 
 /**
@@ -56,6 +127,7 @@ app.get('/customers', async (c) => {
 app.put('/customers/:id/role', async (c) => {
   try {
     const userId = c.req.param('id');
+    const requesterId = c.get('userId') as string;
     const body = await c.req.json();
     const schema = z.object({ role: z.enum(['user', 'staff', 'admin']) });
     const parsed = schema.safeParse(body);
@@ -66,6 +138,20 @@ app.put('/customers/:id/role', async (c) => {
     }
 
     const db = createDb(c.env);
+    
+    // Privilege check
+    let requesterRole = 'staff';
+    if (requesterId === c.env.SUPERADMIN_ID) {
+      requesterRole = 'admin';
+    } else {
+      const reqUser = await db.select({ role: users.role }).from(users).where(eq(users.user_id, requesterId)).limit(1);
+      requesterRole = reqUser[0]?.role || 'staff';
+    }
+    
+    if (requesterRole !== 'admin') {
+      return c.json({ success: false, error: 'Only admins can change roles' }, 403);
+    }
+
     const updated = await db
       .update(users)
       .set({ role: parsed.data.role, last_updated: new Date() })
@@ -84,6 +170,7 @@ app.put('/customers/:id/role', async (c) => {
 app.put('/customers/:id/ban', async (c) => {
   try {
     const userId = c.req.param('id');
+    const requesterId = c.get('userId') as string;
     const body = await c.req.json();
     const isBanned = body.isBanned ?? body.is_banned ?? false;
 
@@ -92,6 +179,23 @@ app.put('/customers/:id/ban', async (c) => {
     }
 
     const db = createDb(c.env);
+    
+    // Privilege check
+    let requesterRole = 'staff';
+    if (requesterId === c.env.SUPERADMIN_ID) {
+      requesterRole = 'admin';
+    } else {
+      const reqUser = await db.select({ role: users.role }).from(users).where(eq(users.user_id, requesterId)).limit(1);
+      requesterRole = reqUser[0]?.role || 'staff';
+    }
+    
+    const targetUser = await db.select({ role: users.role }).from(users).where(eq(users.user_id, userId)).limit(1);
+    const targetRole = targetUser[0]?.role || 'user';
+    
+    if (requesterRole === 'staff' && (targetRole === 'admin' || targetRole === 'staff')) {
+      return c.json({ success: false, error: 'Staff cannot ban admins or other staff' }, 403);
+    }
+
     const updated = await db
       .update(users)
       .set({ is_banned: Boolean(isBanned), last_updated: new Date() })
@@ -110,6 +214,7 @@ app.put('/customers/:id/ban', async (c) => {
 app.delete('/customers/:id', async (c) => {
   try {
     const userId = c.req.param('id');
+    const requesterId = c.get('userId') as string;
 
     if (userId === c.env.SUPERADMIN_ID) {
       return c.json({ success: false, error: 'Cannot delete SuperAdmin' }, 400);
@@ -120,8 +225,23 @@ app.delete('/customers/:id', async (c) => {
     // Check user exists
     const existing = await db.select().from(users).where(eq(users.user_id, userId)).limit(1);
     if (!existing.length) return c.json({ success: false, error: 'User not found' }, 404);
-    if (existing[0].role === 'admin') {
+    
+    const targetRole = existing[0].role;
+    if (targetRole === 'admin') {
       return c.json({ success: false, error: 'Cannot delete admin account' }, 400);
+    }
+    
+    // Privilege check
+    let requesterRole = 'staff';
+    if (requesterId === c.env.SUPERADMIN_ID) {
+      requesterRole = 'admin';
+    } else {
+      const reqUser = await db.select({ role: users.role }).from(users).where(eq(users.user_id, requesterId)).limit(1);
+      requesterRole = reqUser[0]?.role || 'staff';
+    }
+    
+    if (requesterRole === 'staff' && targetRole === 'staff') {
+      return c.json({ success: false, error: 'Staff cannot delete other staff' }, 403);
     }
 
     await db.delete(orders).where(eq(orders.user_id, userId));
@@ -230,6 +350,7 @@ app.post('/categories', async (c) => {
 app.delete('/categories/:id', async (c) => {
   try {
     const id = parseInt(c.req.param('id'));
+    if (isNaN(id)) return c.json({ success: false, error: 'Invalid ID' }, 400);
     const db = createDb(c.env);
     await db.delete(categories).where(eq(categories.id, id));
     return c.json({ success: true });
@@ -284,6 +405,7 @@ app.post('/coupons', async (c) => {
 app.delete('/coupons/:id', async (c) => {
   try {
     const id = parseInt(c.req.param('id'));
+    if (isNaN(id)) return c.json({ success: false, error: 'Invalid ID' }, 400);
     const db = createDb(c.env);
     await db.delete(coupons).where(eq(coupons.id, id));
     return c.json({ success: true });
@@ -300,6 +422,20 @@ app.delete('/coupons/:id', async (c) => {
 app.post('/products', async (c) => {
   try {
     const body = await c.req.json();
+    
+    // Prevent negative prices
+    const priceVal = parseFloat(body.price || 0);
+    if (isNaN(priceVal) || priceVal < 0) {
+      return c.json({ success: false, error: 'Price cannot be negative' }, 400);
+    }
+    
+    if (body.flash_sale_price !== undefined && body.flash_sale_price !== null) {
+      const flashPriceVal = parseFloat(body.flash_sale_price);
+      if (isNaN(flashPriceVal) || flashPriceVal < 0) {
+        return c.json({ success: false, error: 'Flash sale price cannot be negative' }, 400);
+      }
+    }
+    
     const db = createDb(c.env);
 
     if (body.category) {
@@ -310,7 +446,7 @@ app.post('/products', async (c) => {
 
     const res = await db.insert(products).values({
       name: body.name,
-      price: String(body.price || 0),
+      price: String(priceVal),
       category: body.category || '',
       image: body.image || '',
       stock: parseInt(body.stock) || 0,
@@ -321,6 +457,42 @@ app.post('/products', async (c) => {
       flash_sale_end: body.flash_sale_end ? new Date(body.flash_sale_end) : null,
       video_url: body.video_url || null,
     }).returning();
+
+    // AUTO-POST TO TELEGRAM CHANNEL
+    c.executionCtx.waitUntil((async () => {
+      try {
+        const channelSettings = await db.select().from(settings).where(eq(settings.key, 'telegram_channel_id'));
+        const channelId = channelSettings[0]?.value;
+        if (channelId && res[0].image) {
+          const caption = `🌟 <b>ទំនិញថ្មី / New Arrival</b> 🌟\n\n<b>${res[0].name}</b>\n\nតម្លៃ / Price: <b>$${res[0].price}</b>\n\n${res[0].description ? res[0].description.substring(0, 100) + '...' : ''}`;
+          
+          // Try to get Telegram Bot username or link
+          const tgSettings = await db.select().from(settings).where(eq(settings.key, 'social_tg'));
+          let shopUrl = tgSettings[0]?.value || 'https://t.me/Eza_Shop_Bot/app';
+          if (shopUrl.includes('@')) {
+            shopUrl = `https://t.me/${shopUrl.replace('@', '')}/app`;
+          }
+
+          const replyMarkup = {
+            inline_keyboard: [[{ text: '🛍️ ទិញឥឡូវនេះ (Buy Now)', url: shopUrl }]]
+          };
+
+          await fetch(`https://api.telegram.org/bot${c.env.BOT_TOKEN}/sendPhoto`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: channelId,
+              photo: res[0].image,
+              caption: caption,
+              parse_mode: 'HTML',
+              reply_markup: replyMarkup
+            })
+          });
+        }
+      } catch (err) {
+        console.error('Auto-post to channel failed:', err);
+      }
+    })());
 
     return c.json({ success: true, product: res[0] });
   } catch (error) {
@@ -335,6 +507,7 @@ app.post('/products', async (c) => {
 app.put('/products/:id', async (c) => {
   try {
     const id = parseInt(c.req.param('id'));
+    if (isNaN(id)) return c.json({ success: false, error: 'Invalid ID' }, 400);
     const body = await c.req.json();
     const db = createDb(c.env);
 
@@ -346,14 +519,42 @@ app.put('/products/:id', async (c) => {
 
     const updateData: any = {};
     if (body.name !== undefined) updateData.name = body.name;
-    if (body.price !== undefined) updateData.price = String(body.price);
+    
+    if (body.price !== undefined) {
+      const priceVal = parseFloat(body.price);
+      if (isNaN(priceVal) || priceVal < 0) {
+        return c.json({ success: false, error: 'Price cannot be negative' }, 400);
+      }
+      updateData.price = String(priceVal);
+    }
+    
     if (body.category !== undefined) updateData.category = body.category;
     if (body.image !== undefined) updateData.image = body.image;
-    if (body.stock !== undefined) updateData.stock = parseInt(body.stock);
+    
+    if (body.stock !== undefined) {
+      const stockVal = parseInt(body.stock);
+      if (isNaN(stockVal) || stockVal < 0) {
+        return c.json({ success: false, error: 'Stock cannot be negative' }, 400);
+      }
+      updateData.stock = stockVal;
+    }
+    
     if (body.description !== undefined) updateData.description = body.description;
     if (body.additional_images !== undefined) updateData.additional_images = parseJsonSafe(body.additional_images, []);
     if (body.variants !== undefined) updateData.variants = parseJsonSafe(body.variants, []);
-    if (body.flash_sale_price !== undefined) updateData.flash_sale_price = body.flash_sale_price ? String(body.flash_sale_price) : null;
+    
+    if (body.flash_sale_price !== undefined) {
+      if (body.flash_sale_price) {
+        const flashPriceVal = parseFloat(body.flash_sale_price);
+        if (isNaN(flashPriceVal) || flashPriceVal < 0) {
+          return c.json({ success: false, error: 'Flash sale price cannot be negative' }, 400);
+        }
+        updateData.flash_sale_price = String(flashPriceVal);
+      } else {
+        updateData.flash_sale_price = null;
+      }
+    }
+    
     if (body.flash_sale_end !== undefined) updateData.flash_sale_end = body.flash_sale_end ? new Date(body.flash_sale_end) : null;
     if (body.video_url !== undefined) updateData.video_url = body.video_url;
 
@@ -373,6 +574,7 @@ app.put('/products/:id', async (c) => {
 app.delete('/products/:id', async (c) => {
   try {
     const id = parseInt(c.req.param('id'));
+    if (isNaN(id)) return c.json({ success: false, error: 'Invalid ID' }, 400);
     const db = createDb(c.env);
     await db.delete(products).where(eq(products.id, id));
     return c.json({ success: true });
@@ -460,6 +662,7 @@ app.post('/faqs', async (c) => {
 app.put('/faqs/:id', async (c) => {
   try {
     const id = parseInt(c.req.param('id'));
+    if (isNaN(id)) return c.json({ success: false, error: 'Invalid ID' }, 400);
     const body = await c.req.json();
     const { q_kh = '', q_en = '', a_kh = '', a_en = '', sort_order = 0, is_active = true } = body;
     const db = createDb(c.env);
@@ -481,6 +684,7 @@ app.put('/faqs/:id', async (c) => {
 app.delete('/faqs/:id', async (c) => {
   try {
     const id = parseInt(c.req.param('id'));
+    if (isNaN(id)) return c.json({ success: false, error: 'Invalid ID' }, 400);
     const db = createDb(c.env);
     await db.execute(sql`DELETE FROM faqs WHERE id=${id}`);
     return c.json({ success: true });
@@ -490,28 +694,59 @@ app.delete('/faqs/:id', async (c) => {
   }
 });
 
-/**
- * GET /api/admin/advanced-analytics
- */
 app.get('/advanced-analytics', async (c) => {
   try {
     const db = createDb(c.env);
-    const [salesRes, ordersRes, topProductsRes] = await Promise.all([
-      db.execute(sql`SELECT COALESCE(SUM(total::numeric), 0) as total_revenue, COUNT(*) as total_orders FROM orders WHERE status != 'cancelled'`),
-      db.execute(sql`SELECT status, COUNT(*) as count FROM orders GROUP BY status`),
-      db.select().from(products).limit(10),
+    
+    const [topCustomersRes, aovRes, ordersRes] = await Promise.all([
+      db.execute(sql`
+        SELECT user_name, SUM(total::numeric) as total_spent
+        FROM orders
+        WHERE status != 'cancelled'
+        GROUP BY user_name
+        ORDER BY total_spent DESC
+        LIMIT 5
+      `),
+      db.execute(sql`
+        SELECT COALESCE(AVG(total::numeric), 0) as aov
+        FROM orders 
+        WHERE status != 'cancelled'
+      `),
+      db.execute(sql`SELECT items FROM orders WHERE status != 'cancelled'`)
     ]);
+
+    const productCounts: Record<string, number> = {};
+    for (const row of ordersRes.rows) {
+      if (row.items) {
+        try {
+          const itemsStr = typeof row.items === 'string' ? row.items : JSON.stringify(row.items);
+          const items = JSON.parse(itemsStr);
+          for (const item of items) {
+            if (item.name) {
+              productCounts[item.name] = (productCounts[item.name] || 0) + (item.quantity || 1);
+            }
+          }
+        } catch(e){}
+      }
+    }
+    
+    const topProducts = Object.entries(productCounts)
+      .map(([name, qty]) => ({ product_name: name, total_quantity: qty }))
+      .sort((a, b) => b.total_quantity - a.total_quantity)
+      .slice(0, 5);
+
     return c.json({
       success: true,
       data: {
-        total_revenue: parseFloat((salesRes.rows[0] as any)?.total_revenue || '0'),
-        total_orders: parseInt((salesRes.rows[0] as any)?.total_orders || '0'),
-        order_status: ordersRes.rows,
-        top_products: topProductsRes,
+        topProducts: topProducts,
+        topCustomers: topCustomersRes.rows || [],
+        aov: {
+          aov: parseFloat((aovRes.rows[0] as any)?.aov || '0')
+        }
       }
     });
   } catch (error) {
-    return c.json({ success: true, data: {} });
+    return c.json({ success: true, data: { topProducts: [], topCustomers: [], aov: { aov: 0 } } });
   }
 });
 
@@ -541,44 +776,163 @@ app.post('/broadcast', async (c) => {
       .select({ user_id: users.user_id })
       .from(users);
 
-    let sent = 0;
-    let failed = 0;
+    // Run the broadcast in the background to prevent Cloudflare Worker timeout
+    c.executionCtx.waitUntil(
+      (async () => {
+        let sent = 0;
+        let failed = 0;
 
-    for (const u of allUsers) {
-      if (!u.user_id) continue;
-      try {
-        const telegramUrl = photoUrl
-          ? `https://api.telegram.org/bot${botToken}/sendPhoto`
-          : `https://api.telegram.org/bot${botToken}/sendMessage`;
+        for (const u of allUsers) {
+          if (!u.user_id) continue;
+          try {
+            const telegramUrl = photoUrl
+              ? `https://api.telegram.org/bot${botToken}/sendPhoto`
+              : `https://api.telegram.org/bot${botToken}/sendMessage`;
 
-        const telegramBody = photoUrl
-          ? { chat_id: u.user_id, photo: photoUrl, caption: message || '' }
-          : { chat_id: u.user_id, text: message, parse_mode: 'HTML' };
+            const telegramBody = photoUrl
+              ? { chat_id: u.user_id, photo: photoUrl, caption: message || '' }
+              : { chat_id: u.user_id, text: message, parse_mode: 'HTML' };
 
-        const res = await fetch(telegramUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(telegramBody)
-        });
+            const res = await fetch(telegramUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(telegramBody)
+            });
 
-        const result = await res.json() as any;
-        if (result.ok) {
-          sent++;
-        } else {
-          failed++;
+            const result = await res.json() as any;
+            if (result.ok) {
+              sent++;
+            } else {
+              if (result.error_code === 429) {
+                // Rate limited, wait a bit
+                await new Promise(r => setTimeout(r, (result.parameters?.retry_after || 1) * 1000));
+              }
+              failed++;
+            }
+            
+            // Artificial delay to respect Telegram's 30 msg/sec broadcast limit
+            await new Promise(r => setTimeout(r, 35)); 
+          } catch {
+            failed++;
+          }
         }
-      } catch {
-        failed++;
-      }
-    }
+        console.log(`Broadcast completed. Sent: ${sent}, Failed: ${failed}`);
+      })()
+    );
 
     return c.json({
       success: true,
-      data: { count: sent, failed, total: allUsers.length }
+      message: `Broadcast started for ${allUsers.length} users in the background.`,
+      data: { total: allUsers.length }
     });
   } catch (error: any) {
     console.error('broadcast error:', error);
-    return c.json({ success: false, error: 'Broadcast failed' }, 500);
+    return c.json({ success: false, error: 'Broadcast initialization failed' }, 500);
+  }
+});
+
+/* ─────────────────── ABANDONED CART ─────────────────── */
+
+/**
+ * POST /api/admin/abandoned-cart-notify
+ */
+app.post('/abandoned-cart-notify', async (c) => {
+  try {
+    const db = createDb(c.env);
+    const botToken = c.env.BOT_TOKEN;
+
+    if (!botToken) {
+      return c.json({ success: false, error: 'BOT_TOKEN not configured' }, 500);
+    }
+
+    // Find users with cart items, updated > 2 hours ago, and not reminded yet
+    const targetUsers = await db.execute(
+      sql`SELECT user_id, cart_state 
+          FROM users 
+          WHERE cart_state IS NOT NULL 
+            AND cart_state != '[]' 
+            AND is_cart_reminded = false 
+            AND cart_updated_at < NOW() - INTERVAL '2 hours'`
+    );
+
+    const usersToNotify = targetUsers.rows as any[];
+    if (usersToNotify.length === 0) {
+      return c.json({ success: true, message: 'No abandoned carts found matching the criteria.', count: 0 });
+    }
+
+    // Run in background
+    c.executionCtx.waitUntil(
+      (async () => {
+        let sent = 0;
+        let failed = 0;
+
+        for (const u of usersToNotify) {
+          try {
+            const message = `🛍️ *សួស្ដីបង! ទំនិញក្នុងកន្ត្រករបស់អ្នកកំពុងរង់ចាំ!* \n\nកុំឱ្យកន្ត្រករបស់អ្នកឯកា! ចូលទៅកាន់ App របស់យើងឥឡូវនេះ ដើម្បីពិនិត្យមើល និងបញ្ជាទិញទំនិញរបស់អ្នកមុនពេលវាអស់ពីស្តុក! 🚀`;
+            
+            const res = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ chat_id: u.user_id, text: message, parse_mode: 'Markdown' })
+            });
+
+            const result = await res.json() as any;
+            if (result.ok) {
+              sent++;
+              // Mark as reminded
+              await db.execute(sql`UPDATE users SET is_cart_reminded = true WHERE user_id = ${u.user_id}`);
+            } else {
+              if (result.error_code === 429) {
+                await new Promise(r => setTimeout(r, (result.parameters?.retry_after || 1) * 1000));
+              }
+              failed++;
+            }
+            await new Promise(r => setTimeout(r, 35)); 
+          } catch {
+            failed++;
+          }
+        }
+        console.log(`Abandoned cart notify completed. Sent: ${sent}, Failed: ${failed}`);
+      })()
+    );
+
+    return c.json({
+      success: true,
+      message: `Abandoned cart recovery started for ${usersToNotify.length} users.`,
+      count: usersToNotify.length
+    });
+  } catch (error: any) {
+    console.error('abandoned cart error:', error);
+    return c.json({ success: false, error: 'Failed to trigger abandoned cart' }, 500);
+  }
+});
+
+/* ─────────────────── WEBHOOK SETUP ─────────────────── */
+
+/**
+ * POST /api/admin/set-webhook
+ * Register the webhook with Telegram
+ */
+app.post('/set-webhook', async (c) => {
+  try {
+    const body = await c.req.json();
+    const { url } = body; // e.g. https://your-worker.workers.dev/api/webhook/telegram
+    const botToken = c.env.BOT_TOKEN;
+
+    if (!botToken) {
+      return c.json({ success: false, error: 'BOT_TOKEN not configured' }, 500);
+    }
+    if (!url) {
+      return c.json({ success: false, error: 'Webhook URL is required' }, 400);
+    }
+
+    const res = await fetch(`https://api.telegram.org/bot${botToken}/setWebhook?url=${encodeURIComponent(url)}`);
+    const data = await res.json();
+
+    return c.json({ success: true, data });
+  } catch (error: any) {
+    console.error('set webhook error:', error);
+    return c.json({ success: false, error: 'Failed to set webhook' }, 500);
   }
 });
 

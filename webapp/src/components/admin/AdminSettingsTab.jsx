@@ -15,6 +15,7 @@ import { DEMO_SOCIAL_LINKS, normalizeSocialLink } from '../../utils/socialLinkUt
 const AdminSettingsTab = React.memo(({
   shopStatus, showConfirm, setShopStatus, updateSettingValue,
   deliveryFee, setDeliveryFee, deliveryThreshold, setDeliveryThreshold,
+  provincialDeliveryFee, setProvincialDeliveryFee,
   promoBannerUrl, removeBanner, handleBannerUpload, updateBannerProduct, products, categories,
   shopLogoUrl, handleLogoUpload,
   paymentQrUrl, handleQrUpload, paymentInfo, setPaymentInfo,
@@ -30,6 +31,9 @@ const AdminSettingsTab = React.memo(({
   shopPhone, setShopPhone,
   shopAddress, setShopAddress,
   shopHours, setShopHours,
+  telegramChannelId, setTelegramChannelId,
+  shopHistoryKh, setShopHistoryKh,
+  shopHistoryEn, setShopHistoryEn,
   settingsReady = false,
 }) => {
   const { t, lang } = useUser();
@@ -142,6 +146,32 @@ const AdminSettingsTab = React.memo(({
                 value={deliveryThreshold} 
                 onChange={e => setDeliveryThreshold(e.target.value.replace(/[^0-9.]/g, ''))}
                 onBlur={() => persistDeliveryField('delivery_threshold', deliveryThreshold, 50)}
+              />
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6, opacity: 0.8 }}>
+              {feeIsZero
+                ? (lang === 'kh'
+                  ? 'ដឹកហ្វ្រីគ្រប់ order រួចហើយ · threshold នឹងដំណើរការពេលដាក់ថ្លៃដឹក > 0'
+                  : 'Delivery is free for every order · threshold applies once fee is above 0')
+                : (lang === 'kh'
+                  ? `ទិញ $${parseDeliverySetting(deliveryThreshold, 50).toFixed(0)}+ ដឹកហ្វ្រី · ក្រោមនេះគិត $${parseDeliverySetting(deliveryFee, 1.5).toFixed(2)}`
+                  : `Free delivery on $${parseDeliverySetting(deliveryThreshold, 50).toFixed(0)}+ · Below that, charge $${parseDeliverySetting(deliveryFee, 1.5).toFixed(2)}`)}
+            </div>
+          </div>
+
+          <div>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 900, marginBottom: 8, color: 'var(--text-bold)' }}>{lang === 'kh' ? 'សេវាដឹកតាមខេត្ត' : 'Provincial Delivery Fee'}</label>
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+              <span style={{ position: 'absolute', left: 14, fontSize: 15, fontWeight: 900, color: 'var(--text-muted)', zIndex: 2 }}>$</span>
+              <input 
+                className="input-glass-admin" 
+                type="text"
+                inputMode="decimal"
+                style={{ paddingLeft: 38, width: '100%', fontSize: 14, fontWeight: 800 }} 
+                placeholder="2.50" 
+                value={provincialDeliveryFee} 
+                onChange={e => setProvincialDeliveryFee(e.target.value.replace(/[^0-9.]/g, ''))}
+                onBlur={() => persistDeliveryField('provincial_delivery_fee', provincialDeliveryFee, 2.50)}
               />
             </div>
             <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6, opacity: 0.8 }}>
@@ -354,6 +384,42 @@ const AdminSettingsTab = React.memo(({
           />
         </div>
       </div>
+
+      {/* About Us / Shop History */}
+      <div className="glass-card-luxury">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
+          <div style={{ fontSize: 24 }}>📖</div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontWeight: 950, fontSize: 16 }}>ប្រវត្តិហាង (About Us)</div>
+            <div style={{ fontSize: 13, opacity: 0.6, marginTop: 4 }}>រៀបរាប់ពីប្រវត្តិហាងដើម្បីឱ្យអតិថិជនបានស្គាល់ និងជឿជាក់</div>
+          </div>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div>
+            <label style={{ display: 'block', fontSize: 11, fontWeight: 900, marginBottom: 8, opacity: 0.7 }}>ប្រវត្តិហាង (ភាសាខ្មែរ)</label>
+            <textarea
+              className="input-glass-admin"
+              rows="4"
+              value={shopHistoryKh}
+              onChange={e => setShopHistoryKh(e.target.value)}
+              onBlur={e => updateSettingValue('shop_history_kh', e.target.value)}
+              placeholder="ហាងយើងខ្ញុំចាប់ផ្ដើមតាំងពីឆ្នាំ..."
+            />
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: 11, fontWeight: 900, marginBottom: 8, opacity: 0.7 }}>Shop History (English)</label>
+            <textarea
+              className="input-glass-admin"
+              rows="4"
+              value={shopHistoryEn}
+              onChange={e => setShopHistoryEn(e.target.value)}
+              onBlur={e => updateSettingValue('shop_history_en', e.target.value)}
+              placeholder="Our shop started since..."
+            />
+          </div>
+        </div>
+      </div>
+
       {/* Social Media & Contact Links */}
       <div className="glass-card-luxury">
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
@@ -404,6 +470,17 @@ const AdminSettingsTab = React.memo(({
               value={shopAddress}
               onChange={e => setShopAddress(e.target.value)}
               onBlur={() => updateSettingValue('shop_address', shopAddress.trim())}
+            />
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 800, marginBottom: 6, opacity: 0.8 }}>Telegram Channel ID (Auto-Post)</label>
+            <input
+              className="input-glass-admin"
+              type="text"
+              placeholder="@mychannel or -10012345678"
+              value={telegramChannelId}
+              onChange={e => setTelegramChannelId(e.target.value)}
+              onBlur={() => updateSettingValue('telegram_channel_id', telegramChannelId.trim())}
             />
           </div>
           <div>

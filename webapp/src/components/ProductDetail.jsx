@@ -4,6 +4,7 @@ import { formatCategory } from '../utils/langUtils';
 import { getVariantUnitMode, getCapacityLabel, getSelectionPrompt } from '../utils/variantUnitUtils';
 import { parseProductSections, isSkincareProduct } from '../utils/productContentUtils';
 import { useShopState } from '../context/ShopContext';
+import CountdownTimer from './ui/CountdownTimer';
 
 import ImageLightboxModal from './ui/ImageLightboxModal';
 import { shareProduct } from '../utils/shareUtils';
@@ -136,8 +137,9 @@ const ProductDetail = ({ product, allProducts = [], onAdd, onClose, onBuyNow, ac
   }, [fullProduct.image, fullProduct.additional_images]);
 
   const bestDiscount = calculateBestDiscount(product, activeDiscounts);
-  const discountedPriceValue = getDiscountedPrice(product, bestDiscount);
-  const isDiscounted = bestDiscount !== null;
+  const hasFlashSale = displayProduct.flash_sale_price && displayProduct.flash_sale_end && new Date(displayProduct.flash_sale_end) > new Date();
+  const discountedPriceValue = hasFlashSale ? displayProduct.flash_sale_price : getDiscountedPrice(product, bestDiscount);
+  const isDiscounted = hasFlashSale || bestDiscount !== null || discountedPriceValue < product.price;
   const displayProduct = fullProduct || product;
   const hasReviews = Number(displayProduct.review_count) > 0;
   const isSkincare = isSkincareProduct({
@@ -388,6 +390,11 @@ const ProductDetail = ({ product, allProducts = [], onAdd, onClose, onBuyNow, ac
                             <span className="pd-price-was">${product.price}</span>
                           )}
                         </div>
+                        {hasFlashSale && (
+                          <div style={{ marginLeft: 12 }}>
+                            <CountdownTimer endTime={displayProduct.flash_sale_end} />
+                          </div>
+                        )}
                         <button
                           type="button"
                           className={`pd-header-wishlist ${isFavorited ? 'active' : ''}`}

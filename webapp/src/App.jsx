@@ -103,14 +103,22 @@ function App() {
   useEffect(() => {
     if (!user?.id) return;
     const isDevelopment = BACKEND_URL.includes('localhost') || BACKEND_URL.includes('127.0.0.1');
+    const startParam = tg?.initDataUnsafe?.start_param;
+    let referredBy = null;
+    if (startParam && startParam.startsWith('ref_')) {
+      referredBy = startParam.replace('ref_', '');
+    }
+
     const pingServer = async () => {
       try {
         await fetch(`${BACKEND_URL}/api/ping`, {
           method: 'POST',
           headers: { 
             'x-tg-data': tg?.initData || '',
+            'Content-Type': 'application/json',
             ...(isDevelopment && { 'X-Debug-Bypass': 'true' })
-          }
+          },
+          body: JSON.stringify({ referred_by: referredBy })
         });
       } catch (err) {
         // Silent fail
@@ -196,7 +204,7 @@ function App() {
     );
   }
 
-  const handleCheckout = async (finalTotal, couponCode = null, redeemPoints = false) => {
+  const handleCheckout = async (finalTotal, couponCode = null) => {
     if (cart.length === 0) return;
     
     const phoneClean = formData.phone.replace(/\s/g, '');
@@ -225,8 +233,7 @@ function App() {
       delivery_company: formData.delivery_company || 'J&T',
       payment_method: 'Bakong KHQR',
       idempotencyKey: currentKey,
-      couponCode: couponCode,
-      redeem_points: redeemPoints
+      couponCode: couponCode
     };
 
     const requestOptions = {

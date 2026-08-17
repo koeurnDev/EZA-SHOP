@@ -62,7 +62,7 @@ const InvoiceModal = ({ order, onClose, paymentQrUrl, paymentInfo, BACKEND_URL, 
       const tgData = window.Telegram?.WebApp?.initData || '';
       const res = await fetch(`${BACKEND_URL}/api/upload?send_to_user=true`, { 
         method: 'POST', 
-        headers: { 'X-TG-Data': tgData, 'X-Debug-Bypass': 'true' }, 
+        headers: { 'X-TG-Data': tgData }, 
         body: fd 
       });
       const data = await res.json();
@@ -75,8 +75,7 @@ const InvoiceModal = ({ order, onClose, paymentQrUrl, paymentInfo, BACKEND_URL, 
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json', 
-          'X-TG-Data': tgData,
-          'X-Debug-Bypass': 'true'
+          'X-TG-Data': tgData
         },
         body: JSON.stringify({ orderCode: localOrder.order_code, receiptUrl: uploadedUrl })
       });
@@ -221,8 +220,7 @@ const InvoiceModal = ({ order, onClose, paymentQrUrl, paymentInfo, BACKEND_URL, 
       try {
         const res = await fetch(`${BACKEND_URL}/api/orders/status/${localOrder.order_code}`, {
           headers: { 
-            'X-TG-Data': tgData,
-            'X-Debug-Bypass': 'true' // For local dev
+            'X-TG-Data': tgData
           }
         });
         const data = await res.json();
@@ -254,11 +252,9 @@ const InvoiceModal = ({ order, onClose, paymentQrUrl, paymentInfo, BACKEND_URL, 
     setIsVerifying(true);
     const tgData = window.Telegram?.WebApp?.initData || '';
     try {
-      // Polling status triggers a self-healing refresh on the server if it's stale
       const res = await fetch(`${BACKEND_URL}/api/orders/status/${localOrder.order_code}`, {
         headers: { 
-          'X-TG-Data': tgData,
-          'X-Debug-Bypass': 'true'
+          'X-TG-Data': tgData
         }
       });
       const data = await res.json();
