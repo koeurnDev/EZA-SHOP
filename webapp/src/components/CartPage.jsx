@@ -35,7 +35,10 @@ const CartPage = ({
   React.useEffect(() => {
     const tgInitData = window.Telegram?.WebApp?.initData || '';
     fetch(`${import.meta.env.VITE_BACKEND_URL}/api/user/profile`, {
-      headers: { 'X-TG-Data': tgInitData }
+      headers: { 
+        'X-TG-Data': tgInitData,
+        ...(import.meta.env.DEV && { 'X-Debug-Bypass': 'true' })
+      }
     })
       .then(res => res.json())
       .then(data => {

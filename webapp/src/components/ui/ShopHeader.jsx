@@ -47,7 +47,7 @@ const ShopHeader = ({
   const searchInputRef = React.useRef(null);
   const searchAreaRef = React.useRef(null);
 
-  const isSearchVisible = view === 'browse';
+  const isSearchVisible = view === 'browse' || view === 'home';
   const showDropdown = isSearchVisible && searchFocused;
   const trimmed = (searchTerm || '').trim();
   const hasActiveFilters = Boolean(filters?.minPrice || filters?.maxPrice || (filters?.sort && filters.sort !== 'newest'));
@@ -58,8 +58,11 @@ const ShopHeader = ({
   }, [products, trimmed]);
 
   React.useEffect(() => {
-    if (view === 'browse') {
-      setTimeout(() => searchInputRef.current?.focus(), 120);
+    if (view === 'browse' || view === 'home') {
+      // Don't auto-focus on home to prevent keyboard popping up immediately, only on browse if needed
+      if (view === 'browse') {
+        setTimeout(() => searchInputRef.current?.focus(), 120);
+      }
     }
   }, [view]);
 
@@ -134,7 +137,7 @@ const ShopHeader = ({
     <div className={`shop-header-container${isSearchVisible && isKeyboardVisible ? ' shop-header--sticky' : ''}`}>
       <div className="shop-header-top" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', gap: '8px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          {view !== 'home' ? (
+          {view !== 'home' && view !== 'browse' ? (
             <button className="shop-back-btn" onClick={() => setView('home')} aria-label="Go back" style={{ flexShrink: 0 }}>
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M15 18l-6-6 6-6"/>
@@ -142,16 +145,20 @@ const ShopHeader = ({
             </button>
           ) : null}
 
-          <div className="profile-badge-luxury flex-shrink-0 cursor-pointer" onClick={() => setView('profile')}>
-            <div className="avatar-mini-lux">
+          <div className="profile-badge-luxury flex-shrink-0 cursor-pointer" onClick={() => setView('profile')} style={{ padding: '6px 12px 6px 6px' }}>
+            <div className="avatar-mini-lux" style={{ background: user?.photo_url ? 'transparent' : 'var(--primary-accent)', color: 'white' }}>
               {user?.photo_url ? (
                 <img src={user.photo_url} alt="" className="w-full h-full object-cover" />
               ) : (
-                <div className="avatar-placeholder-lux flex items-center justify-center">{user?.first_name?.charAt(0) || '👤'}</div>
+                <div className="avatar-placeholder-lux flex items-center justify-center">
+                  {user?.first_name ? user.first_name.charAt(0) : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>}
+                </div>
               )}
             </div>
             <div className="profile-info-lux">
-              <span className="user-name-lux">{user?.first_name || (lang === 'kh' ? 'ភ្ញៀវ' : 'Guest')}</span>
+              <span className="user-name-lux" style={{ fontSize: '13px' }}>
+                {user?.first_name ? `${lang === 'kh' ? 'សួស្តី,' : 'Hi,'} ${user.first_name}` : (lang === 'kh' ? 'សួស្តី ភ្ញៀវ' : 'Hi, Guest')}
+              </span>
             </div>
           </div>
         </div>

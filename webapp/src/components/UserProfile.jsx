@@ -286,21 +286,24 @@ const UserProfile = ({ user, setView, BACKEND_URL, onViewInvoice, t, lang, toggl
         </svg>
       </button>
 
-      <div className="referral-card-lux" style={{ margin: '0 16px 20px', padding: 16, background: 'var(--surface)', borderRadius: 16, boxShadow: '0 4px 12px rgba(0,0,0,0.05)', textAlign: 'center' }}>
-        <h3 style={{ fontSize: 16, marginBottom: 8 }}>{lang === 'kh' ? 'ណែនាំមិត្តភក្ដិ (ទទួលបាន 10 ពិន្ទុ)' : 'Refer a Friend (Get 10 Points)'}</h3>
-        <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 12 }}>
+      <div className="referral-card-lux" style={{ margin: '0 16px 24px', padding: 20, background: 'var(--bg-surface)', borderRadius: 20, border: '1px solid var(--border-subtle)', boxShadow: 'var(--shadow-soft)', textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
+        <div style={{ position: 'absolute', top: -30, left: -30, width: 100, height: 100, background: 'var(--primary-accent)', filter: 'blur(50px)', opacity: 0.15, pointerEvents: 'none' }}></div>
+        <h3 style={{ fontSize: 17, fontWeight: 900, marginBottom: 8, color: 'var(--text-bold)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+          <span style={{ fontSize: 20 }}>🎁</span> {lang === 'kh' ? 'ណែនាំមិត្តភក្ដិ' : 'Refer a Friend'} <span style={{ color: 'var(--primary-accent)', fontSize: 13, background: 'var(--bg-soft)', padding: '2px 8px', borderRadius: 10 }}>+10 pts</span>
+        </h3>
+        <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 16, lineHeight: 1.5 }}>
           {lang === 'kh' ? 'ចម្លងតំណភ្ជាប់ខាងក្រោមផ្ញើទៅមិត្តភក្ដិរបស់អ្នក។ អ្នកទាំងពីរនឹងទទួលបាន 10 ពិន្ទុបន្ទាប់ពីពួកគេទិញទំនិញលើកដំបូង!' : 'Copy the link below and send it to your friends. You both get 10 points after their first purchase!'}
         </p>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', background: 'var(--bg-soft)', padding: 6, borderRadius: 16, border: '1px solid var(--border-subtle)' }}>
           <input 
             type="text" 
             readOnly 
             value={`https://t.me/${import.meta.env.VITE_BOT_USERNAME || 'Eza_Shop_Bot'}/app?startapp=ref_${user?.id}`} 
-            style={{ flex: 1, padding: '10px 12px', borderRadius: 8, border: '1px solid var(--border-color)', background: 'var(--bg-color)', fontSize: 13, color: 'var(--text-primary)' }}
+            style={{ flex: 1, padding: '10px 14px', borderRadius: 10, border: 'none', background: 'transparent', fontSize: 13, color: 'var(--text-main)', outline: 'none', minWidth: 0, fontWeight: 500 }}
           />
           <button 
-            className="order-action-btn-primary"
-            style={{ padding: '10px 16px', borderRadius: 8, whiteSpace: 'nowrap', border: 'none' }}
+            type="button"
+            style={{ padding: '10px 18px', borderRadius: 12, background: 'var(--primary-gradient)', color: 'white', fontWeight: 800, fontSize: 13, border: 'none', display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0, cursor: 'pointer', boxShadow: '0 4px 12px rgba(255, 114, 160, 0.25)' }}
             onClick={() => {
               navigator.clipboard.writeText(`https://t.me/${import.meta.env.VITE_BOT_USERNAME || 'Eza_Shop_Bot'}/app?startapp=ref_${user?.id}`);
               const tg = window.Telegram?.WebApp;
@@ -624,7 +627,7 @@ const UserProfile = ({ user, setView, BACKEND_URL, onViewInvoice, t, lang, toggl
 
       {/* 📱 Contact Us Section */}
       {hasContactSection && (
-         <div className="contact-section-lux" style={{ marginTop: 30, paddingBottom: 40 }}>
+         <div className="contact-section-lux" style={{ marginTop: 30, paddingBottom: 120 }}>
             <div className="contact-shop-header contact-link-row">
               <div className="contact-link-icon-slot">
                 {shopLogoUrl ? (

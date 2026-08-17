@@ -21,9 +21,8 @@ export const useApi = (customConfig = {}) => {
     setLoading(true);
     setError(null);
 
-    // 🧪 Development Mode: Bypass authentication ONLY when webapp is running on localhost
-    const isLocalDev = typeof window !== 'undefined' && 
-                       (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+    // 🧪 Development Mode: Bypass authentication ONLY in dev mode (includes LAN testing)
+    const isLocalDev = typeof window !== 'undefined' && import.meta.env.DEV;
 
     // Preserve options immutably across retries to prevent reference loss or mutation
     const fetchOptions = { 

@@ -5,7 +5,7 @@ const AdminBroadcastTab = React.memo(({
   broadcastImage, broadcastMsg, setBroadcastMsg, isBroadcasting,
   handleBroadcast, handleBroadcastUpload, setBroadcastImage
 }) => {
-  const { t } = useUser();
+  const { t, lang } = useUser();
 
   return (
     <div className="tab-pane-animate">

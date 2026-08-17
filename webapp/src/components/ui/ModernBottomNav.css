@@ -50,19 +50,15 @@
 }
 
 .modern-nav-btn.active {
-  color: var(--text-bold);
+  color: var(--primary-accent);
 }
 
 [data-theme='dark'] .modern-nav-btn.active {
-  color: #ffffff;
+  color: var(--primary-accent);
 }
 
 [data-theme='dark'] .modern-nav-btn {
   color: rgba(255, 255, 255, 0.5);
-}
-
-[data-theme='dark'] .modern-nav-indicator {
-  background-color: #ffffff;
 }
 
 .modern-nav-icon {
@@ -70,7 +66,15 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 32px;
+  height: 40px;
+  width: 64px;
+  border-radius: 20px;
+  transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.modern-nav-btn.active .modern-nav-icon {
+  background-color: var(--bg-soft);
+  transform: translateY(-2px);
 }
 
 .modern-nav-icon svg {
@@ -84,10 +88,10 @@
 /* Badge styling matching the dark circle in the image */
 .modern-nav-badge {
   position: absolute;
-  top: -6px;
-  right: -12px;
-  background-color: var(--text-bold); /* Dark background */
-  color: var(--bg-surface);
+  top: -2px;
+  right: 6px;
+  background-color: #ef4444;
+  color: #ffffff;
   font-size: 10px;
   font-weight: 800;
   min-width: 18px;
@@ -97,25 +101,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 2px solid var(--bg-surface); /* Creates a cutout effect against other icons */
+  border: 2px solid var(--bg-surface);
   white-space: nowrap;
   box-sizing: border-box;
-}
-
-/* The thick, rounded underline for active state */
-.modern-nav-indicator {
-  position: absolute;
-  bottom: 6px;
-  width: 18px;
-  height: 3px;
-  background-color: var(--text-bold);
-  border-radius: 2px;
-  opacity: 0;
-  transform: scaleX(0.5);
-  transition: opacity 0.2s ease, transform 0.2s ease;
-}
-
-.modern-nav-btn.active .modern-nav-indicator {
-  opacity: 1;
-  transform: scaleX(1);
 }

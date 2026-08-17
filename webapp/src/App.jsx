@@ -102,7 +102,7 @@ function App() {
   // 🟢 Online Status Tracking: Ping server every 2 minutes
   useEffect(() => {
     if (!user?.id) return;
-    const isDevelopment = BACKEND_URL.includes('localhost') || BACKEND_URL.includes('127.0.0.1');
+    const isDevelopment = import.meta.env.DEV;
     const startParam = tg?.initDataUnsafe?.start_param;
     let referredBy = null;
     if (startParam && startParam.startsWith('ref_')) {
@@ -391,7 +391,7 @@ function App() {
                 {!(view === 'browse' && (searchTerm.trim() || searchFocused)) && (
                   <PromoBanner threshold={deliveryThreshold} promoText={promoText} promoBannerUrl={promoBannerUrl} t={t} lang={lang} />
                 )}
-                {view === 'browse' && !searchFocused && (
+                {(view === 'home' || view === 'browse') && !searchFocused && (
                   <CategoryNavigator searchTerm={searchTerm} setSearchTerm={setSearchTerm} selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory} t={t} />
                 )}
                 <ProductGrid />

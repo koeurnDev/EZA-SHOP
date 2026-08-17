@@ -4,7 +4,7 @@
   "description": "EZA-SHOP Telegram Mini App API on Cloudflare Workers with Hono.js and Neon PostgreSQL",
   "main": "src/index.ts",
   "scripts": {
-    "dev": "wrangler dev",
+    "dev": "wrangler dev --ip 0.0.0.0",
     "deploy": "wrangler deploy",
     "deploy:staging": "wrangler deploy --env staging",
     "deploy:prod": "wrangler deploy --env production",

@@ -70,7 +70,6 @@ const ModernBottomNav = ({ view, setView, cartCount = 0, isAdmin, t, lang, isKey
                 <span className="modern-nav-badge">{item.badge}</span>
               )}
             </div>
-            <div className="modern-nav-indicator"></div>
           </button>
         ))}
       </nav>

@@ -3,8 +3,8 @@
  * Use this for all direct fetch() calls that need authentication
  */
 export const getHeaders = (BACKEND_URL, initData, extraHeaders = {}) => {
-  // Check if we're in actual local development (webapp running on localhost)
-  const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+  // Check if we're in actual local development (webapp running in dev mode, including LAN)
+  const isLocalDev = import.meta.env.DEV;
   
   return {
     'X-TG-Data': initData || '',
@@ -17,8 +17,8 @@ export const getHeaders = (BACKEND_URL, initData, extraHeaders = {}) => {
  * Helper: Fetch with automatic bypass header injection
  */
 export const fetchWithBypass = async (url, options = {}) => {
-  // Check if we're in actual local development (webapp running on localhost)
-  const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+  // Check if we're in actual local development (webapp running in dev mode, including LAN)
+  const isLocalDev = import.meta.env.DEV;
   
   const headers = {
     ...(options.headers || {}),
