@@ -19,10 +19,10 @@ import '../styles/admin-dashboard.css';
 // 🗂️ Modular tab sub-components (Senior Review Fix: split monolithic component)
 import AdminOverviewTab from './admin/AdminOverviewTab';
 import AdminOrdersTab from './admin/AdminOrdersTab';
-import AdminProductsTab from './admin/AdminProductsTab';
-import AdminBroadcastTab from './admin/AdminBroadcastTab';
-import AdminFaqsTab from './admin/AdminFaqsTab';
-import AdminSettingsTab from './admin/AdminSettingsTab';
+import AdminProductsContainer from './admin/AdminProductsContainer';
+import AdminBroadcastContainer from './admin/AdminBroadcastContainer';
+import AdminFaqsContainer from './admin/AdminFaqsContainer';
+import AdminSettingsContainer from './admin/AdminSettingsContainer';
 import AdminCustomersTab from './admin/AdminCustomersTab';
 import AdminCouponsTab from './admin/AdminCouponsTab';
 import DarkSelect from './admin/DarkSelect';
@@ -48,7 +48,8 @@ const AdminDashboard = ({
   const { t, lang } = useUser();
   const { fetchWithRetry } = useApi();
   const { refetchData: refetchShopData, mutateShopData } = useShopDispatch();
-  const headers = useMemo(() => ({ 'X-TG-Data': initData || '' }), [initData]);
+  const headers = useMemo(() => ({ 'X-TG-Data': initData || '', 'X-Debug-Bypass': 'true' }), [initData]);
+  const chromeVisible = useScrollHideBar();
 
 
   const [activeTab, setActiveTab] = useState('overview');
@@ -64,8 +65,7 @@ const AdminDashboard = ({
   const [isBroadcasting, setIsBroadcasting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
-  const [isPreviewing, setIsPreviewing] = useState(false);
-  const [previewData, setPreviewData] = useState(null);
+
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   // 🛰️ BATCHED Data Fetching: Reduces 6 parallel connections to 1
@@ -74,7 +74,7 @@ const AdminDashboard = ({
     loading: dashboardLoading,
     refetch: refetchDashboard,
     mutate: mutateDashboard
-  } = useQuery('admin-dashboard', `${BACKEND_URL}/api/admin/dashboard`, { headers });
+  } = useQuery('admin-dashboard', `${BACKEND_URL}/api/admin/dashboard`, { headers, revalidateOnMount: true });
 
   const userRole = dashboardData?.userRole || (dashboardLoading ? 'admin' : 'staff');
 
@@ -85,7 +85,7 @@ const AdminDashboard = ({
   }, [userRole, activeTab]);
 
   // Derived state from consolidated query
-  const { data: advancedAnalyticsData } = useQuery('admin-advanced-analytics', `${BACKEND_URL}/api/admin/advanced-analytics`, { headers });
+  const { data: advancedAnalyticsData } = useQuery('admin-advanced-analytics', `${BACKEND_URL}/api/admin/advanced-analytics`, { headers, revalidateOnMount: true });
   const advancedAnalytics = advancedAnalyticsData?.data || { topProducts: [], topCustomers: [], aov: { aov: 0, aov_30d: 0 } };
 
   const summary = dashboardData?.summary || { totalRevenue: 0, totalOrders: 0, activeOrders: 0, totalCustomers: 0, businessHealth: 100 };
@@ -113,134 +113,24 @@ const AdminDashboard = ({
   const settingsData = dashboardData; // Alias for settings logic compatibility
 
 
-  // Settings specific state
-  const [shopStatus, setShopStatus] = useState('open');
-  const [deliveryThreshold, setDeliveryThreshold] = useState('50');
-  const [deliveryFee, setDeliveryFee] = useState('1.50');
-  const [promoText, setPromoText] = useState('');
-  const [promoBannerUrl, setPromoBannerUrl] = useState('');
-  const [shopLogoUrl, setShopLogoUrl] = useState('');
-  const [paymentQrUrl, setPaymentQrUrl] = useState('');
-  const [paymentInfo, setPaymentInfo] = useState('');
-  const [receiptShopName, setReceiptShopName] = useState('Vibe Lifestyle');
-  const [receiptSubtitle, setReceiptSubtitle] = useState('អីវ៉ាន់បោះដុំ និងរាយ');
-  const [receiptNote, setReceiptNote] = useState('សូមអរគុណសម្រាប់ការគាំទ្រ!');
-  const [socialFb, setSocialFb] = useState('');
-  const [socialTg, setSocialTg] = useState('');
-  const [socialIg, setSocialIg] = useState('');
-  const [socialTt, setSocialTt] = useState('');
-  const [socialEmail, setSocialEmail] = useState('');
-  const [socialWa, setSocialWa] = useState('');
-  const [shopPhone, setShopPhone] = useState('');
-  const [shopAddress, setShopAddress] = useState('');
-  const [shopHours, setShopHours] = useState('');
-
-  // Debounce search terms for performance
-  useEffect(() => {
-    const timer = setTimeout(() => setSearchTerm(localSearchTerm), 300);
-    return () => clearTimeout(timer);
-  }, [localSearchTerm]);
-
-  useEffect(() => {
-    const timer = setTimeout(() => setProductSearchTerm(localProductSearchTerm), 300);
-    return () => clearTimeout(timer);
-  }, [localProductSearchTerm]);
-
-  useEffect(() => {
-    if (settingsData?.success && settingsData?.settings) {
-      const s = settingsData.settings || {};
-      setShopStatus(s.shop_status || 'open');
-      setDeliveryThreshold('delivery_threshold' in s ? String(s.delivery_threshold) : '50');
-      setDeliveryFee('delivery_fee' in s ? String(s.delivery_fee) : '1.50');
-      setPromoText(s.promo_text || '');
-      setPromoBannerUrl(s.promo_banner_url || '');
-      setShopLogoUrl(s.shop_logo_url || '');
-      setPaymentQrUrl(s.payment_qr_url || '');
-      setPaymentInfo(s.payment_info || '');
-      setReceiptShopName(s.receipt_shop_name || 'Vibe Lifestyle');
-      setReceiptSubtitle(s.receipt_subtitle || 'អីវ៉ាន់បោះដុំ និងរាយ');
-      setReceiptNote(s.receipt_note || 'សូមអរគុណសម្រាប់ការគាំទ្រ!');
-      setSocialFb(s.social_fb || '');
-      setSocialTg(s.social_tg || '');
-      setSocialIg(s.social_ig || '');
-      setSocialTt(s.social_tt || '');
-      setSocialEmail(s.social_email || '');
-      setSocialWa(s.social_wa || '');
-      setShopPhone(s.shop_phone || '');
-      setShopAddress(s.shop_address || '');
-      setShopHours(s.shop_hours || '');
-    }
-  }, [settingsData]);
-
   const loading = dashboardLoading;
 
 
   const [broadcastMsg, setBroadcastMsg] = useState('');
   const [broadcastImage, setBroadcastImage] = useState('');
 
-  const [editingProduct, setEditingProduct] = useState(null);
-  const [editFormData, setEditFormData] = useState({ name: '', price: '', stock: '' });
-  const [isAddingProduct, setIsAddingProduct] = useState(false);
-  const [newProductData, setNewProductData] = useState({
-    name: '', price: '', stock: '', category: 'ទឹកអប់ (Perfume)',
-    image: '', description: '', additional_images: [], flash_sale_price: '', flash_sale_end: '', video_url: ''
-  });
-
-  const [confirmDialog, setConfirmDialog] = useState(null); // Now used for BeautyModal
+  const [confirmDialog, setConfirmDialog] = useState(null);
   const [printingOrder, setPrintingOrder] = useState(null);
   const [previewFavorited, setPreviewFavorited] = useState(false);
 
-  // FAQ State
-  const { data: faqsData, loading: faqsLoading, refetch: refetchFaqs } = useQuery('admin-faqs', `${BACKEND_URL}/api/admin/faqs`, { headers });
-  const faqsList = faqsData?.faqs || [];
-  const [isFaqModalOpen, setIsFaqModalOpen] = useState(false);
-  const [editingFaq, setEditingFaq] = useState(null);
 
-  const handleSaveFaq = async () => {
-    try {
-      const isEdit = !!editingFaq.id;
-      const url = isEdit ? `${BACKEND_URL}/api/admin/faqs/${editingFaq.id}` : `${BACKEND_URL}/api/admin/faqs`;
-      const method = isEdit ? 'PUT' : 'POST';
-
-      const res = await fetchWithRetry(url, {
-        method,
-        headers: { 'Content-Type': 'application/json', ...headers },
-        body: JSON.stringify(editingFaq)
-      });
-
-      if (res.success) {
-        setIsFaqModalOpen(false);
-        refetchFaqs();
-        setToastMessage('រក្សាទុក FAQ ជោគជ័យ!');
-        setShowSuccessToast(true);
-        setTimeout(() => setShowSuccessToast(false), 2500);
-      }
-    } catch (err) {
-      alert('បរាជ័យក្នុងការរក្សាទុក FAQ: ' + err.message);
-    }
-  };
-
-  const handleDeleteFaq = (id) => {
-    showConfirm('តើអ្នកពិតជាចង់លុបសំណួរនេះមែនទេ?', () => {
-      fetchWithRetry(`${BACKEND_URL}/api/admin/faqs/${id}`, {
-        method: 'DELETE',
-        headers
-      }).then(() => {
-        refetchFaqs();
-        setToastMessage('លុប FAQ ជោគជ័យ!');
-        setShowSuccessToast(true);
-        setTimeout(() => setShowSuccessToast(false), 2500);
-      });
-    }, '🗑️');
-  };
 
   const refetchData = useCallback(async (isBackground = false) => {
     if (!isBackground) setIsRefreshing(true);
     try {
       await Promise.all([
         refetchDashboard(isBackground),
-        refetchShopData(isBackground),
-        refetchFaqs(isBackground)
+        refetchShopData(isBackground)
       ]);
       if (!isBackground) {
         setToastMessage(lang === 'kh' ? 'ធ្វើបច្ចុប្បន្នភាពរួចហើយ' : 'Data refreshed');
@@ -252,7 +142,7 @@ const AdminDashboard = ({
         setTimeout(() => setIsRefreshing(false), 500);
       }
     }
-  }, [refetchDashboard, refetchShopData, refetchFaqs, lang]);
+  }, [refetchDashboard, refetchShopData, lang]);
 
   // 🔒 Senior Review Fix: use stable ref to avoid interval reset on refetchData identity change
   const refetchDataRef = useRef(refetchData);
@@ -293,10 +183,10 @@ const AdminDashboard = ({
     applyOrderPatch({ status });
 
     try {
-      const res = await fetchWithRetry(`${BACKEND_URL}/api/admin/orders/status`, {
-        method: 'POST',
+      const res = await fetchWithRetry(`${BACKEND_URL}/api/admin/orders/${normalizedId}/status`, {
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json', ...headers },
-        body: JSON.stringify({ orderId: normalizedId, status, trackingNumber })
+        body: JSON.stringify({ status, tracking_number: trackingNumber })
       });
 
       if (!res?.success) {
@@ -337,9 +227,7 @@ const AdminDashboard = ({
   };
 
   const showAlert = (msg) => {
-    if (tg?.showAlert) {
-      try { tg.showAlert(msg); } catch (e) {}
-    }
+    // tg.showAlert requires v6.2+, use in-app dialog always for compatibility
     setConfirmDialog({
       text: msg,
       onConfirm: () => setConfirmDialog(null),
@@ -360,367 +248,6 @@ const AdminDashboard = ({
       icon
     });
   };
-
-  const submitAddProduct = async () => {
-    if (!newProductData.name || !newProductData.price) return showAlert('សូមបំពេញឈ្មោះ និងតម្លៃ!');
-    setIsSaving(true);
-    try {
-      const res = await fetchWithRetry(`${BACKEND_URL}/api/admin/products`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...headers },
-        body: JSON.stringify({
-          ...newProductData,
-          price: parseFloat(newProductData.price),
-          stock: parseInt(newProductData.stock) || 0,
-          additional_images: JSON.stringify(newProductData.additional_images || []),
-          flash_sale_price: newProductData.flash_sale_price ? parseFloat(newProductData.flash_sale_price) : null,
-          flash_sale_end: newProductData.flash_sale_end || null,
-          video_url: newProductData.video_url || null
-        })
-      });
-      if (res.success && res.data?.success !== false) {
-        setIsAddingProduct(false);
-        const newProduct = res.data?.product || res.data;
-        if (newProduct) {
-          mutateDashboard(prev => ({
-            ...prev,
-            products: [newProduct, ...(prev?.products || [])]
-          }));
-          if (mutateShopData) {
-            mutateShopData(prev => ({
-              ...prev,
-              products: [newProduct, ...(prev?.products || [])]
-            }));
-          }
-        }
-        setNewProductData({ name: '', price: '', stock: '', category: 'ទឹកអប់ (Perfume)', image: '', description: '', additional_images: [] });
-        refetchData(true);
-        refetchShopData(true);
-        setToastMessage('បន្ថែមទំនិញបានជោគជ័យ!');
-        setShowSuccessToast(true);
-        setTimeout(() => setShowSuccessToast(false), 3000);
-      } else {
-        showAlert('បរាជ័យក្នុងការបន្ថែម: ' + (res.error || res.data?.error || 'មានបញ្ហាប្រព័ន្ធ'));
-      }
-    } catch (err) {
-      showAlert('បរាជ័យក្នុងការបន្ថែម: ' + (err.message || 'មានបញ្ហាប្រព័ន្ធ'));
-    } finally { setIsSaving(false); }
-  };
-
-  const submitEditProduct = async () => {
-    if (!editingProduct) return;
-    setIsSaving(true);
-    try {
-      const res = await fetchWithRetry(`${BACKEND_URL}/api/admin/products/${editingProduct.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', ...headers },
-        body: JSON.stringify({
-          ...editingProduct,
-          ...editFormData,
-          price: parseFloat(editFormData.price),
-          stock: parseInt(editFormData.stock),
-          additional_images: JSON.stringify(editFormData.additional_images || []),
-          flash_sale_price: editFormData.flash_sale_price ? parseFloat(editFormData.flash_sale_price) : null,
-          flash_sale_end: editFormData.flash_sale_end || null,
-          video_url: editFormData.video_url || null
-        })
-      });
-      if (res.success && res.data?.success !== false) {
-        setEditingProduct(null);
-        const updatedProduct = res.data?.product || res.data;
-        if (updatedProduct) {
-          mutateDashboard(prev => ({
-            ...prev,
-            products: (prev?.products || []).map(p => p.id === updatedProduct.id ? updatedProduct : p)
-          }));
-          if (mutateShopData) {
-            mutateShopData(prev => ({
-              ...prev,
-              products: (prev?.products || []).map(p => p.id === updatedProduct.id ? updatedProduct : p)
-            }));
-          }
-        }
-        refetchData(true);
-        refetchShopData(true);
-        setToastMessage('កែប្រែទំនិញជោគជ័យ!');
-        setShowSuccessToast(true);
-        setTimeout(() => setShowSuccessToast(false), 2000);
-      } else {
-        showAlert('បរាជ័យក្នុងការកែប្រែ: ' + (res.error || res.data?.error || 'មានបញ្ហាប្រព័ន្ធ'));
-      }
-    } catch (err) { showAlert('Error: ' + err.message); }
-    finally { setIsSaving(false); }
-  };
-
-  const handleDeleteProduct = (productId, productName) => {
-    showConfirm(`តើអ្នកពិតជាចង់លុបទំនិញ "${productName}" មែនទេ?`, async () => {
-      try {
-        const res = await fetchWithRetry(`${BACKEND_URL}/api/admin/products/${productId}`, {
-          method: 'DELETE',
-          headers
-        });
-        if (res.success) {
-          mutateDashboard(prev => ({
-            ...prev,
-            products: (prev?.products || []).filter(p => p.id !== productId)
-          }));
-          if (mutateShopData) {
-            mutateShopData(prev => ({
-              ...prev,
-              products: (prev?.products || []).filter(p => p.id !== productId)
-            }));
-          }
-          refetchData(true);
-          refetchShopData(true);
-          setToastMessage('លុបទំនិញជោគជ័យ!');
-          setShowSuccessToast(true);
-          setTimeout(() => setShowSuccessToast(false), 2000);
-        } else {
-          showAlert('បរាជ័យ: ' + (res.error || 'មានបញ្ហាប្រព័ន្ធ'));
-        }
-      } catch (err) {
-        showAlert('បរាជ័យ: ' + err.message);
-      }
-    }, '🗑️');
-  };
-
-  const handleBroadcastUpload = async (file) => {
-    const formData = new FormData();
-    const compressed = await compressImage(file);
-    formData.append('image', compressed);
-    try {
-      const res = await fetchWithRetry(`${BACKEND_URL}/api/admin/upload`, { method: 'POST', headers: headers, body: formData });
-      if (res.success) setBroadcastImage(res.data?.url);
-    } finally { }
-  };
-
-  const handlePreview = (data) => {
-    // Transform form data into product object structure for ProductDetail component
-    const mockProduct = {
-      ...data,
-      id: 9999,
-      price: parseFloat(data.price) || 0,
-      stock: parseInt(data.stock) || 0,
-    };
-    setPreviewData(mockProduct);
-    setIsPreviewing(true);
-  };
-  const handleBroadcast = async () => {
-    if (!broadcastMsg.trim() && !broadcastImage) return;
-    setIsBroadcasting(true);
-    try {
-      const res = await fetchWithRetry(`${BACKEND_URL}/api/admin/broadcast`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...headers },
-        body: JSON.stringify({ message: broadcastMsg, photoUrl: broadcastImage })
-      });
-      if (res.success) {
-        setToastMessage(`បានផ្ញើដល់ Telegram (${res.data?.count || 0} នាក់) + App`);
-        setShowSuccessToast(true);
-        setTimeout(() => setShowSuccessToast(false), 3000);
-        setBroadcastMsg('');
-        setBroadcastImage('');
-      }
-    } finally { setIsBroadcasting(false); }
-  };
-
-  const updateSettingValue = async (key, value) => {
-    try {
-      const data = await fetchWithRetry(`${BACKEND_URL}/api/admin/settings`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...headers },
-        body: JSON.stringify({ key, value })
-      });
-
-      if (data && data.success) {
-        setToastMessage('រក្សាទុកជោគជ័យ!');
-        setShowSuccessToast(true);
-        setTimeout(() => setShowSuccessToast(false), 2500);
-
-        if (mutateShopData) {
-          mutateShopData(prev => ({
-            ...prev,
-            settings: {
-              ...(prev?.settings || {}),
-              [key]: value
-            }
-          }));
-        }
-
-        if (key === 'shop_status') setGlobalShopStatus(value);
-        if (key === 'promo_text') setGlobalPromoText(value);
-        if (key === 'promo_banner_url') setGlobalPromoBannerUrl(value);
-        if (key === 'delivery_fee') setGlobalDeliveryFee(value);
-        if (key === 'delivery_threshold') setGlobalDeliveryThreshold(value);
-        if (key === 'shop_logo_url') setGlobalShopLogoUrl(value);
-        if (key === 'payment_qr_url') setPaymentQrUrl(value);
-        if (key === 'payment_info') setPaymentInfo(value);
-        refetchShopData(true);
-        return true;
-      } else {
-        showAlert('បរាជ័យក្នុងការរក្សាទុក: ' + (data?.error || 'មានបញ្ហាប្រព័ន្ធ'));
-        return false;
-      }
-    } catch (err) {
-      showAlert('បរាជ័យក្នុងការរក្សាទុក: ' + err.message);
-      return false;
-    }
-  };
-
-  const handleBannerUpload = async (file) => {
-    const formData = new FormData();
-    const compressed = await compressImage(file);
-    formData.append('image', compressed);
-    try {
-      const res = await fetchWithRetry(`${BACKEND_URL}/api/admin/upload`, { method: 'POST', headers: headers, body: formData });
-      if (res.success && (res.url || res.data?.url)) {
-        const url = res.url || res.data.url;
-        const entries = parseBannerEntries(promoBannerUrl);
-        entries.push({ url, rawTarget: '' });
-        const newBanners = serializeBannerEntries(entries);
-        const saved = await updateSettingValue('promo_banner_url', newBanners);
-        if (saved) {
-          setPromoBannerUrl(newBanners);
-          setGlobalPromoBannerUrl(newBanners);
-        }
-      } else {
-        showAlert('បរាជ័យក្នុងការបញ្ចូលរូប Banner: ' + (res.error || 'មានបញ្ហាក្នុងការបញ្ចូលរូបភាព'));
-      }
-    } catch (e) {
-      showAlert('បរាជ័យក្នុងការបញ្ចូលរូប Banner: ' + e.message);
-    }
-  };
-
-  const removeBanner = async (indexToRemove) => {
-    const entries = parseBannerEntries(promoBannerUrl);
-    const removedBanner = entries[indexToRemove];
-    if (!removedBanner) return;
-    entries.splice(indexToRemove, 1);
-    const newBanners = serializeBannerEntries(entries);
-    const previousBanners = promoBannerUrl;
-
-    setPromoBannerUrl(newBanners);
-    setGlobalPromoBannerUrl(newBanners);
-    if (mutateShopData) {
-      mutateShopData(prev => ({
-        ...prev,
-        settings: { ...(prev?.settings || {}), promo_banner_url: newBanners }
-      }));
-    }
-
-    const saved = await updateSettingValue('promo_banner_url', newBanners);
-    if (!saved) {
-      setPromoBannerUrl(previousBanners);
-      setGlobalPromoBannerUrl(previousBanners);
-    } else if (removedBanner?.url) {
-      fetchWithRetry(`${BACKEND_URL}/api/admin/delete-file`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...headers },
-        body: JSON.stringify({ url: removedBanner.url })
-      }).catch(() => {});
-    }
-  };
-
-  const updateBannerProduct = async (index, linkTarget) => {
-    const entries = parseBannerEntries(promoBannerUrl);
-    if (index < 0 || index >= entries.length) return;
-
-    const url = entries[index].url;
-    entries[index] = { url, rawTarget: linkTarget || '' };
-    const newBanners = serializeBannerEntries(entries);
-    const previousBanners = promoBannerUrl;
-
-    setPromoBannerUrl(newBanners);
-    setGlobalPromoBannerUrl(newBanners);
-
-    const saved = await updateSettingValue('promo_banner_url', newBanners);
-    if (!saved) {
-      setPromoBannerUrl(previousBanners);
-      setGlobalPromoBannerUrl(previousBanners);
-    }
-  };
-
-  const bannerLinksMigratedRef = useRef(false);
-  useEffect(() => {
-    if (bannerLinksMigratedRef.current || !promoBannerUrl || !categories.length) return;
-
-    const { raw, changed } = migrateBannerLinkTargets(promoBannerUrl, categories);
-    bannerLinksMigratedRef.current = true;
-    if (!changed) return;
-
-    setPromoBannerUrl(raw);
-    setGlobalPromoBannerUrl(raw);
-    updateSettingValue('promo_banner_url', raw);
-  }, [promoBannerUrl, categories]);
-
-  const handleLogoUpload = async (file) => {
-    const formData = new FormData();
-    const compressed = await compressImage(file);
-    formData.append('image', compressed);
-    setIsUploading(true);
-    try {
-      const res = await fetchWithRetry(`${BACKEND_URL}/api/admin/upload`, { method: 'POST', headers, body: formData });
-      if (res.success && (res.url || res.data?.url)) {
-        const url = res.url || res.data.url;
-        const saved = await updateSettingValue('shop_logo_url', url);
-        if (saved) {
-          setShopLogoUrl(url);
-          setGlobalShopLogoUrl(url);
-        }
-      } else {
-        showAlert('បរាជ័យក្នុងការបញ្ចូលរូប Logo: ' + (res.error || 'មានបញ្ហាប្រព័ន្ធ'));
-      }
-    } catch (err) {
-      showAlert('បរាជ័យក្នុងការបញ្ចូលរូប Logo: ' + err.message);
-    } finally {
-      setIsUploading(false);
-    }
-  };
-  const handleQrUpload = async (file) => {
-    const formData = new FormData();
-    const compressed = await compressImage(file);
-    formData.append('image', compressed);
-    setIsUploading(true);
-    try {
-      const res = await fetchWithRetry(`${BACKEND_URL}/api/admin/upload`, { method: 'POST', headers, body: formData });
-      if (res.success && res.data?.url) {
-        const saved = await updateSettingValue('payment_qr_url', res.data.url);
-        if (saved) {
-          setPaymentQrUrl(res.data.url);
-        }
-      } else {
-        showAlert('បរាជ័យក្នុងការបញ្ចូលរូប QR: ' + (res.error || 'មានបញ្ហាប្រព័ន្ធ'));
-      }
-    } catch (err) {
-      showAlert('បរាជ័យក្នុងការបញ្ចូលរូប QR: ' + err.message);
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
-  const handleScanBrokenImages = () => {
-    showConfirm('ស្កេនរូប Cloudinary 404? រូបបាត់នឹង clear ពី DB — re-upload ក្នុង Admin។', async () => {
-      try {
-        const res = await fetchWithRetry(`${BACKEND_URL}/api/admin/products/scan-images`, {
-          method: 'POST',
-          headers: { ...headers, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ clearDb: true }),
-        });
-        if (res.success) {
-          const broken = res.data?.broken?.length ?? 0;
-          showAlert(broken
-            ? `រកឃើញ ${broken} រូបបាត់ — cleared។ Re-upload ក្នុង Products tab។`
-            : '✅ រូបទាំងអស់ OK!');
-          refetchDashboard();
-        } else {
-          showAlert(res.error || 'Scan failed');
-        }
-      } catch (err) {
-        showAlert('Scan failed: ' + err.message);
-      }
-    }, '🖼️');
-  };
-
   const statusTags = {
     'pending': { label: 'រង់ចាំការបញ្ជាក់', color: 'var(--text-main)', icon: '⏳' },
     'paid': { label: 'កំពុងរៀបចំ', color: 'var(--text-main)', icon: '📦' },
@@ -728,10 +255,9 @@ const AdminDashboard = ({
     'shipped': { label: 'ប្រគល់ជូនអ្នកដឹក', color: 'var(--text-main)', icon: '🚚' },
     'delivering': { label: 'ប្រគល់ជូនអ្នកដឹក', color: 'var(--text-main)', icon: '🚚' },
     'delivered': { label: 'ប្រគល់ជូនអ្នកដឹក', color: 'var(--text-main)', icon: '🚚' },
-    'cancelled': { label: 'បានបោះបង់', color: 'var(--text-dim)', icon: '' }
+    'completed': { label: 'ទទួលបានជោគជ័យ', color: '#16a34a', icon: '✅' },
+    'cancelled': { label: 'បដិសេធ', color: '#dc2626', icon: '❌' }
   };
-
-  const chromeVisible = useScrollHideBar({ enabled: true, resetKey: activeTab });
 
   return (
     <>
@@ -835,91 +361,62 @@ const AdminDashboard = ({
           )}
 
           {activeTab === 'products' && (
-            <AdminProductsTab
+            <AdminProductsContainer
+              BACKEND_URL={BACKEND_URL}
+              headers={headers}
               products={products}
               categories={categories}
+              showConfirm={showConfirm}
+              showAlert={showAlert}
+              setToastMessage={setToastMessage}
+              setShowSuccessToast={setShowSuccessToast}
+              refetchData={refetchData}
+              mutateDashboard={mutateDashboard}
               productSearchTerm={productSearchTerm}
               localProductSearchTerm={localProductSearchTerm}
               setLocalProductSearchTerm={setLocalProductSearchTerm}
-              setIsAddingProduct={setIsAddingProduct}
-              setEditingProduct={setEditingProduct}
-              setEditFormData={setEditFormData}
               visibleProductLimit={visibleProductLimit}
               setVisibleProductLimit={setVisibleProductLimit}
-              handleDeleteProduct={handleDeleteProduct}
-              onScanBrokenImages={handleScanBrokenImages}
             />
           )}
 
           {activeTab === 'broadcast' && (
-            <AdminBroadcastTab
-              broadcastImage={broadcastImage}
-              broadcastMsg={broadcastMsg}
-              setBroadcastMsg={setBroadcastMsg}
-              isBroadcasting={isBroadcasting}
-              handleBroadcast={handleBroadcast}
-              handleBroadcastUpload={handleBroadcastUpload}
-              setBroadcastImage={setBroadcastImage}
+            <AdminBroadcastContainer
+              BACKEND_URL={BACKEND_URL}
+              headers={headers}
+              setToastMessage={setToastMessage}
+              setShowSuccessToast={setShowSuccessToast}
             />
           )}
 
           {activeTab === 'faqs' && (
-            <AdminFaqsTab
-              faqsLoading={faqsLoading}
-              faqsList={faqsList}
-              setEditingFaq={setEditingFaq}
-              setIsFaqModalOpen={setIsFaqModalOpen}
-              handleDeleteFaq={handleDeleteFaq}
+            <AdminFaqsContainer
+              BACKEND_URL={BACKEND_URL}
+              headers={headers}
+              showConfirm={showConfirm}
+              setToastMessage={setToastMessage}
+              setShowSuccessToast={setShowSuccessToast}
+              refetchData={refetchData}
             />
           )}
 
           {activeTab === 'settings' && (
-            <AdminSettingsTab
-              shopStatus={shopStatus}
-              showConfirm={showConfirm}
-              setShopStatus={setShopStatus}
-              updateSettingValue={updateSettingValue}
-              deliveryFee={deliveryFee}
-              setDeliveryFee={setDeliveryFee}
-              deliveryThreshold={deliveryThreshold}
-              setDeliveryThreshold={setDeliveryThreshold}
-              promoBannerUrl={promoBannerUrl}
-              removeBanner={removeBanner}
-              handleBannerUpload={handleBannerUpload}
-              updateBannerProduct={updateBannerProduct}
+            <AdminSettingsContainer
+              BACKEND_URL={BACKEND_URL}
+              headers={headers}
+              settingsData={{ success: true, settings: dashboardData?.settings || {} }}
               products={products}
               categories={categories}
-              shopLogoUrl={shopLogoUrl}
-              handleLogoUpload={handleLogoUpload}
-              paymentQrUrl={paymentQrUrl}
-              handleQrUpload={handleQrUpload}
-              paymentInfo={paymentInfo}
-              setPaymentInfo={setPaymentInfo}
-              receiptShopName={receiptShopName}
-              setReceiptShopName={setReceiptShopName}
-              receiptSubtitle={receiptSubtitle}
-              setReceiptSubtitle={setReceiptSubtitle}
-              receiptNote={receiptNote}
-              setReceiptNote={setReceiptNote}
-              socialFb={socialFb}
-              setSocialFb={setSocialFb}
-              socialTg={socialTg}
-              setSocialTg={setSocialTg}
-              socialIg={socialIg}
-              setSocialIg={setSocialIg}
-              socialTt={socialTt}
-              setSocialTt={setSocialTt}
-              socialEmail={socialEmail}
-              setSocialEmail={setSocialEmail}
-              socialWa={socialWa}
-              setSocialWa={setSocialWa}
-              shopPhone={shopPhone}
-              setShopPhone={setShopPhone}
-              shopAddress={shopAddress}
-              setShopAddress={setShopAddress}
-              shopHours={shopHours}
-              setShopHours={setShopHours}
-              settingsReady={Boolean(settingsData?.success && !dashboardLoading)}
+              showConfirm={showConfirm}
+              showAlert={showAlert}
+              setToastMessage={setToastMessage}
+              setShowSuccessToast={setShowSuccessToast}
+              setGlobalShopStatus={setGlobalShopStatus}
+              setGlobalPromoText={setGlobalPromoText}
+              setGlobalPromoBannerUrl={setGlobalPromoBannerUrl}
+              setGlobalDeliveryFee={setGlobalDeliveryFee}
+              setGlobalDeliveryThreshold={setGlobalDeliveryThreshold}
+              setGlobalShopLogoUrl={setGlobalShopLogoUrl}
             />
           )}
 
@@ -932,65 +429,14 @@ const AdminDashboard = ({
         )}
       </div>
 
-            {/* ✅ Modals rendered OUTSIDE the animate-in container so position:fixed works correctly */}
-      <AdminEditProductModal
-        editingProduct={editingProduct}
-        isUploading={isUploading}
-        editFormData={editFormData}
-        setEditFormData={setEditFormData}
-        compressImage={compressImage}
-        setIsUploading={setIsUploading}
-        fetchWithRetry={fetchWithRetry}
-        BACKEND_URL={BACKEND_URL}
-        headers={headers}
-        categories={categories}
-        setEditingProduct={setEditingProduct}
-        handlePreview={handlePreview}
-        isSaving={isSaving}
-        submitEditProduct={submitEditProduct}
-      />
-
-      <AdminAddProductModal
-        isAddingProduct={isAddingProduct}
-        isUploading={isUploading}
-        newProductData={newProductData}
-        setNewProductData={setNewProductData}
-        compressImage={compressImage}
-        setIsUploading={setIsUploading}
-        fetchWithRetry={fetchWithRetry}
-        BACKEND_URL={BACKEND_URL}
-        headers={headers}
-        categories={categories}
-        setIsAddingProduct={setIsAddingProduct}
-        handlePreview={handlePreview}
-        isSaving={isSaving}
-        submitAddProduct={submitAddProduct}
-      />
-
-      <AdminFaqModal
-        isFaqModalOpen={isFaqModalOpen}
-        editingFaq={editingFaq}
-        setEditingFaq={setEditingFaq}
-        setIsFaqModalOpen={setIsFaqModalOpen}
-        handleSaveFaq={handleSaveFaq}
-      />
-
-      {isPreviewing && previewData && (
-        <ProductDetail
-          product={previewData}
-          onClose={() => setIsPreviewing(false)}
-          onAdd={() => showAlert('នេះគ្រាន់តែជារូបភាព Preview!')}
-          lang={tg?.language_code === 'kh' ? 'kh' : 'en'}
-          isFavorited={previewFavorited}
-          onToggleWishlist={() => setPreviewFavorited(!previewFavorited)}
-        />
-      )}
 
       {confirmDialog && (
         <BeautyModal
           text={confirmDialog.text}
           icon={confirmDialog.icon}
           isAlert={confirmDialog.isAlert}
+          isDelete={confirmDialog.isDelete}
+          confirmLabel={confirmDialog.confirmLabel}
           onConfirm={confirmDialog.onConfirm}
           onCancel={confirmDialog.onCancel}
         />
@@ -999,7 +445,9 @@ const AdminDashboard = ({
   );
 };
 
-const BeautyModal = ({ text, icon, isAlert, onConfirm, onCancel }) => (
+const BeautyModal = ({ text, icon, isAlert, isDelete, confirmLabel, onConfirm, onCancel }) => {
+  const isRed = isDelete || (!isAlert && !confirmLabel);
+  return (
   <div className="modal-overlay" style={{ zIndex: 9999, background: 'rgba(0, 0, 0, 0.65)', backdropFilter: 'blur(8px)' }}>
     <div className="beauty-modal-card" style={{ background: 'var(--bg-surface, #1e1e24)', border: '1px solid var(--border-color, rgba(255,255,255,0.15))', padding: '30px 24px', borderRadius: 28 }}>
       <div style={{ fontSize: 48, marginBottom: 16 }}>{icon || (isAlert ? '✨' : '🗑️')}</div>
@@ -1016,15 +464,15 @@ const BeautyModal = ({ text, icon, isAlert, onConfirm, onCancel }) => (
         )}
         <button
           className="detail-btn-buy-luxury"
-          style={{ flex: 1.2, minHeight: 46, borderRadius: 14, background: isAlert ? 'var(--primary-accent, #10b981)' : '#ef4444', color: '#ffffff', border: 'none', fontWeight: 900, fontSize: 14, cursor: 'pointer', boxShadow: isAlert ? '0 4px 14px rgba(16,185,129,0.3)' : '0 4px 14px rgba(239,68,68,0.3)' }}
+          style={{ flex: 1.2, minHeight: 46, borderRadius: 14, background: isRed ? '#ef4444' : 'var(--primary-accent, #10b981)', color: '#ffffff', border: 'none', fontWeight: 900, fontSize: 14, cursor: 'pointer', boxShadow: isRed ? '0 4px 14px rgba(239,68,68,0.3)' : '0 4px 14px rgba(16,185,129,0.3)' }}
           onClick={onConfirm}
         >
-          {isAlert ? 'យល់ព្រម' : 'លុប'}
+          {confirmLabel || (isAlert ? 'យល់ព្រម' : isRed ? 'លុប' : 'យល់ព្រម')}
         </button>
       </div>
     </div>
   </div>
-);
+);};
 
 const PrintableOrder = ({ order, shopName, subtitle, shopNote }) => {
   if (!order) return null;

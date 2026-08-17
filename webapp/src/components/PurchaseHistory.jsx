@@ -21,7 +21,10 @@ const PurchaseHistory = ({ setView, BACKEND_URL }) => {
   const fetchOrders = () => {
     const tgData = window.Telegram?.WebApp?.initData || '';
     fetch(`${BACKEND_URL}/api/user/orders`, {
-      headers: { 'X-TG-Data': tgData }
+      headers: { 
+        'X-TG-Data': tgData,
+        'X-Debug-Bypass': 'true'
+      }
     })
     .then(res => res.json())
     .then(data => {

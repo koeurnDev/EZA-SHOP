@@ -1,24 +1,90 @@
 import React from 'react';
 import { useUser } from '../../context/UserContext';
 
-const AdminFaqsTab = React.memo(({ faqsLoading, faqsList, setEditingFaq, setIsFaqModalOpen, handleDeleteFaq }) => {
+const AdminFaqsTab = React.memo(({ faqsLoading, faqsList, editingFaq, setEditingFaq, isFaqModalOpen, setIsFaqModalOpen, handleDeleteFaq, handleSaveFaq }) => {
   const { t } = useUser();
   return (
-  <div className="tab-pane-animate">
+  <div className="tab-pane-animate admin-coupons-tab">
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
-        <h3 style={{ fontSize: 18, fontWeight: 900 }}>{t('admin_faq_title')}</h3>
+      <div className="admin-coupons-head" style={{ marginBottom: 0 }}>
+        <h3 className="admin-coupons-title">{t('admin_faq_title')}</h3>
         <button
           type="button"
-          className="admin-products-add-btn"
+          className={isFaqModalOpen ? 'admin-products-scan-btn' : 'admin-products-add-btn'}
           onClick={() => {
-            setEditingFaq({ id: null, q_kh: '', q_en: '', a_kh: '', a_en: '', sort_order: 0, is_active: true });
-            setIsFaqModalOpen(true);
+            if (isFaqModalOpen) {
+              setIsFaqModalOpen(false);
+            } else {
+              setEditingFaq({ id: null, q_kh: '', q_en: '', a_kh: '', a_en: '', sort_order: 0, is_active: true });
+              setIsFaqModalOpen(true);
+            }
           }}
         >
-          + {t('admin_add_faq')}
+          {isFaqModalOpen ? 'បោះបង់' : `+ ${t('admin_add_faq')}`}
         </button>
       </div>
+
+      {isFaqModalOpen && (
+        <form onSubmit={(e) => { e.preventDefault(); handleSaveFaq(); }} className="admin-coupon-form">
+          <div className="admin-coupon-form-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))' }}>
+            <div style={{ minWidth: 0 }}>
+              <label className="admin-form-label">សំណួរ (ភាសាខ្មែរ)</label>
+              <input
+                className="input-glass-admin admin-form-input"
+                value={editingFaq?.q_kh || ''}
+                onChange={(e) => setEditingFaq({ ...editingFaq, q_kh: e.target.value })}
+                placeholder="ឧ. តើដឹកជញ្ជូនត្រូវប៉ុន្មានថ្ងៃ?"
+                required
+              />
+            </div>
+            <div style={{ minWidth: 0 }}>
+              <label className="admin-form-label">សំណួរ (English)</label>
+              <input
+                className="input-glass-admin admin-form-input"
+                value={editingFaq?.q_en || ''}
+                onChange={(e) => setEditingFaq({ ...editingFaq, q_en: e.target.value })}
+                placeholder="e.g. How long is delivery?"
+              />
+            </div>
+            <div style={{ minWidth: 0 }}>
+              <label className="admin-form-label">ចម្លើយ (ភាសាខ្មែរ)</label>
+              <textarea
+                className="input-glass-admin admin-form-input"
+                rows="3"
+                value={editingFaq?.a_kh || ''}
+                onChange={(e) => setEditingFaq({ ...editingFaq, a_kh: e.target.value })}
+                required
+              />
+            </div>
+            <div style={{ minWidth: 0 }}>
+              <label className="admin-form-label">ចម្លើយ (English)</label>
+              <textarea
+                className="input-glass-admin admin-form-input"
+                rows="3"
+                value={editingFaq?.a_en || ''}
+                onChange={(e) => setEditingFaq({ ...editingFaq, a_en: e.target.value })}
+              />
+            </div>
+            <div style={{ minWidth: 0 }}>
+              <label className="admin-form-label">លំដាប់ (Sort Order)</label>
+              <input
+                type="number"
+                min="0"
+                step="1"
+                className="input-glass-admin admin-form-input"
+                value={editingFaq?.sort_order ?? 0}
+                onChange={(e) => setEditingFaq({
+                  ...editingFaq,
+                  sort_order: Number.isFinite(parseInt(e.target.value, 10)) ? parseInt(e.target.value, 10) : 0
+                })}
+              />
+            </div>
+          </div>
+          <button type="submit" className="admin-broadcast-send-btn">
+            {t('admin_save')}
+          </button>
+        </form>
+      )}
 
       {faqsLoading ? (
         <div style={{ padding: 40, textAlign: 'center', opacity: 0.5 }}>{t('admin_fetching')}</div>

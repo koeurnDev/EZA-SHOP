@@ -196,7 +196,7 @@ function App() {
     );
   }
 
-  const handleCheckout = async (finalTotal, couponCode = null) => {
+  const handleCheckout = async (finalTotal, couponCode = null, redeemPoints = false) => {
     if (cart.length === 0) return;
     
     const phoneClean = formData.phone.replace(/\s/g, '');
@@ -218,9 +218,15 @@ function App() {
       userName: user?.first_name || 'Guest',
       items: cart,
       total: finalTotal,
-      deliveryInfo: { ...formData, paymentMethod: 'Bakong KHQR' },
+      phone: formData.phone,
+      address: formData.address,
+      province: formData.province || 'Phnom Penh',
+      note: formData.note || '',
+      delivery_company: formData.delivery_company || 'J&T',
+      payment_method: 'Bakong KHQR',
       idempotencyKey: currentKey,
-      couponCode: couponCode
+      couponCode: couponCode,
+      redeem_points: redeemPoints
     };
 
     const requestOptions = {
@@ -258,7 +264,7 @@ function App() {
     setIsPlacingOrder(false);
     
     if (result.success) {
-      setLastOrder(result.data.order);
+      setLastOrder(result.order || (result.data && result.data.order));
       clearCart();
       return true;
     } else {
@@ -268,12 +274,11 @@ function App() {
     }
   };
 
-  const handleConfirmPayment = async (orderCode) => {
+  const handleConfirmPayment = async (orderId) => {
     HapticFeedback?.impactOccurred('medium');
-    const result = await fetchWithRetry(`${BACKEND_URL}/api/orders/confirm`, {
+    const result = await fetchWithRetry(`${BACKEND_URL}/api/orders/${orderId}/verify-payment`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-TG-Data': window.Telegram?.WebApp?.initData || '' },
-      body: JSON.stringify({ orderCode })
+      headers: { 'Content-Type': 'application/json', 'X-TG-Data': window.Telegram?.WebApp?.initData || '' }
     });
     
     if (result.success) {

@@ -1413,7 +1413,7 @@ textarea.input-glass-admin {
 
 .admin-toast-float {
   position: fixed;
-  top: max(20px, env(safe-area-inset-top, 20px));
+  bottom: calc(85px + env(safe-area-inset-bottom, 20px)); /* Above nav bar */
   left: 50%;
   transform: translateX(-50%);
   z-index: 999999;
@@ -1443,7 +1443,7 @@ textarea.input-glass-admin {
 }
 
 @keyframes admin-toast-in {
-  from { opacity: 0; transform: translate(-50%, -20px) scale(0.9); }
+  from { opacity: 0; transform: translate(-50%, 20px) scale(0.9); }
   to   { opacity: 1; transform: translate(-50%, 0) scale(1); }
 }
 

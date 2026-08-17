@@ -9,15 +9,19 @@
     "deploy:staging": "wrangler deploy --env staging",
     "deploy:prod": "wrangler deploy --env production",
     "test": "vitest",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "postinstall": "patch-package"
   },
   "dependencies": {
     "@neondatabase/serverless": "^0.9.5",
     "@tsndr/cloudflare-worker-jwt": "^2.5.0",
+    "bakong-khqr": "^1.0.20",
     "bcryptjs": "^2.4.3",
     "drizzle-orm": "^0.32.0",
     "hono": "^4.5.0",
     "nanoid": "^5.0.0",
+    "patch-package": "^8.0.1",
+    "postinstall-postinstall": "^2.1.0",
     "zod": "^3.23.0"
   },
   "devDependencies": {

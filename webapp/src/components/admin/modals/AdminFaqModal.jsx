@@ -8,8 +8,21 @@ const AdminFaqModal = React.memo(({
   if (!isFaqModalOpen || !editingFaq) return null;
 
   return (
-    <div className="admin-dashboard-overhaul admin-product-modal-overlay">
-      <div className="admin-product-modal-sheet">
+    <div 
+      className="admin-dashboard-overhaul admin-product-modal-overlay"
+      style={{ zIndex: 9999, alignItems: 'flex-end', padding: 0 }}
+    >
+      <div 
+        className="admin-product-modal-sheet"
+        style={{ 
+          maxHeight: '90vh', 
+          overflowY: 'auto', 
+          borderRadius: '24px 24px 0 0',
+          paddingBottom: 'env(safe-area-inset-bottom, 20px)',
+          width: '100%',
+          margin: 0
+        }}
+      >
         <h3 className="admin-product-modal-header">
           {editingFaq.id ? t('admin_edit') : t('admin_add_faq')}
         </h3>
@@ -68,7 +81,7 @@ const AdminFaqModal = React.memo(({
           </div>
         </div>
 
-        <div className="admin-product-modal-footer">
+        <div className="admin-product-modal-footer" style={{ paddingBottom: 16 }}>
           <button
             type="button"
             className="nav-pill-btn btn-destructive"

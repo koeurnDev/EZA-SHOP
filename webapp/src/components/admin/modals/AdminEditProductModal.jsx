@@ -15,11 +15,9 @@ const AdminEditProductModal = React.memo(({
   const categorySelectValue = categoryInList ? editFormData.category : 'OTHER';
 
   return (
-    <div className="admin-dashboard-overhaul admin-product-modal-overlay">
-      <div className="admin-product-modal-sheet">
-        <h3 className="admin-product-modal-header">{t('admin_edit')}</h3>
-
-        <div className="admin-product-modal-body">
+    <div className="admin-coupon-form" style={{ marginTop: 10, display: 'flex', flexDirection: 'column' }}>
+      <h3 className="admin-coupons-title" style={{ marginBottom: 16 }}>{t('admin_edit')}</h3>
+      <div style={{ display: 'flex', flexDirection: 'column' }}>
           <div style={{ marginBottom: 14 }}>
             <label style={{ display: 'block', fontSize: 11, fontWeight: 800, marginBottom: 8, opacity: 0.6 }}>{t('admin_product_image')}</label>
             <label className="upload-zone-luxury" style={{ position: 'relative' }}>
@@ -155,13 +153,14 @@ const AdminEditProductModal = React.memo(({
               </label>
             </div>
           </div>
-        </div>
-
-        <div className="admin-product-modal-footer">
-          <button className="nav-pill-btn btn-destructive" style={{ flex: 1 }} disabled={isSaving} onClick={() => setEditingProduct(null)}>{t('cancel')}</button>
-          <button className="nav-pill-btn btn-preview" style={{ flex: 1 }} onClick={() => handlePreview(editFormData)}>{t('admin_preview')}</button>
-          <button className="ticket-btn-primary" style={{ flex: 1.2 }} disabled={isSaving} onClick={submitEditProduct}>
-            {isSaving ? t('admin_saving') : t('admin_save')}
+        <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
+          <button className="nav-pill-btn btn-destructive" 
+            style={{ flex: 1 }} disabled={isSaving} onClick={() => setEditingProduct(false)}>{t('cancel')}</button>
+          <button className="nav-pill-btn"
+            style={{ flex: 1 }} disabled={isSaving} onClick={() => handlePreview({ ...editFormData, id: 'PREVIEW' })}>{t('admin_preview')}</button>
+          <button className="ticket-btn-primary"
+            style={{ flex: 1.2 }} disabled={isUploading || isSaving} onClick={submitEditProduct}>
+            {isSaving ? <span className="pd-pulse-loader">⌛</span> : t('admin_save')}
           </button>
         </div>
       </div>

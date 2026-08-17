@@ -9,6 +9,8 @@ import type { Env, Variables } from '../types';
 
 const app = new Hono<{ Bindings: Env; Variables: Variables }>();
 
+import { BakongService } from '../services/bakongService';
+
 /**
  * GET /api/orders/status/:orderCode - Poll order status
  */
@@ -29,11 +31,28 @@ app.get('/status/:orderCode', telegramAuth, async (c) => {
       return c.json({ success: false, error: 'Order not found' }, 404);
     }
 
-    const order = result[0];
+    let order = result[0];
 
     // Security: user can only see their own orders
     if (!isAdmin && order.user_id !== userId) {
       return c.json({ success: false, error: 'Access denied' }, 403);
+    }
+
+    // ✨ ON-THE-FLY AUTO-CHECK: If the client is polling and it's a pending Bakong order, check it immediately
+    if (order.status === 'pending' && order.payment_method === 'Bakong KHQR' && order.qr_string && order.qr_string !== '{}') {
+      const bakongService = new BakongService(c.env);
+      const bakongResult = await bakongService.checkTransaction(order.qr_string);
+      
+      if (bakongResult.success) {
+        console.log(`[Status API] Payment verified on-the-fly for order ${orderCode}! Updating status...`);
+        await db
+          .update(orders)
+          .set({ status: 'paid', last_updated: new Date() })
+          .where(eq(orders.id, order.id));
+        
+        // Update the local object so the response reflects the new status
+        order.status = 'paid';
+      }
     }
 
     return c.json({
@@ -156,7 +175,7 @@ app.post('/receipt', telegramAuth, async (c) => {
 
     const updated = await db
       .update(orders)
-      .set({ receipt_url: parsed.data.receiptUrl, status: 'processing' })
+      .set({ receipt_url: parsed.data.receiptUrl })
       .where(eq(orders.order_code, parsed.data.orderCode))
       .returning();
 

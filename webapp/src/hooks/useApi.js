@@ -49,7 +49,25 @@ export const useApi = (customConfig = {}) => {
             const errorData = await response.json();
             let errMsg = errorData.error || errorData.message || `HTTP Error: ${response.status}`;
             if (errorData.details && Array.isArray(errorData.details)) {
-              errMsg += '\\n' + errorData.details.map(d => `• ${d.field}: ${d.message}`).join('\\n');
+              errMsg += '\n' + errorData.details.map(d => {
+                let fieldName = 'Unknown Field';
+                if (d.path && Array.isArray(d.path) && d.path.length > 0) {
+                  fieldName = d.path.join('.');
+                } else if (d.path && typeof d.path === 'string') {
+                  fieldName = d.path;
+                } else if (d.field) {
+                  fieldName = d.field;
+                } else if (d.key) {
+                  fieldName = d.key;
+                }
+                
+                // If we couldn't resolve a field name and it's a weird object, show the JSON
+                if (fieldName === 'Unknown Field' && !d.path && !d.field) {
+                  return `• ${JSON.stringify(d)}`;
+                }
+                
+                return `• ${fieldName}: ${d.message || 'Invalid'}`;
+              }).join('\n');
             }
             throw new Error(errMsg);
           }

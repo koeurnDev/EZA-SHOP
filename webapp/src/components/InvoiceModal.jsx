@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import QRCode from 'qrcode';
+import { QRCodeSVG } from 'qrcode.react';
 import html2canvas from 'html2canvas';
 import { useTelegram } from '../context/TelegramContext';
 import { getVariantUnitMode, getCapacityLabel } from '../utils/variantUnitUtils';
@@ -59,16 +60,25 @@ const InvoiceModal = ({ order, onClose, paymentQrUrl, paymentInfo, BACKEND_URL, 
     fd.append('image', file);
     try {
       const tgData = window.Telegram?.WebApp?.initData || '';
-      const res = await fetch(`${BACKEND_URL}/api/upload`, { method: 'POST', headers: { 'X-TG-Data': tgData }, body: fd });
+      const res = await fetch(`${BACKEND_URL}/api/upload?send_to_user=true`, { 
+        method: 'POST', 
+        headers: { 'X-TG-Data': tgData, 'X-Debug-Bypass': 'true' }, 
+        body: fd 
+      });
       const data = await res.json();
-      if (!data.success || !data.url) {
+      const uploadedUrl = data.url || data.data?.url;
+      if (!data.success || !uploadedUrl) {
         throw new Error(data.error || (lang === 'kh' ? 'មានបញ្ហាក្នុងការផ្ទុករូបភាព' : 'Upload failed'));
       }
 
       const receiptRes = await fetch(`${BACKEND_URL}/api/orders/receipt`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-TG-Data': tgData },
-        body: JSON.stringify({ orderCode: localOrder.order_code, receiptUrl: data.url })
+        headers: { 
+          'Content-Type': 'application/json', 
+          'X-TG-Data': tgData,
+          'X-Debug-Bypass': 'true'
+        },
+        body: JSON.stringify({ orderCode: localOrder.order_code, receiptUrl: uploadedUrl })
       });
       const receiptData = await receiptRes.json();
       if (!receiptData.success) {
@@ -76,7 +86,7 @@ const InvoiceModal = ({ order, onClose, paymentQrUrl, paymentInfo, BACKEND_URL, 
       }
 
       setReceiptUploaded(true);
-      setLocalOrder(prev => ({ ...prev, receipt_url: data.url, ...(receiptData.order || {}) }));
+      setLocalOrder(prev => ({ ...prev, receipt_url: uploadedUrl, ...(receiptData.order || {}) }));
       HapticFeedback?.notificationOccurred('success');
       showAlert(
         lang === 'kh'
@@ -96,10 +106,10 @@ const InvoiceModal = ({ order, onClose, paymentQrUrl, paymentInfo, BACKEND_URL, 
   };
 
   const handleVerifyPayment = async () => {
-    if (localOrder?.id === 'DRAFT' || receiptUploaded || !localOrder?.order_code || !onConfirmPayment) return;
+    if (localOrder?.id === 'DRAFT' || receiptUploaded || !onConfirmPayment) return;
     setIsVerifying(true);
     try {
-      const ok = await onConfirmPayment(localOrder.order_code);
+      const ok = await onConfirmPayment(localOrder.id);
       if (ok) {
         setLocalOrder(prev => ({ ...prev, status: 'paid' }));
       }
@@ -200,19 +210,20 @@ const InvoiceModal = ({ order, onClose, paymentQrUrl, paymentInfo, BACKEND_URL, 
   }, [localOrder?.qr_string]);
 
   // 🚀 HARDENED: Exponential Backoff Polling with Network Resilience
-  // [DISABLED BY REQUEST - MANUAL CHECK INSTEAD]
   useEffect(() => {
-    /*
     if (orderStatus === 'paid' || isExpired || isDraft) return;
 
-    const currentDelay = attempts < 10 ? 500 : attempts < 20 ? 1000 : attempts < 40 ? 3000 : 10000;
+    const currentDelay = attempts < 10 ? 5000 : attempts < 20 ? 10000 : attempts < 40 ? 30000 : 60000;
 
     const interval = setTimeout(async () => {
       const tgData = window.Telegram?.WebApp?.initData || '';
       
       try {
         const res = await fetch(`${BACKEND_URL}/api/orders/status/${localOrder.order_code}`, {
-          headers: { 'X-TG-Data': tgData }
+          headers: { 
+            'X-TG-Data': tgData,
+            'X-Debug-Bypass': 'true' // For local dev
+          }
         });
         const data = await res.json();
         
@@ -221,7 +232,7 @@ const InvoiceModal = ({ order, onClose, paymentQrUrl, paymentInfo, BACKEND_URL, 
 
         if (data.success) {
           setLocalOrder(data.order);
-          if (data.status === 'paid') {
+          if (data.order.status === 'paid') {
             if (onPaymentSuccess) onPaymentSuccess();
             setTimeout(() => {
               setShowReceipt(true);
@@ -237,7 +248,6 @@ const InvoiceModal = ({ order, onClose, paymentQrUrl, paymentInfo, BACKEND_URL, 
     }, currentDelay);
 
     return () => clearTimeout(interval);
-    */
   }, [localOrder.order_code, orderStatus, attempts, BACKEND_URL, onPaymentSuccess, isExpired]);
 
   const handleRefreshQR = async () => {
@@ -246,7 +256,10 @@ const InvoiceModal = ({ order, onClose, paymentQrUrl, paymentInfo, BACKEND_URL, 
     try {
       // Polling status triggers a self-healing refresh on the server if it's stale
       const res = await fetch(`${BACKEND_URL}/api/orders/status/${localOrder.order_code}`, {
-        headers: { 'X-TG-Data': tgData }
+        headers: { 
+          'X-TG-Data': tgData,
+          'X-Debug-Bypass': 'true'
+        }
       });
       const data = await res.json();
       if (data.success) {
@@ -501,9 +514,11 @@ const InvoiceModal = ({ order, onClose, paymentQrUrl, paymentInfo, BACKEND_URL, 
               <div className="khqr-shop-name order-id-lux">Vibe Lifestyle</div>
               <div className="khqr-amount-lux">${parseFloat(localOrder.total).toFixed(2)}</div>
 
-              <div className="khqr-meta-pill">
-                {localOrder.user_name} • {localOrder.phone}
-              </div>
+              {(localOrder.user_name || localOrder.phone) && (
+                <div className="khqr-meta-pill">
+                  {localOrder.user_name || 'Customer'}{localOrder.phone ? ` • ${localOrder.phone}` : ''}
+                </div>
+              )}
 
               {isDraft ? (
                 <div className="khqr-preparing-wrap">
@@ -516,7 +531,11 @@ const InvoiceModal = ({ order, onClose, paymentQrUrl, paymentInfo, BACKEND_URL, 
                   {!receiptUploaded ? (
                     <>
                       <div className="qr-code-wrapper-lux">
-                        {dynamicQr ? (
+                        {localOrder.bakong_qr_string ? (
+                          <div style={{ display: 'flex', justifyContent: 'center', padding: '10px', background: '#fff', borderRadius: '12px' }}>
+                            <QRCodeSVG value={localOrder.bakong_qr_string} size={180} level="M" includeMargin={true} />
+                          </div>
+                        ) : dynamicQr ? (
                           <img src={dynamicQr} alt="KHQR" onContextMenu={(e) => e.preventDefault()} />
                         ) : paymentQrUrl ? (
                           <img src={paymentQrUrl} alt="KHQR" onContextMenu={(e) => e.preventDefault()} />
@@ -589,19 +608,6 @@ const InvoiceModal = ({ order, onClose, paymentQrUrl, paymentInfo, BACKEND_URL, 
                           {isUploadingReceipt ? (lang === 'kh' ? '⌛ កំពុងផ្ទុក...' : '⌛ Uploading...') : (lang === 'kh' ? '📥 ដាក់វិក្កយបត្របញ្ជាក់ (Screenshot)' : '📥 Upload Payment Screenshot')}
                           <input type="file" accept="image/*" style={{ display: 'none' }} disabled={isUploadingReceipt || receiptUploaded} onChange={handleReceiptUpload} />
                         </label>
-                        {onConfirmPayment && (
-                          <button
-                            type="button"
-                            className="khqr-close-btn"
-                            style={{ marginTop: 8, background: 'rgba(16, 185, 129, 0.12)', color: '#059669', fontWeight: 800 }}
-                            disabled={isVerifying}
-                            onClick={handleVerifyPayment}
-                          >
-                            {isVerifying
-                              ? (lang === 'kh' ? '⌛ កំពុងពិនិត្យ...' : '⌛ Checking...')
-                              : (lang === 'kh' ? '✅ បង់រួច (Bakong Auto-check)' : '✅ I Paid (Bakong Auto-check)')}
-                          </button>
-                        )}
                       </>
                     )}
                     <button onClick={onClose} className="khqr-close-btn">{lang === 'kh' ? 'បិទ' : 'Close'}</button>

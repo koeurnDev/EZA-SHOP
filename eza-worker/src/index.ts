@@ -79,4 +79,11 @@ app.onError((err, c) => {
   }, 500);
 });
 
-export default app;
+import { checkPendingPayments } from './cron/checkPayments';
+
+export default {
+  fetch: app.fetch,
+  scheduled: async (event: any, env: any, ctx: any) => {
+    ctx.waitUntil(checkPendingPayments(env));
+  },
+};

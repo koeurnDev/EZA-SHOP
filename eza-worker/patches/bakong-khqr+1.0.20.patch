@@ -1,0 +1,13 @@
+diff --git a/node_modules/bakong-khqr/src/helper/crc16.js b/node_modules/bakong-khqr/src/helper/crc16.js
+index 4feb94a..f72b095 100644
+--- a/node_modules/bakong-khqr/src/helper/crc16.js
++++ b/node_modules/bakong-khqr/src/helper/crc16.js
+@@ -38,7 +38,7 @@ var crcTable = [
+ 
+ function crc16(s) {
+     var crc = 0xFFFF;
+-    var j, i;
++    let i, c, j;
+     s = Buffer.from(s);
+ 
+     for (i = 0; i < s.length; i++) {

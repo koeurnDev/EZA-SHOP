@@ -54,32 +54,18 @@ const AdminSettingsTab = React.memo(({
   };
 
   const demoSeededRef = useRef(false);
+  // ⚠️ DEV-only demo seed disabled — was auto-triggering "Save Successful" toast on every mount
+  // because settingsReady flips true after fresh fetch, triggering this effect even when
+  // social fields already have values from DB (timing race). Remove or gate behind a manual button.
+  /*
   useEffect(() => {
     if (!import.meta.env.DEV || !settingsReady || demoSeededRef.current) return;
     const hasAny = [socialFb, socialTg, socialIg, socialTt, socialEmail, shopPhone].some(Boolean);
     if (hasAny) return;
-
     demoSeededRef.current = true;
-    const demos = [
-      { key: 'social_fb', type: 'url', value: DEMO_SOCIAL_LINKS.social_fb, setter: setSocialFb },
-      { key: 'social_tg', type: 'telegram', value: DEMO_SOCIAL_LINKS.social_tg, setter: setSocialTg },
-      { key: 'social_ig', type: 'url', value: DEMO_SOCIAL_LINKS.social_ig, setter: setSocialIg },
-      { key: 'social_tt', type: 'url', value: DEMO_SOCIAL_LINKS.social_tt, setter: setSocialTt },
-      { key: 'social_email', type: 'email', value: DEMO_SOCIAL_LINKS.social_email, setter: setSocialEmail },
-      { key: 'social_wa', type: 'whatsapp', value: DEMO_SOCIAL_LINKS.social_wa, setter: setSocialWa },
-    ];
-    demos.forEach(({ key, type, value, setter }) => {
-      const normalized = normalizeSocialLink(type, value);
-      setter(normalized);
-      updateSettingValue(key, normalized);
-    });
-    setShopPhone(DEMO_SOCIAL_LINKS.shop_phone);
-    setShopAddress(DEMO_SOCIAL_LINKS.shop_address);
-    setShopHours(DEMO_SOCIAL_LINKS.shop_hours);
-    updateSettingValue('shop_phone', DEMO_SOCIAL_LINKS.shop_phone);
-    updateSettingValue('shop_address', DEMO_SOCIAL_LINKS.shop_address);
-    updateSettingValue('shop_hours', DEMO_SOCIAL_LINKS.shop_hours);
-  }, [settingsReady, socialFb, socialTg, socialIg, socialTt, socialEmail, shopPhone, setSocialFb, setSocialTg, setSocialIg, setSocialTt, setSocialEmail, setSocialWa, setShopPhone, setShopAddress, setShopHours, updateSettingValue]);
+    // ... auto-seed demo data ...
+  }, [settingsReady, socialFb, ...]);
+  */
 
   const SHOP_STATUS_OPTIONS = useMemo(() => [
     { value: 'open', label: `🟢 ${t('admin_open')}` },

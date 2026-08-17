@@ -9,8 +9,9 @@ const stripCategoryEmoji = (text) =>
 
 const AdminProductsTab = React.memo(({
   products, categories = [], productSearchTerm, localProductSearchTerm, setLocalProductSearchTerm,
-  setIsAddingProduct, setEditingProduct, setEditFormData,
-  visibleProductLimit, setVisibleProductLimit, handleDeleteProduct, onScanBrokenImages
+  isAddingProduct, setIsAddingProduct, editingProduct, setEditingProduct, setEditFormData,
+  visibleProductLimit, setVisibleProductLimit, handleDeleteProduct, onScanBrokenImages,
+  children
 }) => {
   const { t } = useUser();
   const [openMenu, setOpenMenu] = React.useState(null);
@@ -46,10 +47,16 @@ const AdminProductsTab = React.memo(({
         />
         <button
           type="button"
-          className="admin-products-add-btn"
-          onClick={() => setIsAddingProduct(true)}
+          className={(isAddingProduct || editingProduct) ? 'admin-products-scan-btn' : 'admin-products-add-btn'}
+          onClick={() => {
+            if (editingProduct) {
+              setEditingProduct(null);
+            } else {
+              setIsAddingProduct(!isAddingProduct);
+            }
+          }}
         >
-          + {t('admin_add_product') || 'បន្ថែម'}
+          {(isAddingProduct || editingProduct) ? 'បោះបង់' : `+ ${t('admin_add_product') || 'បន្ថែម'}`}
         </button>
         {onScanBrokenImages && (
           <button
@@ -62,6 +69,8 @@ const AdminProductsTab = React.memo(({
           </button>
         )}
       </div>
+
+      {children}
 
       <div style={{ marginBottom: 16 }}>
         <label className="admin-form-label">{t('admin_product_category') || 'ប្រភេទ'}</label>

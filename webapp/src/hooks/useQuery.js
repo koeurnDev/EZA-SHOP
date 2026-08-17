@@ -49,7 +49,8 @@ export const useQuery = (key, url, options = {}) => {
       const result = await fetchWithRetry(url, JSON.parse(optionsString));
       
       if (result.success) {
-        const payload = result.data;
+        // If the backend wraps the payload in "data", use it. Otherwise, use the whole result.
+        const payload = 'data' in result && result.data !== undefined ? result.data : result;
 
         // Don't overwrite fresher optimistic/mutated data with a stale in-flight response
         if (epochAtStart !== mutationEpochRef.current) return;

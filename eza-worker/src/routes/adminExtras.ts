@@ -315,8 +315,8 @@ app.post('/products', async (c) => {
       image: body.image || '',
       stock: parseInt(body.stock) || 0,
       description: body.description || '',
-      additional_images: body.additional_images || '[]',
-      variants: body.variants || '[]',
+      additional_images: parseJsonSafe(body.additional_images, []),
+      variants: parseJsonSafe(body.variants, []),
       flash_sale_price: body.flash_sale_price ? String(body.flash_sale_price) : null,
       flash_sale_end: body.flash_sale_end ? new Date(body.flash_sale_end) : null,
       video_url: body.video_url || null,
@@ -324,7 +324,8 @@ app.post('/products', async (c) => {
 
     return c.json({ success: true, product: res[0] });
   } catch (error) {
-    return c.json({ success: false, error: 'Failed to create product' }, 500);
+    console.error('Failed to create product:', error);
+    return c.json({ success: false, error: error instanceof Error ? error.message : 'Failed to create product' }, 500);
   }
 });
 
@@ -350,8 +351,8 @@ app.put('/products/:id', async (c) => {
     if (body.image !== undefined) updateData.image = body.image;
     if (body.stock !== undefined) updateData.stock = parseInt(body.stock);
     if (body.description !== undefined) updateData.description = body.description;
-    if (body.additional_images !== undefined) updateData.additional_images = body.additional_images;
-    if (body.variants !== undefined) updateData.variants = body.variants;
+    if (body.additional_images !== undefined) updateData.additional_images = parseJsonSafe(body.additional_images, []);
+    if (body.variants !== undefined) updateData.variants = parseJsonSafe(body.variants, []);
     if (body.flash_sale_price !== undefined) updateData.flash_sale_price = body.flash_sale_price ? String(body.flash_sale_price) : null;
     if (body.flash_sale_end !== undefined) updateData.flash_sale_end = body.flash_sale_end ? new Date(body.flash_sale_end) : null;
     if (body.video_url !== undefined) updateData.video_url = body.video_url;
@@ -361,7 +362,8 @@ app.put('/products/:id', async (c) => {
 
     return c.json({ success: true, product: updated[0] });
   } catch (error) {
-    return c.json({ success: false, error: 'Failed to update product' }, 500);
+    console.error('Failed to update product:', error);
+    return c.json({ success: false, error: error instanceof Error ? error.message : 'Failed to update product' }, 500);
   }
 });
 
@@ -399,7 +401,7 @@ app.put('/orders/:id/notify', async (c) => {
       cancelled: 'បោះបង់ ❌',
     };
 
-    const msg = `🛍️ ការបញ្ជាទិញ \`${orderCode}\` ត្រូវបានប្តូរទៅ *${statusMap[status] || status}*`;
+    const msg = `🛍️ ការបញ្ជាទិញរបស់បង លេខសម្គាល់  ${orderCode} ត្រូវបានប្តូរទៅ ${statusMap[status] || status}`;
 
     // Send Telegram notification
     const tgRes = await fetch(
@@ -434,6 +436,61 @@ app.get('/faqs', async (c) => {
 });
 
 /**
+ * POST /api/admin/faqs
+ */
+app.post('/faqs', async (c) => {
+  try {
+    const body = await c.req.json();
+    const { q_kh = '', q_en = '', a_kh = '', a_en = '', sort_order = 0, is_active = true } = body;
+    const db = createDb(c.env);
+    await db.execute(sql`
+      INSERT INTO faqs (q_kh, q_en, a_kh, a_en, sort_order, is_active)
+      VALUES (${q_kh}, ${q_en}, ${a_kh}, ${a_en}, ${sort_order}, ${is_active})
+    `);
+    return c.json({ success: true });
+  } catch (error: any) {
+    console.error('FAQ create error:', error);
+    return c.json({ success: false, error: 'Failed to create FAQ' }, 500);
+  }
+});
+
+/**
+ * PUT /api/admin/faqs/:id
+ */
+app.put('/faqs/:id', async (c) => {
+  try {
+    const id = parseInt(c.req.param('id'));
+    const body = await c.req.json();
+    const { q_kh = '', q_en = '', a_kh = '', a_en = '', sort_order = 0, is_active = true } = body;
+    const db = createDb(c.env);
+    await db.execute(sql`
+      UPDATE faqs SET q_kh=${q_kh}, q_en=${q_en}, a_kh=${a_kh}, a_en=${a_en},
+      sort_order=${sort_order}, is_active=${is_active}
+      WHERE id=${id}
+    `);
+    return c.json({ success: true });
+  } catch (error: any) {
+    console.error('FAQ update error:', error);
+    return c.json({ success: false, error: 'Failed to update FAQ' }, 500);
+  }
+});
+
+/**
+ * DELETE /api/admin/faqs/:id
+ */
+app.delete('/faqs/:id', async (c) => {
+  try {
+    const id = parseInt(c.req.param('id'));
+    const db = createDb(c.env);
+    await db.execute(sql`DELETE FROM faqs WHERE id=${id}`);
+    return c.json({ success: true });
+  } catch (error: any) {
+    console.error('FAQ delete error:', error);
+    return c.json({ success: false, error: 'Failed to delete FAQ' }, 500);
+  }
+});
+
+/**
  * GET /api/admin/advanced-analytics
  */
 app.get('/advanced-analytics', async (c) => {
@@ -455,6 +512,73 @@ app.get('/advanced-analytics', async (c) => {
     });
   } catch (error) {
     return c.json({ success: true, data: {} });
+  }
+});
+
+/* ─────────────────── BROADCAST ─────────────────── */
+
+/**
+ * POST /api/admin/broadcast - Send message to all users via Telegram
+ */
+app.post('/broadcast', async (c) => {
+  try {
+    const body = await c.req.json();
+    const { message, photoUrl } = body;
+
+    if (!message?.trim() && !photoUrl) {
+      return c.json({ success: false, error: 'Message or image required' }, 400);
+    }
+
+    const db = createDb(c.env);
+    const botToken = c.env.BOT_TOKEN;
+
+    if (!botToken) {
+      return c.json({ success: false, error: 'BOT_TOKEN not configured' }, 500);
+    }
+
+    // Get all users - user_id IS the telegram id
+    const allUsers = await db
+      .select({ user_id: users.user_id })
+      .from(users);
+
+    let sent = 0;
+    let failed = 0;
+
+    for (const u of allUsers) {
+      if (!u.user_id) continue;
+      try {
+        const telegramUrl = photoUrl
+          ? `https://api.telegram.org/bot${botToken}/sendPhoto`
+          : `https://api.telegram.org/bot${botToken}/sendMessage`;
+
+        const telegramBody = photoUrl
+          ? { chat_id: u.user_id, photo: photoUrl, caption: message || '' }
+          : { chat_id: u.user_id, text: message, parse_mode: 'HTML' };
+
+        const res = await fetch(telegramUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(telegramBody)
+        });
+
+        const result = await res.json() as any;
+        if (result.ok) {
+          sent++;
+        } else {
+          failed++;
+        }
+      } catch {
+        failed++;
+      }
+    }
+
+    return c.json({
+      success: true,
+      data: { count: sent, failed, total: allUsers.length }
+    });
+  } catch (error: any) {
+    console.error('broadcast error:', error);
+    return c.json({ success: false, error: 'Broadcast failed' }, 500);
   }
 });
 

@@ -3,6 +3,9 @@ main = "src/index.ts"
 compatibility_date = "2024-08-15"
 compatibility_flags = ["nodejs_compat"]
 
+[triggers]
+crons = ["* * * * *"]
+
 # Default environment (production)
 # NODE_ENV not set = production mode (Telegram auth required)
 

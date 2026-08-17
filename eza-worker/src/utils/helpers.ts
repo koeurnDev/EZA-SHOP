@@ -79,7 +79,9 @@ export function getEffectivePrice(regularPrice: number, flashSalePrice?: number,
 /**
  * Parse JSON safely
  */
-export function parseJsonSafe<T>(jsonString: string, defaultValue: T): T {
+export function parseJsonSafe<T>(jsonString: any, defaultValue: T): T {
+  if (jsonString === null || jsonString === undefined) return defaultValue;
+  if (typeof jsonString !== 'string') return jsonString as T;
   try {
     return JSON.parse(jsonString) || defaultValue;
   } catch {

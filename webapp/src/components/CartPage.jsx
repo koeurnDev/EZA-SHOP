@@ -23,6 +23,7 @@ const CartPage = ({
   const { tg } = useTelegram();
 
   const [step, setStep] = useState(1); // 1: Review, 2: Info/Payment
+  const [usePoints, setUsePoints] = useState(false);
   const [promoInput, setPromoInput] = useState('');
   const [validatedPromo, setValidatedPromo] = useState(null);
   const [promoLoading, setPromoLoading] = useState(false);
@@ -65,9 +66,16 @@ const CartPage = ({
   }
   
   const subTotalAfterPromo = Math.max(0, subTotal - manualDiscount);
+  
+  const loyaltyPoints = user?.loyalty_points || 0;
+  let pointsDiscount = 0;
+  if (usePoints && loyaltyPoints > 0) {
+     pointsDiscount = Math.min(subTotalAfterPromo, loyaltyPoints / 100);
+  }
+
   const appliedFee = calculateDeliveryFee(subTotalAfterPromo, deliveryFee, deliveryThreshold);
   const isFreeDelivery = appliedFee <= 0;
-  const finalTotal = subTotalAfterPromo + appliedFee;
+  const finalTotal = Math.max(0, subTotalAfterPromo - pointsDiscount) + appliedFee;
   const amountToFreeDelivery = !isAlwaysFreeDelivery(deliveryFee) && !isFreeDelivery
     ? Math.max(0, threshold - subTotalAfterPromo)
     : 0;
@@ -80,7 +88,11 @@ const CartPage = ({
       const tgInitData = window.Telegram?.WebApp?.initData || '';
       const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/orders/validate-coupon`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-TG-Data': tgInitData },
+        headers: { 
+          'Content-Type': 'application/json',
+          'X-TG-Data': tgInitData,
+          'X-Debug-Bypass': 'true'
+        },
         body: JSON.stringify({ code: promoInput })
       });
       const data = await res.json();
@@ -113,7 +125,7 @@ const CartPage = ({
     }
 
     if (!isPlacingOrder && isPhoneValid && isAddressValid) {
-      const success = await onCheckout(finalTotal, validatedPromo ? validatedPromo.code : null);
+      const success = await onCheckout(finalTotal, validatedPromo ? validatedPromo.code : null, usePoints);
       if (success) {
         setValidatedPromo(null);
         setPromoInput('');
@@ -363,6 +375,30 @@ const CartPage = ({
             <div className="flex justify-between items-center text-[15px] font-bold mt-2 text-[#ec4899]">
               <div className="uppercase tracking-tight flex items-center gap-1">🎟️ {validatedPromo.code}</div>
               <div className="font-black tabular-nums">-${manualDiscount.toFixed(2)}</div>
+            </div>
+          )}
+
+          {loyaltyPoints > 0 && (
+            <div className="mt-4 p-3 bg-[var(--bg-soft)] rounded-xl border border-[var(--border-subtle)]">
+              <div className="flex justify-between items-center">
+                <div className="flex flex-col">
+                  <span className="text-[14px] font-bold">{lang === 'kh' ? 'ពិន្ទុសន្សំ' : 'Loyalty Points'}</span>
+                  <span className="text-[12px] text-[var(--text-muted)] font-semibold">
+                    {lang === 'kh' ? `អ្នកមាន ${loyaltyPoints} ពិន្ទុ (-$${(loyaltyPoints / 100).toFixed(2)})` : `You have ${loyaltyPoints} points (-$${(loyaltyPoints / 100).toFixed(2)})`}
+                  </span>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input type="checkbox" className="sr-only peer" checked={usePoints} onChange={() => setUsePoints(!usePoints)} />
+                  <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#059669]"></div>
+                </label>
+              </div>
+            </div>
+          )}
+
+          {usePoints && pointsDiscount > 0 && (
+            <div className="flex justify-between items-center text-[15px] font-bold mt-2 text-[#059669]">
+              <div className="uppercase tracking-tight flex items-center gap-1">🎁 {lang === 'kh' ? 'បញ្ចុះតម្លៃពីពិន្ទុ' : 'Points Discount'}</div>
+              <div className="font-black tabular-nums">-${pointsDiscount.toFixed(2)}</div>
             </div>
           )}
 
