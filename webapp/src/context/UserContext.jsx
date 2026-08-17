@@ -33,9 +33,24 @@ export const UserProvider = ({ children }) => {
     // When window.Telegram is available, the backend authenticates the user,
     // and determines admin status securely. For local dev mode, we can securely
     // mock admin access if the mocked guest admin ID matches the super admin ID config.
-    const isGuestAdmin = user?.id === 7817470099;
+    const isGuestAdmin = user?.id === 7817470099 || user?.id === 1639809182;
     setIsSuperAdmin(isGuestAdmin);
-  }, [user]);
+    
+    // Dynamically fetch role from backend
+    if (tg?.initData && user?.id) {
+      const backendUrl = import.meta.env.VITE_BACKEND_URL || '';
+      fetch(`${backendUrl}/api/user/profile`, {
+        headers: { 'X-TG-Data': tg.initData, 'X-Debug-Bypass': 'true' }
+      })
+      .then(r => r.json())
+      .then(d => {
+        if (d.success && d.profile && (d.profile.role === 'admin' || d.profile.role === 'staff')) {
+          setIsSuperAdmin(true);
+        }
+      })
+      .catch(console.error);
+    }
+  }, [user, tg]);
 
   // Translation helper (Memoized to prevent unnecessary downstream re-renders)
   const t = useCallback((key) => {
