@@ -1,6 +1,18 @@
 import React, { useMemo } from 'react';
 import { useShopState } from '../context/ShopContext';
 import { useUserState } from '../context/UserContext';
+import { getCategoryBucket } from '../utils/langUtils';
+
+const PREDEFINED_CATEGORIES = [
+  { id: 'fashion', kh: 'សម្លៀកបំពាក់', en: 'Fashion', icon: '/Fashion & Shoes.webp' },
+  { id: 'beauty', kh: 'គ្រឿងសម្អាង', en: 'Beauty', icon: '/Beauty & Care (1).webp' },
+  { id: 'electronics', kh: 'អេឡិចត្រូនិក', en: 'Electronics', icon: '/Electronics.webp' },
+  { id: 'home', kh: 'ផ្ទះ', en: 'Home', icon: '/Home & Living.webp' },
+  { id: 'accessories', kh: 'កាបូប', en: 'Bags', icon: '/Bags & Accessories.webp' },
+  { id: 'gifts', kh: 'កាដូ', en: 'Gifts', icon: '/Gifts & Gadgets.webp' },
+  { id: 'promo', kh: 'ប្រូម៉ូសិន', en: 'Promo', icon: '/PROMO & SALE.webp' },
+  { id: 'others', kh: 'ផ្សេងៗ', en: 'Others', icon: '/Gifts & Gadgets.webp' }
+];
 
 const CategoryNavigator = ({ searchTerm, setSearchTerm, selectedCategory, setSelectedCategory, t }) => {
   const { lang } = useUserState();
@@ -8,38 +20,32 @@ const CategoryNavigator = ({ searchTerm, setSearchTerm, selectedCategory, setSel
   const timeoutRef = React.useRef(null);
   const { products } = useShopState();
 
-  const dynamicCategories = useMemo(() => {
-    const cats = new Set();
+  const categories = useMemo(() => {
+    // Find out which buckets actually have products
+    const activeBuckets = new Set();
+    let hasFlashSale = false;
+
     (products || []).forEach(p => {
       if (p && (parseInt(p.stock) || 0) > 0) {
-        const c = p.category;
-        if (c && c !== 'all' && c !== 'new' && c !== 'flash_sale') {
-          cats.add(c);
+        if (p.flash_sale_price && p.flash_sale_end && new Date(p.flash_sale_end) > new Date()) {
+          hasFlashSale = true;
         }
+        activeBuckets.add(getCategoryBucket(p.category));
       }
     });
-    return Array.from(cats).map(c => {
-      let label = c;
-      if (lang === 'kh') {
-        label = c.replace(/\s*\(.*?\)/g, '');
-      } else {
-        const match = c.match(/\((.*?)\)/);
-        label = match ? match[1] : c.replace(/\s*\(.*?\)/g, '');
-      }
-      return { id: c, label };
-    });
-  }, [products, lang]);
 
-  const hasFlashSale = useMemo(() => {
-    return (products || []).some(p => p.flash_sale_price && p.flash_sale_end && new Date(p.flash_sale_end) > new Date() && (parseInt(p.stock) || 0) > 0);
-  }, [products]);
+    const activePredefined = PREDEFINED_CATEGORIES.filter(c => activeBuckets.has(c.id)).map(c => ({
+      id: c.id,
+      label: lang === 'kh' ? c.kh : c.en,
+      icon: c.icon
+    }));
 
-  const categories = [
-    { id: 'all', label: t('all') },
-    ...dynamicCategories,
-    { id: 'new', label: t('new') },
-    ...(hasFlashSale ? [{ id: 'flash_sale', label: '⚡ Flash Sale' }] : [])
-  ];
+    return [
+      { id: 'all', label: t('all'), icon: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='-1 -1 26 26' fill='%23ff72a0'%3E%3Crect x='3' y='3' width='8' height='8' rx='3'/%3E%3Crect x='13' y='3' width='8' height='8' rx='3'/%3E%3Crect x='3' y='13' width='8' height='8' rx='3'/%3E%3Crect x='13' y='13' width='8' height='8' rx='3'/%3E%3C/svg%3E" },
+      ...activePredefined,
+      ...(hasFlashSale ? [{ id: 'flash_sale', label: '⚡ Flash Sale', icon: '/PROMO & SALE.webp' }] : [])
+    ];
+  }, [products, lang, t]);
 
   const handleSearchChange = (e) => {
     const val = e.target.value;
@@ -57,8 +63,6 @@ const CategoryNavigator = ({ searchTerm, setSearchTerm, selectedCategory, setSel
 
   return (
     <div className="search-browse-wrapper animate-in">
-
-
       <div className="category-navigator">
         {categories.map(cat => (
           <button 
@@ -66,7 +70,8 @@ const CategoryNavigator = ({ searchTerm, setSearchTerm, selectedCategory, setSel
             className={`cat-pill ${selectedCategory === cat.id ? 'active' : ''}`}
             onClick={() => setSelectedCategory(cat.id)}
           >
-            {cat.label}
+            {cat.icon && <img src={cat.icon} alt="" className="cat-pill-icon" />}
+            <span>{cat.label}</span>
           </button>
         ))}
       </div>

@@ -33,15 +33,12 @@ app.get('/', async (c) => {
       category: product.category,
       image: product.image,
       stock: product.stock,
-      description: product.description,
-      additional_images: parseJsonSafe(product.additional_images as string, []),
       variants: parseJsonSafe(product.variants as string, []),
       flash_sale: {
         active: product.flash_sale_end ? new Date(product.flash_sale_end) > new Date() : false,
         price: product.flash_sale_price ? parseFloat(product.flash_sale_price) : null,
         end_time: product.flash_sale_end?.toISOString() || null,
       },
-      video_url: product.video_url,
       created_at: product.created_at.toISOString(),
     }));
 

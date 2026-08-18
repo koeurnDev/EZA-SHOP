@@ -195,15 +195,9 @@ const AdminDashboard = ({
         return;
       }
 
-      const payload = res.data;
-      if (!payload?.success) {
-        refetchData(true);
-        showAlert('បរាជ័យ: ' + (payload?.error || 'មានបញ្ហាប្រព័ន្ធ'));
-        return;
-      }
-
-      if (payload.order) {
-        applyOrderPatch(payload.order);
+      const orderData = res.order || res.data?.order;
+      if (orderData) {
+        applyOrderPatch(orderData);
       }
 
       setToastMessage('បច្ចុប្បន្នភាពជោគជ័យ!');

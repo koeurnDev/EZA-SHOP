@@ -19,6 +19,7 @@ export interface Env {
 export interface Variables {
   userId: string;
   isAdmin: boolean;
+  tgUser?: TelegramInitData['user'];
 }
 
 export interface Product {
@@ -96,6 +97,7 @@ export interface TelegramInitData {
     last_name?: string;
     username?: string;
     language_code?: string;
+    photo_url?: string;
   };
   auth_date: number;
   hash: string;

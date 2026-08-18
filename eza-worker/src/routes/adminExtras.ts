@@ -85,6 +85,53 @@ app.post('/broadcast', async (c) => {
 /* ─────────────────── CUSTOMERS ─────────────────── */
 
 /**
+ * GET /api/admin/avatar/:id
+ * Fetches the user's Telegram avatar
+ */
+app.get('/avatar/:id', async (c) => {
+  try {
+    const userId = c.req.param('id');
+    const token = c.env.BOT_TOKEN;
+    if (!token) return c.json({ error: 'No token configured' }, 500);
+
+    // 1. Get user profile photos
+    const photoRes = await fetch(`https://api.telegram.org/bot${token}/getUserProfilePhotos?user_id=${userId}&limit=1`);
+    const photoData: any = await photoRes.json();
+
+    if (!photoData.ok || !photoData.result.total_count) {
+      return c.json({ error: 'No photos found' }, 404);
+    }
+
+    const fileId = photoData.result.photos[0][0].file_id;
+
+    // 2. Get file path
+    const fileRes = await fetch(`https://api.telegram.org/bot${token}/getFile?file_id=${fileId}`);
+    const fileData: any = await fileRes.json();
+
+    if (!fileData.ok) {
+      return c.json({ error: 'Failed to get file' }, 404);
+    }
+
+    const filePath = fileData.result.file_path;
+    const imageUrl = `https://api.telegram.org/file/bot${token}/${filePath}`;
+
+    // 3. Fetch image and return as response
+    const imageRes = await fetch(imageUrl);
+    if (!imageRes.ok) {
+      return c.json({ error: 'Failed to fetch image from Telegram' }, 404);
+    }
+    const arrayBuffer = await imageRes.arrayBuffer();
+
+    c.header('Content-Type', imageRes.headers.get('Content-Type') || 'image/jpeg');
+    c.header('Cache-Control', 'public, max-age=86400');
+    return c.body(arrayBuffer);
+  } catch (error) {
+    console.error('Avatar fetch error:', error);
+    return c.json({ error: 'Failed to fetch avatar' }, 500);
+  }
+});
+
+/**
  * GET /api/admin/customers
  */
 app.get('/customers', async (c) => {

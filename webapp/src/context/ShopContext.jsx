@@ -91,26 +91,30 @@ export const ShopProvider = ({ children }) => {
     return () => window.removeEventListener('online', handleSync);
   }, [fetchWithRetry]);
 
-  // 🚀 Real-time Sync: Background polling for products/settings
+  // 🚀 Smart Sync: Event-based refresh (focus/visibility) + fallback 5min interval
   useEffect(() => {
-    const interval = setInterval(() => {
-      // 🛡️ Only sync if tab is visible to save battery/bandwidth
+    // Event-based: Refresh immediately when user returns to app
+    const handleRefresh = () => {
       if (document.visibilityState === 'visible') {
         refetchInit(true); // silent refresh
       }
-    }, 60000); // 1m sync window (Optimized for Real-time Stock Sync)
-    
-    // 👁️ Auto-Refresh on View: Trigger sync when user focuses the app
-    const handleVisibilityChange = () => {
+    };
+
+    // Fallback interval: In case user stays on tab without switching
+    const interval = setInterval(() => {
       if (document.visibilityState === 'visible') {
         refetchInit(true);
       }
-    };
-    document.addEventListener('visibilitychange', handleVisibilityChange);
+    }, 300000); // 5 min fallback
+
+    // Listen to both visibilitychange (mobile/tab switch) AND focus (desktop window switch)
+    document.addEventListener('visibilitychange', handleRefresh);
+    window.addEventListener('focus', handleRefresh);
 
     return () => {
       clearInterval(interval);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      document.removeEventListener('visibilitychange', handleRefresh);
+      window.removeEventListener('focus', handleRefresh);
     };
   }, [refetchInit]);
 

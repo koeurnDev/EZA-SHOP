@@ -77,7 +77,7 @@ const PromoBanner = ({ threshold, promoText, promoBannerUrl, t, lang }) => {
   if (parsedBanners.length > 0) {
     return (
       <div
-        className="ads-hero-container !px-0"
+        className="ads-hero-container"
         style={{ position: 'relative' }}
         onMouseEnter={() => setIsPaused(true)}
         onMouseLeave={() => setIsPaused(false)}
@@ -85,7 +85,7 @@ const PromoBanner = ({ threshold, promoText, promoBannerUrl, t, lang }) => {
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       >
-        <div className="ads-hero-wrapper !rounded-none" style={{ overflow: 'hidden', position: 'relative' }}>
+        <div className="ads-hero-wrapper" style={{ overflow: 'hidden', position: 'relative' }}>
           <div style={{ display: 'flex', height: '100%', transition: 'transform 0.5s ease-in-out', transform: `translateX(-${currentIndex * 100}%)` }}>
             {parsedBanners.map((banner, idx) => (
               <div

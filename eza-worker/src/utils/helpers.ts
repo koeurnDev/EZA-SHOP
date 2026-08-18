@@ -1,10 +1,12 @@
-import { nanoid } from 'nanoid';
+import { customAlphabet } from 'nanoid';
+
+const generateCode = customAlphabet('0123456789ABCDEFGHJKLMNPQRSTUVWXYZ', 8);
 
 /**
- * Generate unique order code
+ * Generate unique order code (clean uppercase alphanumeric)
  */
 export function generateOrderCode(): string {
-  return `VBL-${nanoid(8).toUpperCase()}`;
+  return `VBL-${generateCode()}`;
 }
 
 /**

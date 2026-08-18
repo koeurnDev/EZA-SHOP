@@ -112,7 +112,6 @@ const CartPage = ({
         headers: { 
           'Content-Type': 'application/json',
           'X-TG-Data': tgInitData,
-          'X-Debug-Bypass': 'true'
         },
         body: JSON.stringify({ code: promoInput })
       });

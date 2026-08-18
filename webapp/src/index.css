@@ -39,7 +39,7 @@
 
 @layer utilities {
   .app-container {
-    /* 🛡️ Principal 50yr: Fluid Responsive Container */
+    /* ✨ Principal 50yr: Fluid Responsive Container */
     @apply relative mx-auto;
     width: 100% !important;
     max-width: 500px;
@@ -47,8 +47,8 @@
     background: var(--bg-app);
     padding-top: 0 !important; /* 🚀 Zero Top Padding: Let Header handle safe-area */
     padding-bottom: calc(var(--safe-bottom) + 120px);
-    padding-left: 0 !important;
-    padding-right: 0 !important;
+    padding-left: 16px !important;
+    padding-right: 16px !important;
   }
 
   .keyboard-visible {

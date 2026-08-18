@@ -30,7 +30,7 @@ export const telegramAuth = createMiddleware<{ Bindings: Env; Variables: Variabl
     return next();
   }
 
-  const initData = c.req.header('X-Telegram-Init-Data') || c.req.header('x-tg-data') || c.req.header('X-TG-Data') || c.req.header('x-telegram-init-data');
+  const initData = c.req.header('X-Telegram-Init-Data') || c.req.header('x-tg-data') || c.req.header('X-TG-Data') || c.req.header('x-telegram-init-data') || c.req.query('tg');
   const authHeader = c.req.header('Authorization');
 
   let userId: string | null = null;
@@ -40,6 +40,7 @@ export const telegramAuth = createMiddleware<{ Bindings: Env; Variables: Variabl
     const telegramData = await verifyTelegramAuth(initData, env.BOT_TOKEN);
     if (telegramData?.user?.id) {
       userId = telegramData.user.id.toString();
+      c.set('tgUser', telegramData.user);
     }
   }
   
@@ -112,8 +113,12 @@ export const cors = createMiddleware(async (c, next) => {
 
   await next();
 
-  // Add CORS headers to all responses
-  c.res.headers.set('Access-Control-Allow-Origin', '*');
-  c.res.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  c.res.headers.set('Access-Control-Allow-Headers', allowedHeaders);
+  // Add CORS headers to all responses safely
+  try {
+    c.res.headers.set('Access-Control-Allow-Origin', '*');
+    c.res.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    c.res.headers.set('Access-Control-Allow-Headers', allowedHeaders);
+  } catch (e) {
+    // Ignore if headers are immutable
+  }
 });

@@ -106,11 +106,11 @@ const ProductGrid = () => {
       {/* ✨ FEATURED ITEMS */}
       {showFeatured && (
         <div className="mb-6">
-           <div className="section-header section-header--compact px-5 pb-2 flex items-baseline gap-2">
+           <div className="section-header section-header--compact pb-2 flex items-baseline gap-2">
              <h2 className="product-section-title text-bold">{t('new')}</h2>
              <span className="featured-section-badge text-xs font-semibold text-bold">{lang === 'kh' ? 'លេចធ្លោ ✨' : 'Featured ✨'}</span>
            </div>
-          <div className="featured-slider flex overflow-x-auto gap-4 px-5 pb-5 no-scrollbar">
+          <div className="featured-slider flex overflow-x-auto gap-4 pb-5 no-scrollbar">
             {featured.map(fp => (
               <ProductCard 
                 key={`feat-${fp.id}`}
@@ -126,7 +126,7 @@ const ProductGrid = () => {
       )}
 
       {/* 🛍 MAIN GRID HEADER */}
-      <div className="section-header section-header--compact px-5 py-3 flex justify-between items-center">
+      <div className="section-header section-header--compact py-3 flex justify-between items-center">
         <h2 className="product-section-title text-bold" style={{ wordBreak: 'break-word', lineHeight: 1.2 }}>
           {searchTerm ? `"${searchTerm}"` : selectedCategory === 'all' ? t('all') : selectedCategory === 'flash_sale' ? '⚡ Flash Sale' : formatCategory(selectedCategory, lang)}
         </h2>
@@ -135,7 +135,7 @@ const ProductGrid = () => {
         </span>
       </div>
 
-      <div className="px-5">
+      <div>
         {!isSettingsLoaded ? (
           <SkeletonGrid />
         ) : (

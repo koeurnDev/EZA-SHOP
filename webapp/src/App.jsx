@@ -23,6 +23,7 @@ import ProductGrid from './components/ProductGrid';
 import ProductDetail from './components/ProductDetail';
 import CartPage from './components/CartPage';
 import ModernBottomNav from './components/ui/ModernBottomNav';
+import SearchBar from './components/ui/SearchBar';
 import VideoFeed from './components/VideoFeed';
 import SplashScreen from './components/ui/SplashScreen';
 import SuccessOverlay from './components/SuccessOverlay';
@@ -99,7 +100,7 @@ function App() {
     localStorage.setItem('momo_shipping_info', JSON.stringify(formData));
   }, [formData]);
 
-  // 🟢 Online Status Tracking: Ping server every 2 minutes
+  // 🟢 Online Status Tracking: Ping server every 10 minutes (reduced from 2min to save requests)
   useEffect(() => {
     if (!user?.id) return;
     const isDevelopment = import.meta.env.DEV;
@@ -125,22 +126,11 @@ function App() {
       }
     };
     pingServer();
-    const interval = setInterval(pingServer, 2 * 60 * 1000);
+    const interval = setInterval(pingServer, 10 * 60 * 1000); // 10 min
     return () => clearInterval(interval);
   }, [user?.id, tg?.initData]);
 
-  // 💓 Keep backend warm on Render free tier (public health ping)
-  useEffect(() => {
-    if (!BACKEND_URL) return;
-    const keepAlive = async () => {
-      try {
-        await fetch(`${BACKEND_URL}/api/alive`, { method: 'GET', keepalive: true });
-      } catch (_) {}
-    };
-    keepAlive();
-    const interval = setInterval(keepAlive, 10 * 60 * 1000);
-    return () => clearInterval(interval);
-  }, []);
+  // ℹ️ No keepAlive needed — Cloudflare Workers are always-on (no cold start like Render free tier)
 
   // Open product from shared deep link (?startapp=product_123)
   useEffect(() => {
@@ -224,16 +214,21 @@ function App() {
     const orderData = {
       userId: user?.id,
       userName: user?.first_name || 'Guest',
-      items: cart,
+      items: cart.map(item => ({
+        id: item.id,
+        name: item.name,
+        price: item.price,
+        quantity: item.quantity,
+      })),
       total: finalTotal,
       phone: formData.phone,
       address: formData.address,
       province: formData.province || 'Phnom Penh',
       note: formData.note || '',
-      delivery_company: formData.delivery_company || 'J&T',
+      delivery_company: formData.deliveryCompany || formData.delivery_company || 'J&T Express',
       payment_method: 'Bakong KHQR',
       idempotencyKey: currentKey,
-      couponCode: couponCode
+      coupon_code: couponCode || undefined,
     };
 
     const requestOptions = {
@@ -388,12 +383,20 @@ function App() {
             {(view === 'home' || view === 'browse') && (
               <div className="animate-in">
                 <Hero searchTerm={searchTerm} setSearchTerm={setSearchTerm} view={view} setView={setView} user={user} lang={lang} theme={theme} toggleLang={toggleLang} toggleTheme={toggleTheme} isKeyboardVisible={isKeyboardVisible} t={t} />
-                {!(view === 'browse' && (searchTerm.trim() || searchFocused)) && (
-                  <PromoBanner threshold={deliveryThreshold} promoText={promoText} promoBannerUrl={promoBannerUrl} t={t} lang={lang} />
+                
+                {view === 'home' && (
+                  <>
+                    <PromoBanner threshold={deliveryThreshold} promoText={promoText} promoBannerUrl={promoBannerUrl} t={t} lang={lang} />
+                    <CategoryNavigator searchTerm={searchTerm} setSearchTerm={setSearchTerm} selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory} t={t} />
+                  </>
                 )}
-                {(view === 'home' || view === 'browse') && !searchFocused && (
-                  <CategoryNavigator searchTerm={searchTerm} setSearchTerm={setSearchTerm} selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory} t={t} />
+
+                {view === 'browse' && (
+                  <div style={{ paddingTop: '10px' }}>
+                    <SearchBar searchTerm={searchTerm} setSearchTerm={setSearchTerm} t={t} />
+                  </div>
                 )}
+                
                 <ProductGrid />
               </div>
             )}

@@ -1,4 +1,5 @@
 import React from 'react';
+import { PREDEFINED_CATEGORIES } from '../../../utils/langUtils';
 import DarkSelect from '../DarkSelect';
 import { useUser } from '../../../context/UserContext';
 import AdminVariationsEditor from './AdminVariationsEditor';
@@ -11,7 +12,7 @@ const AdminEditProductModal = React.memo(({
   const { t, lang } = useUser();
   if (!editingProduct) return null;
 
-  const categoryInList = categories.some(c => c.name === editFormData.category);
+  const categoryInList = PREDEFINED_CATEGORIES.some(c => c.id === editFormData.category);
   const categorySelectValue = categoryInList ? editFormData.category : 'OTHER';
 
   return (
@@ -58,7 +59,7 @@ const AdminEditProductModal = React.memo(({
               onChange={val => setEditFormData({ ...editFormData, category: val === 'OTHER' ? '' : val })}
               placeholder={t('admin_product_category')}
               options={[
-                ...categories.map(c => ({ value: c.name, label: c.name.replace(/\s*\(.*?\)/g, '') })),
+                ...PREDEFINED_CATEGORIES.map(c => ({ value: c.id, label: lang === 'kh' ? c.kh : c.en })),
                 { value: 'OTHER', label: t('admin_custom_category') }
               ]}
             />

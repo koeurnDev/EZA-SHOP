@@ -5,6 +5,7 @@ import { createDb } from '../db/connection';
 import { orders, coupons } from '../db/schema';
 import { telegramAuth } from '../middleware/auth';
 import { parseJsonSafe } from '../utils/helpers';
+import { sendAdminOrderNotification } from '../utils/telegram';
 import type { Env, Variables } from '../types';
 
 const app = new Hono<{ Bindings: Env; Variables: Variables }>();
@@ -178,6 +179,22 @@ app.post('/receipt', telegramAuth, async (c) => {
       .set({ receipt_url: parsed.data.receiptUrl })
       .where(eq(orders.order_code, parsed.data.orderCode))
       .returning();
+
+    // Send Telegram Notification to Admin after receipt is uploaded
+    c.executionCtx.waitUntil(
+      sendAdminOrderNotification(c.env, {
+        orderCode: updated[0].order_code,
+        userName: updated[0].user_name || 'Guest',
+        phone: updated[0].phone,
+        address: updated[0].address,
+        province: updated[0].province,
+        paymentMethod: updated[0].payment_method,
+        items: typeof updated[0].items === 'string' ? JSON.parse(updated[0].items) : updated[0].items,
+        grossTotal: updated[0].gross_total,
+        receiptUrl: updated[0].receipt_url,
+        createdAt: updated[0].created_at
+      }, 'receipt_uploaded')
+    );
 
     return c.json({ success: true, order: { id: updated[0].id, order_code: updated[0].order_code, status: updated[0].status, receipt_url: updated[0].receipt_url } });
   } catch (error) {

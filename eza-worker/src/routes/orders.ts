@@ -16,6 +16,7 @@ import {
   validatePhone,
   sanitizeString 
 } from '../utils/helpers';
+import { sendAdminOrderNotification } from '../utils/telegram';
 import type { Env, OrderItem, Variables } from '../types';
 
 const app = new Hono<{ Bindings: Env; Variables: Variables }>();
@@ -34,7 +35,7 @@ const createOrderSchema = z.object({
   address: z.string().min(1),
   province: z.string().min(1),
   note: z.string().optional(),
-  delivery_company: z.string(),
+  delivery_company: z.string().optional().default('J&T Express'),
   payment_method: z.string().default('Bakong KHQR'),
   userName: z.string().optional(),
   redeem_points: z.boolean().optional(),
@@ -365,33 +366,20 @@ app.post('/', telegramAuth, async (c) => {
     }
 
     // Send Telegram Notification to Admin
-    if (c.env.BOT_TOKEN && c.env.SUPERADMIN_ID) {
-      try {
-        const adminMessage = `🔔 <b>មានការបញ្ជាទិញថ្មី! (New Order)</b>\n\n` +
-          `📦 <b>លេខកូដ៖</b> #${orderCode}\n` +
-          `👤 <b>ឈ្មោះ៖</b> ${userName || 'Guest'}\n` +
-          `📞 <b>លេខទូរស័ព្ទ៖</b> ${sanitizeString(phone)}\n` +
-          `📍 <b>ទីតាំង៖</b> ${sanitizeString(address)}, ${sanitizeString(province)}\n` +
-          `💳 <b>បង់ប្រាក់៖</b> ${sanitizeString(payment_method)}\n\n` +
-          `🛒 <b>ទំនិញ៖</b>\n` +
-          validatedItems.map(item => `- ${item.name} x${item.quantity} ($${(item.price * item.quantity).toFixed(2)})`).join('\n') +
-          `\n\n💰 <b>សរុប (Total)៖ $${grossTotal.toFixed(2)}</b>`;
-
-        // Send asynchronously to avoid blocking the response
-        const alertPromise = fetch(`https://api.telegram.org/bot${c.env.BOT_TOKEN}/sendMessage`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            chat_id: c.env.SUPERADMIN_ID,
-            text: adminMessage,
-            parse_mode: 'HTML'
-          })
-        }).catch(err => console.error('Telegram notification fetch error:', err));
-        
-        c.executionCtx.waitUntil(alertPromise);
-      } catch (err) {
-        console.error('Failed to prepare Telegram notification:', err);
-      }
+    // ONLY if payment method is cash OR total is 0. If it's Bakong/ABA, wait for receipt upload or auto-verification.
+    if (payment_method === 'cash' || grossTotal <= 0) {
+      c.executionCtx.waitUntil(
+        sendAdminOrderNotification(c.env, {
+          orderCode,
+          userName: userName || 'Guest',
+          phone: sanitizeString(phone),
+          address: sanitizeString(address),
+          province: sanitizeString(province),
+          paymentMethod: sanitizeString(payment_method),
+          items: validatedItems,
+          grossTotal
+        }, 'cash')
+      );
     }
 
     return c.json({
@@ -566,6 +554,19 @@ app.post('/:id/verify-payment', telegramAuth, async (c) => {
         .set({ status: 'paid' })
         .where(eq(orders.id, orderId));
       
+      c.executionCtx.waitUntil(
+        sendAdminOrderNotification(c.env, {
+          orderCode: order.order_code,
+          userName: order.user_name || 'Guest',
+          phone: order.phone,
+          address: order.address,
+          province: order.province,
+          paymentMethod: order.payment_method,
+          items: typeof order.items === 'string' ? JSON.parse(order.items) : order.items,
+          grossTotal: order.gross_total
+        }, 'auto_verified')
+      );
+
       return c.json({ success: true, message: 'Payment verified successfully!' });
     } else {
       return c.json({ success: false, error: result.message || 'Payment not found' });

@@ -117,7 +117,7 @@ app.get('/init', async (c) => {
       created_at: p.created_at.toISOString(),
     }));
 
-    c.header('Cache-Control', 'public, max-age=15, s-maxage=60');
+    c.header('Cache-Control', 'public, max-age=60, s-maxage=120');
     return c.json({
       success: true,
       products: formattedProducts,

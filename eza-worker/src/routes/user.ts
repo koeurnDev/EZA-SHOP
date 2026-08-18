@@ -15,14 +15,42 @@ const app = new Hono<{ Bindings: Env; Variables: Variables }>();
 app.get('/profile', telegramAuth, async (c) => {
   try {
     const userId = c.get('userId');
+    const tgUser = c.get('tgUser');
     const db = createDb(c.env);
+
+    if (tgUser) {
+      const tgName = [tgUser.first_name, tgUser.last_name].filter(Boolean).join(' ');
+      c.executionCtx.waitUntil(
+        db.execute(
+          sql`INSERT INTO users (user_id, user_name, username, photo_url, last_seen, last_updated)
+              VALUES (${userId}, ${tgName}, ${tgUser.username || ''}, ${tgUser.photo_url || ''}, NOW(), NOW())
+              ON CONFLICT (user_id) DO UPDATE SET
+                user_name = COALESCE(users.user_name, EXCLUDED.user_name),
+                username = EXCLUDED.username,
+                photo_url = EXCLUDED.photo_url,
+                last_seen = NOW()`
+        )
+      );
+    }
 
     const result = await db.select().from(users).where(eq(users.user_id, userId)).limit(1);
 
     if (!result.length) {
       return c.json({
         success: true,
-        profile: { user_id: userId, loyalty_points: 0, phone: '', address: '' },
+        profile: { 
+          user_id: userId, 
+          user_name: tgUser ? [tgUser.first_name, tgUser.last_name].filter(Boolean).join(' ') : '',
+          username: tgUser?.username || '',
+          photo_url: tgUser?.photo_url || '',
+          loyalty_points: 0, 
+          phone: '', 
+          address: '',
+          role: 'user',
+          is_banned: false,
+          total_spent: 0,
+          vip_tier: 'none'
+        },
       });
     }
 
@@ -44,14 +72,14 @@ app.get('/profile', telegramAuth, async (c) => {
       success: true,
       profile: {
         user_id: u.user_id,
-        user_name: u.user_name,
-        username: u.username,
+        user_name: tgUser ? [tgUser.first_name, tgUser.last_name].filter(Boolean).join(' ') : (u.user_name || ''),
+        username: tgUser?.username || u.username || '',
         phone: u.phone || '',
         address: u.address || '',
         role: u.role,
         is_banned: u.is_banned,
         loyalty_points: u.loyalty_points || 0,
-        photo_url: u.photo_url,
+        photo_url: tgUser?.photo_url || u.photo_url || '',
         last_seen: u.last_seen?.toISOString(),
         total_spent: totalSpent,
         vip_tier: vipTier,

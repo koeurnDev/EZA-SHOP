@@ -5,6 +5,7 @@ import { createDb } from '../db/connection';
 import { products, orders, users, categories, settings } from '../db/schema';
 import { telegramAuth, adminAuth } from '../middleware/auth';
 import { parseJsonSafe } from '../utils/helpers';
+import { sendCustomerStatusNotification } from '../utils/telegram';
 import type { Env, Variables } from '../types';
 
 const app = new Hono<{ Bindings: Env; Variables: Variables }>();
@@ -456,38 +457,33 @@ app.put('/orders/:id/status', async (c) => {
         }
       }
     }
+      // --- TELEGRAM NOTIFICATION ---
+      if (targetUserId) {
+        let additionalText = '';
+        if (validationResult.data.status === 'delivered') {
+           const pointsToAward = Math.floor(parseFloat(updatedOrder[0].gross_total || updatedOrder[0].total));
+           if (pointsToAward > 0) {
+              additionalText += `🎁 អបអរសាទរ! លោកអ្នកទទួលបាន ${pointsToAward} ពិន្ទុពីការបញ្ជាទិញនេះ។\n`;
+           }
+           if (referralBonusGiven) {
+              additionalText += `🎉 លោកអ្នកទទួលបាន 10 ពិន្ទុបន្ថែមពីការណែនាំមិត្តភ័ក្តិ! ប្រើ Link ណែនាំ ដើម្បីទទួលបានពិន្ទុបន្ថែមទៀត!`;
+           }
+        }
 
-    // --- TELEGRAM NOTIFICATION ---
-    if (targetUserId) {
-      const statusMap: Record<string, string> = {
-        paid: 'បានបង់ប្រាក់រួចរាល់ ✅',
-        processing: 'កំពុងរៀបចំអីវ៉ាន់ 📦',
-        shipped: 'ប្រគល់ជូនអ្នកដឹកជញ្ជូន 🚚',
-        delivered: 'បានដល់ដៃអតិថិជន 🎉',
-        cancelled: 'បោះបង់ ❌',
-      };
-      let msg = `🛍️ ការបញ្ជាទិញរបស់បង លេខសម្គាល់  ${updatedOrder[0].order_code} ត្រូវបានប្តូរទៅ ${statusMap[updatedOrder[0].status || ''] || updatedOrder[0].status}`;
-
-      if (validationResult.data.status === 'delivered') {
-         const pointsToAward = Math.floor(parseFloat(updatedOrder[0].gross_total || updatedOrder[0].total));
-         if (pointsToAward > 0) {
-            msg += `\n\n🎁 អបអរសាទរ! អ្នកទទួលបាន ${pointsToAward} ពិន្ទុពីការបញ្ជាទិញនេះ។`;
-         }
-         if (referralBonusGiven) {
-            msg += `\n🌟 អ្នកក៏ទទួលបាន 10 ពិន្ទុបន្ថែមពីការទិញលើកដំបូងរបស់អ្នកតាមរយៈ Link ណែនាំ!`;
-         }
+        c.executionCtx.waitUntil(
+          sendCustomerStatusNotification(c.env, {
+            userId: targetUserId,
+            orderCode: updatedOrder[0].order_code,
+            phone: updatedOrder[0].phone,
+            address: updatedOrder[0].address,
+            province: updatedOrder[0].province,
+            note: updatedOrder[0].note,
+            items: typeof updatedOrder[0].items === 'string' ? JSON.parse(updatedOrder[0].items) : updatedOrder[0].items,
+            grossTotal: updatedOrder[0].gross_total || updatedOrder[0].total,
+            createdAt: updatedOrder[0].created_at
+          }, validationResult.data.status, additionalText)
+        );
       }
-
-      try {
-        await fetch(`https://api.telegram.org/bot${c.env.BOT_TOKEN}/sendMessage`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ chat_id: targetUserId, text: msg, parse_mode: 'Markdown' }),
-        });
-      } catch (tgErr) {
-        console.error('Failed to send TG notify', tgErr);
-      }
-    }
 
     return c.json({
       success: true,
