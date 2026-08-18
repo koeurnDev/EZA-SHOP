@@ -75,6 +75,7 @@ export const orders = pgTable('orders', {
 }, (table) => ({
   userIdIdx: index('idx_orders_user_id').on(table.user_id),
   statusIdx: index('idx_orders_status').on(table.status),
+  userStatusIdx: index('idx_orders_user_status').on(table.user_id, table.status),
   createdAtIdx: index('idx_orders_created_at').on(table.created_at),
 }));
 

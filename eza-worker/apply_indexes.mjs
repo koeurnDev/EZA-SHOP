@@ -11,6 +11,7 @@ async function run() {
   await sql`CREATE INDEX IF NOT EXISTS "idx_products_stock" ON "products" USING btree ("stock")`;
   await sql`CREATE INDEX IF NOT EXISTS "idx_products_created_at" ON "products" USING btree ("created_at")`;
   await sql`CREATE INDEX IF NOT EXISTS "idx_users_role" ON "users" USING btree ("role")`;
+  await sql`CREATE INDEX IF NOT EXISTS "idx_orders_user_status" ON "orders" USING btree ("user_id", "status")`;
   console.log("Indexes applied successfully!");
 }
 
