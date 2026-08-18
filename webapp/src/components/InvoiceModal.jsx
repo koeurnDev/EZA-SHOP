@@ -87,11 +87,7 @@ const InvoiceModal = ({ order, onClose, paymentQrUrl, paymentInfo, BACKEND_URL, 
       setReceiptUploaded(true);
       setLocalOrder(prev => ({ ...prev, receipt_url: uploadedUrl, ...(receiptData.order || {}) }));
       HapticFeedback?.notificationOccurred('success');
-      showAlert(
-        lang === 'kh'
-          ? '✅ បានទទួលរូបបង់ប្រាក់! ក្រុមការងារកំពុងពិនិត្យ — សូមរង់ចាំការបញ្ជាក់។'
-          : '✅ Payment proof received! Our team is reviewing — please wait for confirmation.'
-      );
+
       if (typeof onCartClear === 'function') onCartClear();
     } catch (err) {
       console.error(err);
