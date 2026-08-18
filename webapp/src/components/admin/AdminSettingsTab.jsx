@@ -11,6 +11,7 @@ import {
   getCategoryOptionValue
 } from '../../utils/bannerLinkUtils';
 import { DEMO_SOCIAL_LINKS, normalizeSocialLink } from '../../utils/socialLinkUtils';
+import { compressImage } from '../../utils/imageUtils';
 
 const AdminSettingsTab = React.memo(({
   shopStatus, showConfirm, setShopStatus, updateSettingValue,
@@ -282,7 +283,8 @@ const AdminSettingsTab = React.memo(({
               <input type="file" accept="image/*" onChange={async e => { 
                 const file = e.target.files?.[0]; 
                 if (file) {
-                  await handleBannerUpload(file); 
+                  const compressed = await compressImage(file, 1600, 1600, 0.8);
+                  await handleBannerUpload(compressed); 
                 }
                 e.target.value = ''; 
               }} />
@@ -300,7 +302,7 @@ const AdminSettingsTab = React.memo(({
                 <div style={{ fontSize: 11, fontWeight: 900 }}>{t('admin_change_logo')}</div>
               </div>
             )}
-            <input type="file" accept="image/*" onChange={async e => { const file = e.target.files?.[0]; if (file) handleLogoUpload(file); }} />
+            <input type="file" accept="image/*" onChange={async e => { const file = e.target.files?.[0]; if (file) { const compressed = await compressImage(file, 800, 800, 0.8); handleLogoUpload(compressed); } }} />
           </label>
         </div>
       </div>
@@ -326,7 +328,7 @@ const AdminSettingsTab = React.memo(({
                   <div style={{ fontSize: 10, fontWeight: 900 }}>ដាក់រូប QR</div>
                 </div>
               )}
-              <input type="file" accept="image/*" onChange={async e => { const file = e.target.files?.[0]; if (file) handleQrUpload(file); }} />
+              <input type="file" accept="image/*" onChange={async e => { const file = e.target.files?.[0]; if (file) { const compressed = await compressImage(file, 800, 800, 0.8); handleQrUpload(compressed); } }} />
             </label>
           </div>
           <div>

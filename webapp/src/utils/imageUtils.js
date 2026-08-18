@@ -112,7 +112,7 @@ export const resolveItemImageUrl = (item, productById) => {
   return direct || '';
 };
 
-export const compressImage = (file, maxWidth = 1000, maxHeight = 1000, quality = 0.8) => {
+export const compressImage = (file, maxWidth = 1200, maxHeight = 1200, quality = 0.8) => {
   return new Promise((resolve, reject) => {
     // If not an image (e.g. video), return original
     if (!file.type.startsWith('image/')) {
@@ -143,25 +143,14 @@ export const compressImage = (file, maxWidth = 1000, maxHeight = 1000, quality =
         canvas.height = height;
         const ctx = canvas.getContext('2d');
         ctx.drawImage(img, 0, 0, width, height);
-
-        // Keep original format or fallback to jpeg
-        const outFormat = (file.type === 'image/png' || file.type === 'image/webp') ? file.type : 'image/jpeg';
         
-        canvas.toBlob(
-          (blob) => {
-            if (blob) {
-              const newFile = new File([blob], file.name, {
-                type: outFormat,
-                lastModified: Date.now(),
-              });
-              resolve(newFile);
-            } else {
-              reject(new Error('Canvas to Blob failed'));
-            }
-          },
-          outFormat,
-          quality
-        );
+        canvas.toBlob((blob) => {
+          if (blob) {
+            resolve(new File([blob], file.name.replace(/\.[^/.]+$/, "") + ".webp", { type: 'image/webp' }));
+          } else {
+            reject(new Error('Canvas to Blob failed'));
+          }
+        }, 'image/webp', quality);
       };
       img.onerror = (error) => reject(error);
     };
@@ -169,11 +158,11 @@ export const compressImage = (file, maxWidth = 1000, maxHeight = 1000, quality =
   });
 };
 
-export const uploadMultipleImages = async (files, { compressImage, fetchWithRetry, uploadUrl, headers }) => {
+export const uploadMultipleImages = async (files, { compressImage, fetchWithRetry, uploadUrl, headers, imageOptions = [1600, 1600, 0.9] }) => {
   const uploaded = [];
   for (const file of files) {
     if (!file?.type?.startsWith('image/')) continue;
-    const compressed = await compressImage(file);
+    const compressed = await compressImage(file, ...imageOptions);
     const fd = new FormData();
     fd.append('image', compressed);
     const res = await fetchWithRetry(uploadUrl, { method: 'POST', headers, body: fd });
@@ -181,3 +170,5 @@ export const uploadMultipleImages = async (files, { compressImage, fetchWithRetr
   }
   return uploaded;
 };
+
+

@@ -35,7 +35,7 @@ const AdminEditProductModal = React.memo(({
               <input type="file" accept="image/*" disabled={isUploading} onChange={async e => {
                 const file = e.target.files?.[0];
                 if (file) {
-                  const compressed = await compressImage(file);
+                  const compressed = await compressImage(file, 1600, 1600, 0.9);
                   const fd = new FormData();
                   fd.append('image', compressed);
                   setIsUploading(true);
