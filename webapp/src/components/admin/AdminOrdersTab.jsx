@@ -628,15 +628,7 @@ const AdminOrdersTab = React.memo(({
                       setTimeout(() => window.print(), 300);
                     }
                   }}>Print</button>
-                  {o.status !== 'delivered' && (
-                    <button 
-                      className="ticket-btn-primary admin-order-btn admin-order-btn--green" 
-                      style={{ width: '100%', marginTop: '8px', background: '#16a34a' }} 
-                      onClick={() => updateStatus(o.id ?? o.order_code, 'delivered')}
-                    >
-                      ✅ អតិថិជនទទួលបានជោគជ័យ
-                    </button>
-                  )}
+
                 </div>
               ) : (
                 <>
