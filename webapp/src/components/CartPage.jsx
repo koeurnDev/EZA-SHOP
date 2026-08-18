@@ -167,11 +167,30 @@ const CartPage = ({
     }
   };
 
-  // 🛡️ Hide Telegram Native UX: MainButton
+  // Telegram Native UX: MainButton & Haptics
   React.useEffect(() => {
     if (!tg?.MainButton) return;
-    tg.MainButton.hide();
-  }, [tg]);
+    
+    if (totalItemsCount > 0) {
+      tg.MainButton.show();
+      if (step === 1) {
+        tg.MainButton.setText(lang === 'kh' ? 'បន្តការបញ្ជាទិញ' : 'Continue to Checkout');
+      } else {
+        tg.MainButton.setText(isPlacingOrder ? '...' : (lang === 'kh' ? 'បញ្ជាក់ការបញ្ជាទិញ' : 'Confirm Order'));
+      }
+      tg.MainButton.color = '#000000';
+      tg.MainButton.textColor = '#ffffff';
+
+      const onClick = () => handlePrimaryAction();
+      tg.MainButton.onClick(onClick);
+      
+      return () => {
+        tg.MainButton.offClick(onClick);
+      };
+    } else {
+      tg.MainButton.hide();
+    }
+  }, [tg, step, totalItemsCount, lang, isPlacingOrder, handlePrimaryAction]);
 
   if (totalItemsCount === 0) {
     return (
