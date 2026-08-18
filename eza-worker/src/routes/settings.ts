@@ -67,6 +67,7 @@ app.get('/settings', async (c) => {
       return acc;
     }, {} as Record<string, string>);
 
+    c.header('Cache-Control', 'public, max-age=15, s-maxage=60');
     return c.json({ success: true, settings: settingsMap });
   } catch (error) {
     return c.json({ success: false, error: 'Failed to fetch settings' }, 500);
@@ -116,6 +117,7 @@ app.get('/init', async (c) => {
       created_at: p.created_at.toISOString(),
     }));
 
+    c.header('Cache-Control', 'public, max-age=15, s-maxage=60');
     return c.json({
       success: true,
       products: formattedProducts,

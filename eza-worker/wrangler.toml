@@ -28,3 +28,6 @@ vars = { NODE_ENV = "staging" }
 # wrangler secret put CLOUDINARY_CLOUD_NAME
 # wrangler secret put CLOUDINARY_API_KEY
 # wrangler secret put CLOUDINARY_API_SECRET
+
+[observability]
+enabled = true

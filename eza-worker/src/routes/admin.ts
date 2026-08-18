@@ -95,7 +95,7 @@ app.get('/dashboard', async (c) => {
     `);
 
     // Calculate Summary stats
-    const totalRevenue = orderStats.filter(s => s.status === 'delivered').reduce((sum, s) => sum + parseFloat(s.total || '0'), 0);
+    const totalRevenue = orderStats.filter(s => s.status === 'delivered' || s.status === 'shipped').reduce((sum, s) => sum + parseFloat(s.total || '0'), 0);
     const activeOrders = orderStats.filter(s => s.status && ['pending', 'paid', 'processing', 'shipped', 'delivering'].includes(s.status)).reduce((sum, s) => sum + Number(s.count), 0);
 
     return c.json({
@@ -360,7 +360,8 @@ app.get('/orders', async (c) => {
  */
 app.put('/orders/:id/status', async (c) => {
   try {
-    const orderId = parseInt(c.req.param('id'));
+    const paramId = c.req.param('id');
+    const orderId = parseInt(paramId);
     const body = await c.req.json();
     
     const statusSchema = z.object({
@@ -380,7 +381,7 @@ app.put('/orders/:id/status', async (c) => {
     const db = createDb(c.env);
 
     // Get old order to prevent double awarding points
-    const [oldOrder] = await db.select().from(orders).where(eq(orders.id, orderId));
+    const [oldOrder] = await db.select().from(orders).where(isNaN(orderId) ? eq(orders.order_code, paramId) : eq(orders.id, orderId));
     if (!oldOrder) {
       return c.json({ success: false, error: 'Order not found' }, 404);
     }
@@ -394,7 +395,7 @@ app.put('/orders/:id/status', async (c) => {
     const updatedOrder = await db
       .update(orders)
       .set(updateData)
-      .where(eq(orders.id, orderId))
+      .where(eq(orders.id, oldOrder.id))
       .returning();
 
     // --- LOYALTY POINTS EARNING LOGIC ---

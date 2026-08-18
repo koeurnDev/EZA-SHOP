@@ -716,7 +716,8 @@ app.get('/advanced-analytics', async (c) => {
     ]);
 
     const productCounts: Record<string, number> = {};
-    for (const row of ordersRes.rows) {
+    const ordersRows = Array.isArray(ordersRes) ? ordersRes : (ordersRes.rows || []);
+    for (const row of ordersRows) {
       if (row.items) {
         try {
           const itemsStr = typeof row.items === 'string' ? row.items : JSON.stringify(row.items);
@@ -735,13 +736,16 @@ app.get('/advanced-analytics', async (c) => {
       .sort((a, b) => b.total_quantity - a.total_quantity)
       .slice(0, 5);
 
+    const topCustomersRows = Array.isArray(topCustomersRes) ? topCustomersRes : (topCustomersRes.rows || []);
+    const aovRows = Array.isArray(aovRes) ? aovRes : (aovRes.rows || []);
+
     return c.json({
       success: true,
       data: {
         topProducts: topProducts,
-        topCustomers: topCustomersRes.rows || [],
+        topCustomers: topCustomersRows,
         aov: {
-          aov: parseFloat((aovRes.rows[0] as any)?.aov || '0')
+          aov: parseFloat((aovRows[0] as any)?.aov || '0')
         }
       }
     });

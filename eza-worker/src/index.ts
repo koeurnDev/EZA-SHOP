@@ -74,8 +74,27 @@ app.notFound((c) =>
 );
 
 // ── Global error handler ──────────────────────────────────────────────────────
-app.onError((err, c) => {
+app.onError(async (err, c) => {
   console.error('Unhandled error:', err);
+  
+  // Send Alert to Admin via Telegram
+  try {
+    const env = c.env as Env;
+    if (env.BOT_TOKEN && env.SUPERADMIN_ID) {
+      await fetch(`https://api.telegram.org/bot${env.BOT_TOKEN}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: env.SUPERADMIN_ID,
+          text: `🚨 *SYSTEM ERROR 500* 🚨\n\n*URL:* ${c.req.url}\n*Method:* ${c.req.method}\n*Error:* \`${err.message}\``,
+          parse_mode: 'Markdown'
+        })
+      });
+    }
+  } catch(e) {
+    console.error('Failed to send error alert to telegram', e);
+  }
+
   return c.json({
     success: false,
     error: 'Internal Server Error',
