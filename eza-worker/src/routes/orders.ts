@@ -39,6 +39,7 @@ const createOrderSchema = z.object({
   userName: z.string().optional(),
   redeem_points: z.boolean().optional(),
   coupon_code: z.string().optional(),
+  idempotencyKey: z.string().optional(),
 });
 
 /**
@@ -59,14 +60,41 @@ app.post('/', telegramAuth, async (c) => {
       }, 400);
     }
 
-    const { items, phone, address, province, note, delivery_company, payment_method, userName, redeem_points, coupon_code } = validationResult.data;
+    const { items, phone, address, province, note, delivery_company, payment_method, userName, redeem_points, coupon_code, idempotencyKey } = validationResult.data;
+
+    const db = createDb(c.env);
+
+    // Idempotency Check: Prevent duplicate orders
+    if (idempotencyKey) {
+      const existingOrder = await db.select().from(orders).where(eq(orders.idempotency_key, idempotencyKey)).limit(1);
+      if (existingOrder.length > 0) {
+        const orderData = existingOrder[0];
+        return c.json({
+          success: true,
+          order: {
+            id: orderData.id,
+            order_code: orderData.order_code,
+            total: parseFloat(orderData.gross_total || '0'),
+            subtotal: parseFloat(orderData.subtotal || '0'),
+            delivery_fee: parseFloat(orderData.delivery_fee || '0'),
+            discount_amount: parseFloat(orderData.discount_amount || '0'),
+            items: typeof orderData.items === 'string' ? JSON.parse(orderData.items) : orderData.items,
+            status: orderData.status,
+            expires_at: orderData.expires_at?.toISOString(),
+            payment_method: orderData.payment_method,
+            user_name: orderData.user_name || 'Guest',
+            phone: orderData.phone,
+            bakong_qr_string: orderData.qr_string,
+          },
+          message: 'Idempotent request: Order already exists',
+        });
+      }
+    }
 
     // Validate phone
     if (!validatePhone(phone)) {
       return c.json({ success: false, error: 'Invalid phone number format' }, 400);
     }
-
-    const db = createDb(c.env);
 
     // Prevent Order Spam / Inventory Blocking
     if (userId && userId !== c.env.SUPERADMIN_ID) {
@@ -319,6 +347,7 @@ app.post('/', telegramAuth, async (c) => {
         delivery_company: sanitizeString(delivery_company),
         payment_method: sanitizeString(payment_method),
         order_code: orderCode,
+        idempotency_key: idempotencyKey || null,
         status: 'pending',
         expires_at: expiresAt,
       }).returning();
@@ -349,7 +378,7 @@ app.post('/', telegramAuth, async (c) => {
           `\n\n💰 <b>សរុប (Total)៖ $${grossTotal.toFixed(2)}</b>`;
 
         // Send asynchronously to avoid blocking the response
-        fetch(`https://api.telegram.org/bot${c.env.BOT_TOKEN}/sendMessage`, {
+        const alertPromise = fetch(`https://api.telegram.org/bot${c.env.BOT_TOKEN}/sendMessage`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -358,6 +387,8 @@ app.post('/', telegramAuth, async (c) => {
             parse_mode: 'HTML'
           })
         }).catch(err => console.error('Telegram notification fetch error:', err));
+        
+        c.executionCtx.waitUntil(alertPromise);
       } catch (err) {
         console.error('Failed to prepare Telegram notification:', err);
       }

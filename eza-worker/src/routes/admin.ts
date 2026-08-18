@@ -153,6 +153,7 @@ app.get('/dashboard', async (c) => {
         delivery_company: order.delivery_company,
         payment_method: order.payment_method,
         tracking_number: order.tracking_number,
+        receipt_url: order.receipt_url,
         expires_at: order.expires_at?.toISOString() || null,
         created_at: order.created_at.toISOString(),
       })),
@@ -331,6 +332,7 @@ app.get('/orders', async (c) => {
       delivery_company: order.delivery_company,
       payment_method: order.payment_method,
       tracking_number: order.tracking_number,
+      receipt_url: order.receipt_url,
       expires_at: order.expires_at?.toISOString(),
       created_at: order.created_at.toISOString(),
     }));
