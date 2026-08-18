@@ -17,6 +17,7 @@
     "@tsndr/cloudflare-worker-jwt": "^2.5.0",
     "bakong-khqr": "^1.0.20",
     "bcryptjs": "^2.4.3",
+    "dotenv": "^17.4.2",
     "drizzle-orm": "^0.32.0",
     "hono": "^4.5.0",
     "nanoid": "^5.0.0",

@@ -1,4 +1,4 @@
-import { pgTable, serial, text, integer, numeric, boolean, timestamp, jsonb } from 'drizzle-orm/pg-core';
+import { pgTable, serial, text, integer, numeric, boolean, timestamp, jsonb, index } from 'drizzle-orm/pg-core';
 
 export const products = pgTable('products', {
   id: serial('id').primaryKey(),
@@ -14,7 +14,10 @@ export const products = pgTable('products', {
   flash_sale_end: timestamp('flash_sale_end', { withTimezone: true }),
   video_url: text('video_url'),
   created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-});
+}, (table) => ({
+  stockIdx: index('idx_products_stock').on(table.stock),
+  createdAtIdx: index('idx_products_created_at').on(table.created_at),
+}));
 
 export const categories = pgTable('categories', {
   id: serial('id').primaryKey(),
@@ -40,7 +43,9 @@ export const users = pgTable('users', {
   cart_state: text('cart_state'),
   cart_updated_at: timestamp('cart_updated_at', { withTimezone: true }),
   is_cart_reminded: boolean('is_cart_reminded').default(false),
-});
+}, (table) => ({
+  roleIdx: index('idx_users_role').on(table.role),
+}));
 
 export const orders = pgTable('orders', {
   id: serial('id').primaryKey(),
@@ -67,7 +72,11 @@ export const orders = pgTable('orders', {
   is_reminded: boolean('is_reminded').default(false),
   expires_at: timestamp('expires_at', { withTimezone: true }),
   created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-});
+}, (table) => ({
+  userIdIdx: index('idx_orders_user_id').on(table.user_id),
+  statusIdx: index('idx_orders_status').on(table.status),
+  createdAtIdx: index('idx_orders_created_at').on(table.created_at),
+}));
 
 export const settings = pgTable('settings', {
   key: text('key').primaryKey(),

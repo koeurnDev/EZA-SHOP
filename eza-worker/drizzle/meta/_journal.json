@@ -8,6 +8,13 @@
       "when": 1786980745339,
       "tag": "0000_young_night_thrasher",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1787022079344,
+      "tag": "0001_fuzzy_vivisector",
+      "breakpoints": true
     }
   ]
 }
