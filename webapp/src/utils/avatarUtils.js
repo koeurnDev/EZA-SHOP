@@ -11,8 +11,7 @@ export function getCustomerAvatarSrc(user, backendUrl, initData) {
   if (!id || !backendUrl) return fallback;
 
   const photoUrl = user?.photo_url || '';
-  const isTelegramCdn = photoUrl.includes('t.me/') || photoUrl.includes('telegram.org/');
-  if (photoUrl && isTelegramCdn && !photoUrl.includes('api.telegram.org/file/bot')) {
+  if (photoUrl) {
     return photoUrl;
   }
 
