@@ -34,11 +34,8 @@ app.post('/telegram', async (c) => {
               parse_mode: 'Markdown',
               reply_markup: {
                 inline_keyboard: [[
-                  // Using WebApp URL if frontend is deployed. 
-                  // If we don't know the URL, the user can still use the Bot's built-in menu button.
-                  // But let's provide a fallback. If they have a bot, they usually set the Menu button.
-                  // For the sake of safety, we'll try to use the generic attachment menu or ask them to click 'Menu'.
-                  { text: '🛍️ បើកហាង (Open Shop)', url: `https://t.me/${update.message.chat.username ? update.message.chat.username : 'vibe_lifestyle_bot'}` } 
+                  // Use VITE_BOT_USERNAME or BOT_USERNAME from env, fallback to vibe_lifestyle_bot
+                  { text: '🛍️ បើកហាង (Open Shop)', url: `https://t.me/${c.env.BOT_USERNAME || 'vibe_lifestyle_bot'}` } 
                 ]]
               }
             })

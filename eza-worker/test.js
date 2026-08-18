@@ -1,7 +1,7 @@
 // Simple test to verify our Worker code compiles
 const { execSync } = require('child_process');
 
-console.log('🧪 Testing EZA-SHOP Worker compilation...\n');
+console.log('🧪 Testing Vibe Lifestyle Worker compilation...\n');
 
 try {
   // Test TypeScript compilation

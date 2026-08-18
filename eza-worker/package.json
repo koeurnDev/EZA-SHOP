@@ -1,7 +1,7 @@
 {
-  "name": "eza-shop-worker",
-  "version": "1.0.0",
-  "description": "EZA-SHOP Telegram Mini App API on Cloudflare Workers with Hono.js and Neon PostgreSQL",
+  "name": "vibe-lifestyle-worker",
+  "version": "2.0.0",
+  "description": "Vibe Lifestyle Telegram Mini App API on Cloudflare Workers with Hono.js and Neon PostgreSQL",
   "main": "src/index.ts",
   "scripts": {
     "dev": "wrangler dev --ip 0.0.0.0",

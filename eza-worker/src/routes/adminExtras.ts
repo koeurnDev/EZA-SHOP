@@ -112,7 +112,7 @@ app.get('/customers', async (c) => {
         is_banned: u.is_banned,
         loyalty_points: u.loyalty_points || 0,
         photo_url: u.photo_url,
-        last_seen: u.last_seen?.toISOString(),
+        last_seen: u.last_seen ? new Date(u.last_seen as any).toISOString() : undefined,
       })),
     });
   } catch (error) {
@@ -468,7 +468,7 @@ app.post('/products', async (c) => {
           
           // Try to get Telegram Bot username or link
           const tgSettings = await db.select().from(settings).where(eq(settings.key, 'social_tg'));
-          let shopUrl = tgSettings[0]?.value || 'https://t.me/Eza_Shop_Bot/app';
+          let shopUrl = tgSettings[0]?.value || 'https://t.me/Vibe_Lifestyle_Bot/app';
           if (shopUrl.includes('@')) {
             shopUrl = `https://t.me/${shopUrl.replace('@', '')}/app`;
           }

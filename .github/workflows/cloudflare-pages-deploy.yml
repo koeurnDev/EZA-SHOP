@@ -1,0 +1,46 @@
+name: Deploy Cloudflare Pages
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'webapp/**'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    name: Deploy Frontend to Cloudflare Pages
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: 'webapp/package-lock.json'
+
+      - name: Install Dependencies
+        working-directory: ./webapp
+        run: npm ci
+
+      - name: Build Application
+        working-directory: ./webapp
+        run: npm run build
+        # IMPORTANT: Cloudflare Pages needs these environment variables at build time.
+        # Ensure you've added them in GitHub Secrets/Variables if you want them injected during build.
+        # Alternatively, if you set them in Cloudflare Pages dashboard, they will be applied there.
+        # Since this action builds locally, we must pass the variables here or rely on .env
+        # If your Vite app depends on VITE_BACKEND_URL and VITE_BOT_USERNAME, provide them here.
+        env:
+          VITE_BACKEND_URL: ${{ vars.VITE_BACKEND_URL || 'https://eza-shop-api.koeurnseab630.workers.dev' }}
+          VITE_BOT_USERNAME: ${{ vars.VITE_BOT_USERNAME || 'Vibe_Lifestyle_bot' }}
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy webapp/dist --project-name=vibe-lifestyle --commit-dirty=true

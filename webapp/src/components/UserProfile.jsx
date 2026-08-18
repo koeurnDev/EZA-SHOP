@@ -312,14 +312,14 @@ const UserProfile = ({ user, setView, BACKEND_URL, onViewInvoice, t, lang, toggl
           <input 
             type="text" 
             readOnly 
-            value={`https://t.me/${import.meta.env.VITE_BOT_USERNAME || 'Eza_Shop_Bot'}/app?startapp=ref_${user?.id}`} 
+            value={`https://t.me/${import.meta.env.VITE_BOT_USERNAME || 'Vibe_Lifestyle_Bot'}/app?startapp=ref_${user?.id}`} 
             style={{ flex: 1, padding: '10px 14px', borderRadius: 10, border: 'none', background: 'transparent', fontSize: 13, color: 'var(--text-main)', outline: 'none', minWidth: 0, fontWeight: 500 }}
           />
           <button 
             type="button"
             style={{ padding: '10px 18px', borderRadius: 12, background: 'var(--primary-gradient)', color: 'white', fontWeight: 800, fontSize: 13, border: 'none', display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0, cursor: 'pointer', boxShadow: '0 4px 12px rgba(255, 114, 160, 0.25)' }}
             onClick={() => {
-              navigator.clipboard.writeText(`https://t.me/${import.meta.env.VITE_BOT_USERNAME || 'Eza_Shop_Bot'}/app?startapp=ref_${user?.id}`);
+              navigator.clipboard.writeText(`https://t.me/${import.meta.env.VITE_BOT_USERNAME || 'Vibe_Lifestyle_Bot'}/app?startapp=ref_${user?.id}`);
               const tg = window.Telegram?.WebApp;
               if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
               alert(lang === 'kh' ? 'បានចម្លង!' : 'Copied!');

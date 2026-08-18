@@ -1,6 +1,6 @@
-# EZA-SHOP Cloudflare Worker API
+# Vibe Lifestyle Cloudflare Worker API
 
-Modern, fast, and scalable API for the EZA-SHOP Telegram Mini App built with:
+Modern, fast, and scalable API for the Vibe Lifestyle Telegram Mini App built with:
 
 - 🔥 **Hono.js** - Ultra-fast web framework for Cloudflare Workers
 - 🐘 **Neon PostgreSQL** - Serverless PostgreSQL database
@@ -135,7 +135,7 @@ Content-Type: application/json
   "success": true,
   "order": {
     "id": 123,
-    "order_code": "EZA-ABC12345",
+    "order_code": "VBL-ABC12345",
     "total": 23.00,
     "subtotal": 21.00,
     "delivery_fee": 2.00,
@@ -208,4 +208,4 @@ Monitor your Worker performance in the Cloudflare dashboard:
 
 ---
 
-**Built for EZA-SHOP with ❤️ by Antigravity**
+**Built for Vibe Lifestyle with ❤️ by Antigravity**

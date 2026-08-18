@@ -36,7 +36,7 @@ app.post('/ping', telegramAuth, async (c) => {
   c.executionCtx.waitUntil(
     db.execute(
       sql`INSERT INTO users (user_id, last_seen, last_updated, email, phone, address, loyalty_points, referred_by)
-          VALUES (${userId}, NOW(), NOW(), ${'tg_' + userId + '@eza.local'}, '', '', 0, ${referredBy})
+          VALUES (${userId}, NOW(), NOW(), ${'tg_' + userId + '@vibelifestyle.local'}, '', '', 0, ${referredBy})
           ON CONFLICT (user_id) DO UPDATE SET last_seen = NOW(), last_updated = NOW()`
     ).catch((err) => {
       console.error('[PING ERROR]', err);

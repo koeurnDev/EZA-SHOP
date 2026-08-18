@@ -1,2 +1,0 @@
--- MO-MO Analytics Performance Indexing (v6)
-CREATE INDEX IF NOT EXISTS idx_orders_created_at ON orders (created_at DESC);

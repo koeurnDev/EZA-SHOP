@@ -89,13 +89,13 @@ app.get('/dashboard', async (c) => {
         SUM(total::numeric) as revenue,
         COUNT(*) as orders
       FROM orders
-      WHERE created_at >= NOW() - INTERVAL '14 days'
+      WHERE created_at >= NOW() - INTERVAL '14 days' AND status != 'cancelled'
       GROUP BY DATE(created_at)
       ORDER BY DATE(created_at) ASC
     `);
 
     // Calculate Summary stats
-    const totalRevenue = orderStats.filter(s => s.status === 'completed').reduce((sum, s) => sum + parseFloat(s.total || '0'), 0);
+    const totalRevenue = orderStats.filter(s => s.status === 'delivered').reduce((sum, s) => sum + parseFloat(s.total || '0'), 0);
     const activeOrders = orderStats.filter(s => s.status && ['pending', 'paid', 'processing', 'shipped', 'delivering'].includes(s.status)).reduce((sum, s) => sum + Number(s.count), 0);
 
     return c.json({

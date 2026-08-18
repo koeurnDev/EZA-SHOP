@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * EZA-SHOP Cloudflare Worker Setup Script
+ * Vibe Lifestyle Cloudflare Worker Setup Script
  * This script helps set up environment variables and deploy the worker
  */
 
@@ -16,7 +16,7 @@ const rl = readline.createInterface({
 const question = (prompt) => new Promise(resolve => rl.question(prompt, resolve));
 
 async function setup() {
-  console.log('🚀 EZA-SHOP Cloudflare Worker Setup');
+  console.log('🚀 Vibe Lifestyle Cloudflare Worker Setup');
   console.log('=====================================\n');
 
   console.log('This script will help you configure your Cloudflare Worker.\n');
@@ -101,7 +101,7 @@ async function setup() {
       console.log('\n✅ Deployment completed!');
       
       // Show next steps
-      console.log('\n🎉 Your EZA-SHOP API is now live!');
+      console.log('\n🎉 Your Vibe Lifestyle API is now live!');
       console.log('\n📋 Next steps:');
       console.log('1. Test your API endpoints');
       console.log('2. Update your Telegram Mini App to use the new API');

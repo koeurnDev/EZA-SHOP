@@ -28,7 +28,7 @@ app.use('*', cors);
 
 // ── Health ────────────────────────────────────────────────────────────────────
 app.get('/health', (c) =>
-  c.json({ success: true, message: 'EZA-SHOP API is running', timestamp: new Date().toISOString(), version: '2.0.0' })
+  c.json({ success: true, message: 'Vibe Lifestyle API is running', timestamp: new Date().toISOString(), version: '2.0.0' })
 );
 
 // ── Settings / init / alive / ping ────────────────────────────────────────────

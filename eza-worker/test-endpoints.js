@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * Test script for EZA-SHOP Cloudflare Worker API endpoints
+ * Test script for Vibe Lifestyle Cloudflare Worker API endpoints
  */
 
 const BASE_URL = 'http://127.0.0.1:8787';
@@ -46,7 +46,7 @@ async function testEndpoint(method, endpoint, body = null) {
 }
 
 async function runTests() {
-  console.log('🧪 Testing EZA-SHOP Worker API Endpoints\n');
+  console.log('🧪 Testing Vibe Lifestyle Worker API Endpoints\n');
   
   // Health check
   await testEndpoint('GET', '/health');
@@ -91,7 +91,7 @@ async function runTests() {
   console.log('• Products API: ✅');
   console.log('• Orders API: ✅');
   console.log('• Admin API: ✅');
-  console.log('\nYour EZA-SHOP Worker is ready for deployment! 🚀');
+  console.log('\nYour Vibe Lifestyle Worker is ready for deployment! 🚀');
 }
 
 runTests().catch(console.error);

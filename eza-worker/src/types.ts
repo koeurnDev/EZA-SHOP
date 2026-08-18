@@ -13,6 +13,7 @@ export interface Env {
   TEST_TOKEN?: string;
   BAKONG_ACCOUNT_ID?: string;
   BAKONG_MERCHANT_NAME?: string;
+  BOT_USERNAME?: string;
 }
 
 export interface Variables {

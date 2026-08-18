@@ -89,7 +89,7 @@ app.put('/profile', telegramAuth, async (c) => {
     }
 
     const db = createDb(c.env);
-    const dummyEmail = `tg_${userId}@eza.local`;
+    const dummyEmail = `tg_${userId}@vibelifestyle.local`;
 
     await db.execute(
       sql`INSERT INTO users (user_id, phone, address, email, last_updated, loyalty_points)
@@ -130,7 +130,7 @@ app.put('/cart', telegramAuth, async (c) => {
     
     // Safely store cart as JSON string
     const cartState = JSON.stringify(body.cart || []);
-    const dummyEmail = `tg_${userId}@eza.local`;
+    const dummyEmail = `tg_${userId}@vibelifestyle.local`;
 
     await db.execute(
       sql`INSERT INTO users (user_id, email, cart_state, cart_updated_at, is_cart_reminded)

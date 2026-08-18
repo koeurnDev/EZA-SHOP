@@ -31,8 +31,8 @@ const orderItemSchema = z.object({
 const createOrderSchema = z.object({
   items: z.array(orderItemSchema).min(1),
   phone: z.string().min(8),
-  address: z.string().min(2),
-  province: z.string().min(2),
+  address: z.string().min(1),
+  province: z.string().min(1),
   note: z.string().optional(),
   delivery_company: z.string(),
   payment_method: z.string().default('Bakong KHQR'),

@@ -35,7 +35,7 @@ export async function verifyTelegramAuth(initData: string, botToken: string): Pr
       try {
         // Build data-check-string (all keys except hash and signature sorted alphabetically)
         const checkString = Array.from(urlParams.entries())
-          .filter(([key]) => key !== 'hash' && key !== 'signature')
+          .filter(([key]) => key !== 'hash')
           .sort(([a], [b]) => a.localeCompare(b))
           .map(([key, val]) => `${key}=${val}`)
           .join('\n');

@@ -4,7 +4,7 @@ import { nanoid } from 'nanoid';
  * Generate unique order code
  */
 export function generateOrderCode(): string {
-  return `EZA-${nanoid(8).toUpperCase()}`;
+  return `VBL-${nanoid(8).toUpperCase()}`;
 }
 
 /**
