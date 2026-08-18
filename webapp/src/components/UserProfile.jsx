@@ -251,7 +251,7 @@ const UserProfile = ({ user, setView, BACKEND_URL, onViewInvoice, t, lang, toggl
       />
 
       {dbProfile && (
-        <div style={{ margin: '0 20px 20px', padding: '16px', background: 'var(--bg-surface)', borderRadius: '20px', border: '1px solid var(--border-subtle)' }}>
+        <div style={{ margin: '0 0 24px', padding: '16px', background: 'var(--bg-surface)', borderRadius: '20px', border: '1px solid var(--border-subtle)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
             <h3 style={{ fontSize: 16, fontWeight: 900, display: 'flex', alignItems: 'center', gap: 6, margin: 0 }}>
               {dbProfile.vip_tier === 'diamond' ? '💎 Diamond VIP' : dbProfile.vip_tier === 'gold' ? '🥇 Gold VIP' : dbProfile.vip_tier === 'silver' ? '🥈 Silver VIP' : '🔰 Standard Member'}
@@ -300,7 +300,7 @@ const UserProfile = ({ user, setView, BACKEND_URL, onViewInvoice, t, lang, toggl
         </svg>
       </button>
 
-      <div className="referral-card-lux" style={{ margin: '0 16px 24px', padding: 20, background: 'var(--bg-surface)', borderRadius: 20, border: '1px solid var(--border-subtle)', boxShadow: 'var(--shadow-soft)', textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
+      <div className="referral-card-lux" style={{ margin: '0 0 24px', padding: 20, background: 'var(--bg-surface)', borderRadius: 20, border: '1px solid var(--border-subtle)', boxShadow: 'var(--shadow-soft)', textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
         <div style={{ position: 'absolute', top: -30, left: -30, width: 100, height: 100, background: 'var(--primary-accent)', filter: 'blur(50px)', opacity: 0.15, pointerEvents: 'none' }}></div>
         <h3 style={{ fontSize: 17, fontWeight: 900, marginBottom: 8, color: 'var(--text-bold)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
           <span style={{ fontSize: 20 }}>🎁</span> {lang === 'kh' ? 'ណែនាំមិត្តភក្ដិ' : 'Refer a Friend'} <span style={{ color: 'var(--primary-accent)', fontSize: 13, background: 'var(--bg-soft)', padding: '2px 8px', borderRadius: 10 }}>+10 pts</span>

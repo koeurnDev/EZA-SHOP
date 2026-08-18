@@ -1,8 +1,8 @@
 .profile-card {
   display: flex;
   align-items: center;
-  gap: 20px;
-  padding: 24px;
+  gap: 16px;
+  padding: 16px 18px;
   background: var(--profile-banner-bg, var(--bg-surface));
   border: 1.5px solid rgba(255, 255, 255, 0.18);
   border-radius: 28px;
@@ -10,7 +10,7 @@
     0 8px 32px -4px rgba(0, 0, 0, 0.35),
     0 2px 8px rgba(0, 0, 0, 0.18),
     inset 0 1px 0 rgba(255, 255, 255, 0.15);
-  margin-bottom: 40px;
+  margin-bottom: 24px;
   width: 100%;
   position: relative;
   overflow: hidden;
@@ -37,8 +37,8 @@
 
 .profile-card-image-wrapper {
   position: relative;
-  width: 68px;
-  height: 68px;
+  width: 64px;
+  height: 64px;
   border-radius: 20px;
   flex-shrink: 0;
 }
@@ -69,13 +69,13 @@
 .profile-card-content {
   display: flex;
   flex-direction: column;
-  gap: 7px;
+  gap: 6px;
   flex: 1;
   min-width: 0;
 }
 
 .profile-card-name {
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 900;
   color: #ffffff;
   margin: 0;
@@ -89,17 +89,17 @@
 .profile-card-role {
   display: inline-flex;
   align-items: center;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
   color: rgba(255, 255, 255, 0.9);
   background: rgba(255, 255, 255, 0.15);
   border: 1px solid rgba(255, 255, 255, 0.25);
   backdrop-filter: blur(6px);
-  padding: 4px 12px;
+  padding: 4px 10px;
   border-radius: 12px;
   margin: 0;
   width: fit-content;
+  white-space: nowrap;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   letter-spacing: 0.02em;
 }
-
