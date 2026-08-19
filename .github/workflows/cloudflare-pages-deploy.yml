@@ -37,7 +37,7 @@ jobs:
         # Since this action builds locally, we must pass the variables here or rely on .env
         # If your Vite app depends on VITE_BACKEND_URL and VITE_BOT_USERNAME, provide them here.
         env:
-          VITE_BACKEND_URL: ${{ vars.VITE_BACKEND_URL || 'https://eza-shop-api.koeurnseab630.workers.dev' }}
+          VITE_BACKEND_URL: ${{ vars.VITE_BACKEND_URL || 'https://vibe-lifestyle-api.koeurnseab630.workers.dev' }}
           VITE_BOT_USERNAME: ${{ vars.VITE_BOT_USERNAME || 'Vibe_Lifestyle_bot' }}
 
       - name: Deploy to Cloudflare Pages

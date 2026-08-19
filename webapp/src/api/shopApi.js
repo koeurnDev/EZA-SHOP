@@ -13,9 +13,3 @@ export const fetchProducts = () => {
   return apiRequest('/api/products');
 };
 
-export const sendTelemetry = (metric, value, userId) => {
-  return apiRequest('/api/telemetry', {
-    method: 'POST',
-    body: JSON.stringify({ metric, value, user_id: userId })
-  });
-};
