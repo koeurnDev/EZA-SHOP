@@ -7,6 +7,7 @@ import { useShopState } from '../context/ShopContext';
 import CountdownTimer from './ui/CountdownTimer';
 
 import ImageLightboxModal from './ui/ImageLightboxModal';
+import UserAvatar from './ui/UserAvatar';
 import { shareProduct } from '../utils/shareUtils';
 import useScrollHideBar from '../hooks/useScrollHideBar';
 
@@ -294,7 +295,7 @@ const ProductDetail = ({ product, allProducts = [], onAdd, onClose, onBuyNow, ac
                   {gallery.map((img, i) => (
                     <div
                       key={i}
-                      className="pd-slide"
+                      className="pd-slide relative cursor-zoom-in"
                       onClick={() => setZoomIndex(i)}
                       onMouseMove={(e) => {
                         if (window.innerWidth < 768) return;
@@ -304,7 +305,6 @@ const ProductDetail = ({ product, allProducts = [], onAdd, onClose, onBuyNow, ac
                         setZoomState({ show: true, x: xPercent, y: yPercent, index: i });
                       }}
                       onMouseLeave={() => setZoomState({ show: false, x: 0, y: 0, index: -1 })}
-                      style={{ position: 'relative', cursor: 'zoom-in' }}
                     >
                       <img
                         src={(img && img.includes('cloudinary'))
@@ -320,15 +320,11 @@ const ProductDetail = ({ product, allProducts = [], onAdd, onClose, onBuyNow, ac
                       />
 
                       {zoomState.show && zoomState.index === i && window.innerWidth >= 768 && (
-                        <div style={{
-                          position: 'absolute',
-                          top: 0, left: 0, right: 0, bottom: 0,
+                        <div 
+                          className="absolute inset-0 bg-[length:200%] bg-no-repeat z-[5] pointer-events-none"
+                          style={{
                           backgroundImage: `url(${(img && img.includes('cloudinary')) ? img.replace('upload/', 'upload/f_auto,q_auto:best,w_2000/') : img})`,
                           backgroundPosition: `${zoomState.x}% ${zoomState.y}%`,
-                          backgroundSize: '200%',
-                          backgroundRepeat: 'no-repeat',
-                          zIndex: 5,
-                          pointerEvents: 'none'
                         }} />
                       )}
 
@@ -391,7 +387,7 @@ const ProductDetail = ({ product, allProducts = [], onAdd, onClose, onBuyNow, ac
                           )}
                         </div>
                         {hasFlashSale && (
-                          <div style={{ marginLeft: 12 }}>
+                          <div className="ml-3">
                             <CountdownTimer endTime={displayProduct.flash_sale_end} />
                           </div>
                         )}
@@ -475,9 +471,9 @@ const ProductDetail = ({ product, allProducts = [], onAdd, onClose, onBuyNow, ac
                 <div className="pd-tab-panel">
                   {loadingFullProduct ? (
                     <div className="pd-desc-skeleton">
-                      <div className="skeleton-pulse" style={{ height: 14, width: '100%', marginBottom: 8, borderRadius: 4, background: 'var(--border-subtle)' }} />
-                      <div className="skeleton-pulse" style={{ height: 14, width: '90%', marginBottom: 8, borderRadius: 4, background: 'var(--border-subtle)' }} />
-                      <div className="skeleton-pulse" style={{ height: 14, width: '70%', borderRadius: 4, background: 'var(--border-subtle)' }} />
+                      <div className="skeleton-pulse h-3.5 w-full mb-2 rounded bg-[var(--border-subtle)]" />
+                      <div className="skeleton-pulse h-3.5 w-[90%] mb-2 rounded bg-[var(--border-subtle)]" />
+                      <div className="skeleton-pulse h-3.5 w-[70%] rounded bg-[var(--border-subtle)]" />
                     </div>
                   ) : productSections.description ? (
                     <>
@@ -659,7 +655,10 @@ const ProductDetail = ({ product, allProducts = [], onAdd, onClose, onBuyNow, ac
                       {reviews.map(rev => (
                         <div key={rev.id} className="pd-review-item">
                           <div className="pd-review-item-head">
-                            <span className="pd-review-author">{rev.user_name}</span>
+                            <div className="pd-review-author-wrap flex items-center gap-2">
+                              <UserAvatar user={rev} size={28} />
+                              <span className="pd-review-author">{rev.user_name}</span>
+                            </div>
                             <span className="pd-review-rating">{'★'.repeat(rev.rating)}{'☆'.repeat(5 - rev.rating)}</span>
                           </div>
                           <p className="pd-review-body">{rev.comment}</p>

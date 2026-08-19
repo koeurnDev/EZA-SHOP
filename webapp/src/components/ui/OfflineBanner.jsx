@@ -40,7 +40,6 @@ const OfflineBanner = () => {
       setIsOnline(false);
       setShowRestored(false);
       HapticFeedback?.notificationOccurred('error');
-      showAlert?.(t('offline_alert'));
     };
 
     window.addEventListener('online', handleOnline);

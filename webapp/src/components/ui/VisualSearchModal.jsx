@@ -95,7 +95,7 @@ const VisualSearchModal = ({ onClose }) => {
 
         {/* Content Area */}
         <div className="vs-content-area">
-          <canvas ref={canvasRef} style={{ display: 'none' }} />
+          <canvas ref={canvasRef} className="hidden" />
           
           {previewUrl ? (
             <div className="vs-preview-container">
@@ -123,7 +123,7 @@ const VisualSearchModal = ({ onClose }) => {
                 accept="image/*" 
                 ref={fileInputRef}
                 onChange={handleImageUpload}
-                style={{ display: 'none' }}
+                className="hidden"
               />
               
               <button 

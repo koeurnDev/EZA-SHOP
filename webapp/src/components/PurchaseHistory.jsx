@@ -38,38 +38,38 @@ const PurchaseHistory = ({ setView, BACKEND_URL }) => {
   if (loading) return <div className="loading-screen"><div className="loader"></div></div>;
 
   return (
-    <div className="history-page animate-in" style={{ padding: '20px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 15, marginBottom: 25 }}>
+    <div className="history-page animate-in p-5">
+      <div className="flex items-center gap-[15px] mb-[25px]">
          <button onClick={() => setView('home')} className="back-btn-pill">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
          </button>
-         <h1 className="hero-welcome" style={{ margin: 0 }}>ប្រវត្តិការទិញ 📜</h1>
+         <h1 className="hero-welcome m-0">ប្រវត្តិការទិញ 📜</h1>
       </div>
 
       {orders.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '100px 20px', background: 'var(--bg-surface)', borderRadius: 28, boxShadow: 'var(--shadow-soft)', border: '1px solid var(--border-subtle)' }}>
-           <div style={{ fontSize: 60, marginBottom: 20 }}>🛍️</div>
-           <h3 style={{ marginBottom: 10, color: 'var(--text-bold)' }}>មិនទាន់មានការទិញទេ</h3>
-           <p style={{ opacity: 0.6, fontSize: 13, marginBottom: 25, color: 'var(--text-main)' }}>រាល់ការកម្ម៉ង់របស់អ្នកនឹងបង្ហាញនៅទីនេះ។</p>
-           <button onClick={() => setView('home')} className="shop-now-btn" style={{ width: '100%' }}>ទៅមើលទំនិញថ្មីៗ</button>
+        <div className="text-center py-[100px] px-5 bg-[var(--bg-surface)] rounded-[28px] shadow-[var(--shadow-soft)] border border-[var(--border-subtle)]">
+           <div className="text-[60px] mb-5">🛍️</div>
+           <h3 className="mb-2.5 text-[var(--text-bold)]">មិនទាន់មានការទិញទេ</h3>
+           <p className="opacity-60 text-[13px] mb-[25px] text-[var(--text-main)]">រាល់ការកម្ម៉ង់របស់អ្នកនឹងបង្ហាញនៅទីនេះ។</p>
+           <button onClick={() => setView('home')} className="shop-now-btn w-full">ទៅមើលទំនិញថ្មីៗ</button>
         </div>
       ) : (
         <div className="history-list">
           {orders.map(order => (
-            <div key={order.id} className="history-card premium-card animate-in" style={{ marginBottom: 15, background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}>
-               <div className="history-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 15 }}>
+            <div key={order.id} className="history-card premium-card animate-in mb-[15px] bg-[var(--bg-surface)] border border-[var(--border-subtle)]">
+               <div className="history-header flex justify-between items-start mb-[15px]">
                   <div>
-                    <div style={{ fontSize: 11, fontWeight: 700, opacity: 0.5, marginBottom: 4, color: 'var(--text-muted)' }}>
+                    <div className="text-[11px] font-bold opacity-50 mb-1 text-[var(--text-muted)]">
                         {order.order_code || order.id}
                     </div>
-                    <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-bold)' }}>
+                    <div className="text-[13px] font-extrabold text-[var(--text-bold)]">
                         {new Date(order.created_at).toLocaleDateString()}
                     </div>
                   </div>
                </div>
                {/* 🚀 Modern Step-based Tracker */}
-               <div style={{ position: 'relative', margin: '30px 0', padding: '0 5px' }}>
-                  <div style={{ position: 'absolute', top: '18px', left: 0, width: '100%', height: '4px', background: 'var(--bg-soft)', borderRadius: 10 }}></div>
+               <div className="relative my-[30px] px-[5px]">
+                  <div className="absolute top-[18px] left-0 w-full h-1 bg-[var(--bg-soft)] rounded-[10px]"></div>
                   <div style={{ 
                      position: 'absolute', top: '18px', left: 0, 
                      width: `${Math.max(0, ((orderStatuses[order.status]?.step || 0) - 1) * 50)}%`, 
@@ -77,7 +77,7 @@ const PurchaseHistory = ({ setView, BACKEND_URL }) => {
                      transition: 'all 1s cubic-bezier(0.4, 0, 0.2, 1)' 
                   }}></div>
 
-                  <div style={{ display: 'flex', justifyContent: 'space-between', position: 'relative', zIndex: 1 }}>
+                  <div className="flex justify-between relative z-10">
                      {[
                        { step: 1, icon: '💰', label: 'Paid' },
                        { step: 2, icon: '📦', label: 'Packing' },
@@ -88,7 +88,7 @@ const PurchaseHistory = ({ setView, BACKEND_URL }) => {
                         const isCurrent = s.step === stepNum;
                         const sColor = orderStatuses[order.status]?.color || '#cbd5e1';
                         return (
-                           <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1 }}>
+                           <div key={i} className="flex flex-col items-center flex-1">
                               <div style={{ 
                                  width: 32, height: 32, borderRadius: 12, 
                                  background: isActive ? sColor : 'var(--bg-surface)', 
@@ -116,12 +116,12 @@ const PurchaseHistory = ({ setView, BACKEND_URL }) => {
                </div>
 
                {order.tracking_number && (
-                 <div className="premium-card" style={{ background: 'rgba(59, 130, 246, 0.05)', border: '1px dashed rgba(59, 130, 246, 0.1)', padding: 10, borderRadius: 14, marginBottom: 15, display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <div style={{ fontSize: 20 }}>🚛</div>
-                    <div style={{ flex: 1 }}>
-                       <div style={{ fontSize: 9, fontWeight: 800, color: '#3b82f6', textTransform: 'uppercase' }}>Tracking ID</div>
-                       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <div style={{ fontSize: 13, fontWeight: 950, color: 'var(--text-bold)' }}>{order.tracking_number}</div>
+                 <div className="premium-card bg-blue-500/5 border border-dashed border-blue-500/10 p-[10px] rounded-[14px] mb-[15px] flex items-center gap-[10px]">
+                    <div className="text-[20px]">🚛</div>
+                    <div className="flex-1">
+                       <div className="text-[9px] font-extrabold text-blue-500 uppercase">Tracking ID</div>
+                       <div className="flex items-center gap-1.5">
+                          <div className="text-[13px] font-black text-[var(--text-bold)]">{order.tracking_number}</div>
                           <button 
                              onClick={(e) => {
                                 e.stopPropagation();
@@ -133,7 +133,7 @@ const PurchaseHistory = ({ setView, BACKEND_URL }) => {
                                 btn.innerHTML = '✓';
                                 setTimeout(() => btn.innerHTML = oldHtml, 2000);
                              }}
-                             style={{ background: 'none', border: 'none', padding: 0, fontSize: 12, cursor: 'pointer', opacity: 0.5 }}
+                             className="bg-transparent border-none p-0 text-[12px] cursor-pointer opacity-50"
                           >
                              📋
                           </button>
@@ -149,7 +149,7 @@ const PurchaseHistory = ({ setView, BACKEND_URL }) => {
                             window.open(url, '_blank');
                           }
                        }}
-                       style={{ background: '#3b82f6', color: 'white', border: 'none', padding: '5px 10px', borderRadius: 8, fontSize: 10, fontWeight: 800 }}
+                       className="bg-blue-500 text-white border-none px-2.5 py-1.5 rounded-lg text-[10px] font-extrabold"
                     >
                        Track
                     </button>
@@ -157,16 +157,16 @@ const PurchaseHistory = ({ setView, BACKEND_URL }) => {
                )}
 
                 {order.status === 'pending' ? (
-                  <div className="premium-card" style={{ background: 'rgba(245, 158, 11, 0.08)', border: '1px dashed rgba(245, 158, 11, 0.3)', padding: '10px 14px', borderRadius: 14, marginBottom: 15, fontSize: 12, fontWeight: 800, color: '#f59e0b', textAlign: 'center' }}>
+                  <div className="premium-card bg-amber-500/10 border border-dashed border-amber-500/30 px-3.5 py-2.5 rounded-[14px] mb-[15px] text-[12px] font-extrabold text-amber-500 text-center">
                     ⏳ កំពុងរង់ចាំការបញ្ជាក់ការបង់ប្រាក់ពីហាង...
                   </div>
                 ) : isPaymentConfirmed(order.status) && order.receipt_url && (
-                  <div className="premium-card" style={{ background: 'rgba(16, 185, 129, 0.05)', border: '1px dashed rgba(16, 185, 129, 0.2)', padding: 10, borderRadius: 14, marginBottom: 15 }}>
-                     <div style={{ fontSize: 9, fontWeight: 800, color: '#10b981', textTransform: 'uppercase', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <div className="premium-card bg-emerald-500/5 border border-dashed border-emerald-500/20 p-[10px] rounded-[14px] mb-[15px]">
+                     <div className="text-[9px] font-extrabold text-emerald-500 uppercase mb-2 flex items-center gap-1">
                         <span>🧾</span> វិក្កយបត្រផ្លូវការដែលបានបញ្ជាក់ (Official Receipt)
                      </div>
-                     <div style={{ width: '100%', borderRadius: 8, overflow: 'hidden' }}>
-                        <img src={order.receipt_url} alt="Receipt" style={{ width: '100%', maxHeight: '150px', objectFit: 'contain', cursor: 'pointer' }} onClick={() => {
+                     <div className="w-full rounded-lg overflow-hidden">
+                        <img src={order.receipt_url} alt="Receipt" className="w-full max-h-[150px] object-contain cursor-pointer" onClick={() => {
                            const tg = window.Telegram?.WebApp;
                            if (tg?.openLink) {
                              tg.openLink(order.receipt_url);
@@ -178,9 +178,9 @@ const PurchaseHistory = ({ setView, BACKEND_URL }) => {
                   </div>
                 )}
 
-               <div className="history-footer" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, opacity: 0.6, color: 'var(--text-muted)' }}>TOTAL SPENT</div>
-                  <div style={{ fontSize: 18, fontWeight: 900, color: 'var(--text-bold)' }}>${parseFloat(order.total).toFixed(2)}</div>
+               <div className="history-footer flex justify-between items-center">
+                  <div className="text-[11px] font-bold opacity-60 text-[var(--text-muted)]">TOTAL SPENT</div>
+                  <div className="text-[18px] font-black text-[var(--text-bold)]">${parseFloat(order.total).toFixed(2)}</div>
                </div>
                <style>{`
                   @keyframes pulse-ring { 0% { transform: scale(0.95); opacity: 0.5; } 100% { transform: scale(1.2); opacity: 0; } }

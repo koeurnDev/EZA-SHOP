@@ -23,21 +23,7 @@ const ModernProductDetail = () => {
         
         <div className="product-image-wrapper">
           {/* Placeholder for the Nautica Perfume Image */}
-          <div style={{
-            width: '220px', 
-            height: '240px', 
-            background: 'rgba(255,255,255,0.3)', 
-            border: '2px solid rgba(255,255,255,0.6)',
-            boxShadow: '0 20px 40px rgba(0,0,0,0.1)',
-            borderRadius: '24px', 
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'center', 
-            color: '#1e6091', 
-            fontWeight: '900',
-            letterSpacing: '2px',
-            fontSize: '18px'
-          }}>
+          <div className="w-[220px] h-[240px] bg-white/30 border-2 border-white/60 shadow-[0_20px_40px_rgba(0,0,0,0.1)] rounded-3xl flex items-center justify-center text-[#1e6091] font-black tracking-[2px] text-lg">
             NAUTICA
           </div>
         </div>
@@ -64,24 +50,24 @@ const ModernProductDetail = () => {
         {/* Horizontally scrollable list of oval similar items */}
         <div className="similar-products-scroll">
           <div className="similar-item">
-            <div className="similar-item-img-placeholder" style={{backgroundColor: '#fff1f2'}}>
+            <div className="similar-item-img-placeholder bg-[#fff1f2]">
                {/* Tiny placeholder bottle */}
-               <div style={{width: '24px', height: '36px', background: '#fda4af', borderRadius: '4px'}}></div>
+               <div className="w-6 h-9 bg-[#fda4af] rounded"></div>
             </div>
           </div>
           <div className="similar-item">
-            <div className="similar-item-img-placeholder" style={{backgroundColor: '#f8fafc'}}>
-               <div style={{width: '28px', height: '32px', background: '#94a3b8', borderRadius: '4px'}}></div>
+            <div className="similar-item-img-placeholder bg-[#f8fafc]">
+               <div className="w-7 h-8 bg-[#94a3b8] rounded"></div>
             </div>
           </div>
           <div className="similar-item">
-            <div className="similar-item-img-placeholder" style={{backgroundColor: '#fef3c7'}}>
-               <div style={{width: '26px', height: '40px', background: '#fcd34d', borderRadius: '4px'}}></div>
+            <div className="similar-item-img-placeholder bg-[#fef3c7]">
+               <div className="w-[26px] h-10 bg-[#fcd34d] rounded"></div>
             </div>
           </div>
           <div className="similar-item">
-            <div className="similar-item-img-placeholder" style={{backgroundColor: '#fae8ff'}}>
-               <div style={{width: '22px', height: '46px', background: '#d8b4fe', borderRadius: '4px'}}></div>
+            <div className="similar-item-img-placeholder bg-[#fae8ff]">
+               <div className="w-[22px] h-[46px] bg-[#d8b4fe] rounded"></div>
             </div>
           </div>
         </div>

@@ -208,12 +208,12 @@ const UserProfile = ({ user, setView, BACKEND_URL, onViewInvoice, t, lang, toggl
 
   if (!user) {
     return (
-      <div style={{ textAlign: 'center', padding: '60px 20px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '60vh' }}>
-        <div style={{ fontSize: 48, marginBottom: 16 }}>📱</div>
-        <h2 style={{ fontSize: 20, fontWeight: 900, marginBottom: 8, color: 'var(--text-bold)' }}>
+      <div className="text-center py-[60px] px-5 flex flex-col items-center justify-center h-[60vh]">
+        <div className="text-[48px] mb-4">📱</div>
+        <h2 className="text-[20px] font-black mb-2 text-[var(--text-bold)]">
           {lang === 'kh' ? 'ត្រូវការកម្មវិធី Telegram' : 'Telegram App Required'}
         </h2>
-        <p style={{ fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.6 }}>
+        <p className="text-[14px] text-[var(--text-muted)] leading-relaxed">
           {lang === 'kh' 
             ? 'សូមបើកកម្មវិធីនេះតាមរយៈ Telegram Mini App ដើម្បីចូលមើលគណនីរបស់អ្នក។' 
             : 'Please open this app inside Telegram to view your profile and order history.'}
@@ -225,8 +225,8 @@ const UserProfile = ({ user, setView, BACKEND_URL, onViewInvoice, t, lang, toggl
   return (
     <div className="history-page-luxury">
       
-      <div className="history-header-lux" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+      <div className="history-header-lux flex justify-between items-center">
+        <div className="flex items-center gap-[10px]">
            <button type="button" onClick={() => setView('home')} className="back-btn-pill back-btn-pill--icon" aria-label="Back">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
            </button>
@@ -251,13 +251,13 @@ const UserProfile = ({ user, setView, BACKEND_URL, onViewInvoice, t, lang, toggl
       />
 
       {dbProfile && (
-        <div style={{ margin: '0 0 24px', padding: '16px', background: 'var(--bg-surface)', borderRadius: '20px', border: '1px solid var(--border-subtle)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <h3 style={{ fontSize: 16, fontWeight: 900, display: 'flex', alignItems: 'center', gap: 6, margin: 0 }}>
+        <div className="mb-6 p-4 bg-[var(--bg-surface)] rounded-[20px] border border-[var(--border-subtle)]">
+          <div className="flex justify-between items-center mb-3">
+            <h3 className="text-[16px] font-black flex items-center gap-1.5 m-0">
               {dbProfile.vip_tier === 'diamond' ? '💎 Diamond VIP' : dbProfile.vip_tier === 'gold' ? '🥇 Gold VIP' : dbProfile.vip_tier === 'silver' ? '🥈 Silver VIP' : '🔰 Standard Member'}
             </h3>
             {dbProfile.vip_tier !== 'none' && (
-               <span style={{ fontSize: 12, fontWeight: 800, color: '#8b5cf6' }}>
+               <span className="text-[12px] font-extrabold text-[#8b5cf6]">
                   {dbProfile.vip_tier === 'diamond' ? '15% OFF' : dbProfile.vip_tier === 'gold' ? '10% OFF' : '5% OFF'}
                </span>
             )}
@@ -265,16 +265,14 @@ const UserProfile = ({ user, setView, BACKEND_URL, onViewInvoice, t, lang, toggl
           
           {dbProfile.vip_tier !== 'diamond' && (
             <>
-               <div style={{ height: 8, background: 'var(--bg-soft)', borderRadius: 4, overflow: 'hidden', marginBottom: 8 }}>
-                  <div style={{ 
-                     height: '100%', 
-                     background: 'linear-gradient(90deg, #8b5cf6, #ec4899)', 
+               <div className="h-2 bg-[var(--bg-soft)] rounded overflow-hidden mb-2">
+                  <div className="h-full bg-gradient-to-r from-violet-500 to-pink-500" style={{ 
                      width: `${Math.min(100, (dbProfile.total_spent / (dbProfile.vip_tier === 'none' ? 100 : dbProfile.vip_tier === 'silver' ? 500 : 1000)) * 100)}%` 
                   }}></div>
                </div>
-               <p style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600, margin: 0 }}>
+               <p className="text-[12px] text-[var(--text-muted)] font-semibold m-0">
                   {lang === 'kh' ? 'ទិញបន្ថែម ' : 'Spend '}
-                  <b style={{ color: 'var(--text-main)' }}>
+                  <b className="text-[var(--text-main)]">
                      ${Math.max(0, (dbProfile.vip_tier === 'none' ? 100 : dbProfile.vip_tier === 'silver' ? 500 : 1000) - dbProfile.total_spent).toFixed(2)}
                   </b>
                   {lang === 'kh' ? ' ទៀតដើម្បីឡើងកម្រិត ' : ' more to reach '}
@@ -300,24 +298,24 @@ const UserProfile = ({ user, setView, BACKEND_URL, onViewInvoice, t, lang, toggl
         </svg>
       </button>
 
-      <div className="referral-card-lux" style={{ margin: '0 0 24px', padding: 20, background: 'var(--bg-surface)', borderRadius: 20, border: '1px solid var(--border-subtle)', boxShadow: 'var(--shadow-soft)', textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
-        <div style={{ position: 'absolute', top: -30, left: -30, width: 100, height: 100, background: 'var(--primary-accent)', filter: 'blur(50px)', opacity: 0.15, pointerEvents: 'none' }}></div>
-        <h3 style={{ fontSize: 17, fontWeight: 900, marginBottom: 8, color: 'var(--text-bold)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-          <span style={{ fontSize: 20 }}>🎁</span> {lang === 'kh' ? 'ណែនាំមិត្តភក្ដិ' : 'Refer a Friend'} <span style={{ color: 'var(--primary-accent)', fontSize: 13, background: 'var(--bg-soft)', padding: '2px 8px', borderRadius: 10 }}>+10 pts</span>
+      <div className="referral-card-lux mb-6 p-5 bg-[var(--bg-surface)] rounded-[20px] border border-[var(--border-subtle)] shadow-[var(--shadow-soft)] text-center relative overflow-hidden">
+        <div className="absolute -top-[30px] -left-[30px] w-[100px] h-[100px] bg-[var(--primary-accent)] blur-[50px] opacity-15 pointer-events-none"></div>
+        <h3 className="text-[17px] font-black mb-2 text-[var(--text-bold)] flex items-center justify-center gap-1.5">
+          <span className="text-[20px]">🎁</span> {lang === 'kh' ? 'ណែនាំមិត្តភក្ដិ' : 'Refer a Friend'} <span className="text-[var(--primary-accent)] text-[13px] bg-[var(--bg-soft)] px-2 py-0.5 rounded-[10px]">+10 pts</span>
         </h3>
-        <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 16, lineHeight: 1.5 }}>
+        <p className="text-[13px] text-[var(--text-muted)] mb-4 leading-relaxed">
           {lang === 'kh' ? 'ចម្លងតំណភ្ជាប់ខាងក្រោមផ្ញើទៅមិត្តភក្ដិរបស់អ្នក។ អ្នកទាំងពីរនឹងទទួលបាន 10 ពិន្ទុបន្ទាប់ពីពួកគេទិញទំនិញលើកដំបូង!' : 'Copy the link below and send it to your friends. You both get 10 points after their first purchase!'}
         </p>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center', background: 'var(--bg-soft)', padding: 6, borderRadius: 16, border: '1px solid var(--border-subtle)' }}>
+        <div className="flex gap-2 items-center bg-[var(--bg-soft)] p-1.5 rounded-2xl border border-[var(--border-subtle)]">
           <input 
             type="text" 
             readOnly 
             value={`https://t.me/${import.meta.env.VITE_BOT_USERNAME || 'Vibe_Lifestyle_Bot'}/app?startapp=ref_${user?.id}`} 
-            style={{ flex: 1, padding: '10px 14px', borderRadius: 10, border: 'none', background: 'transparent', fontSize: 13, color: 'var(--text-main)', outline: 'none', minWidth: 0, fontWeight: 500 }}
+            className="flex-1 px-3.5 py-2.5 rounded-[10px] border-none bg-transparent text-[13px] text-[var(--text-main)] outline-none min-w-0 font-medium"
           />
           <button 
             type="button"
-            style={{ padding: '10px 18px', borderRadius: 12, background: 'var(--primary-gradient)', color: 'white', fontWeight: 800, fontSize: 13, border: 'none', display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0, cursor: 'pointer', boxShadow: '0 4px 12px rgba(255, 114, 160, 0.25)' }}
+            className="px-[18px] py-[10px] rounded-xl bg-[var(--primary-gradient)] text-white font-extrabold text-[13px] border-none flex items-center gap-1.5 shrink-0 cursor-pointer shadow-[0_4px_12px_rgba(255,114,160,0.25)]"
             onClick={() => {
               navigator.clipboard.writeText(`https://t.me/${import.meta.env.VITE_BOT_USERNAME || 'Vibe_Lifestyle_Bot'}/app?startapp=ref_${user?.id}`);
               const tg = window.Telegram?.WebApp;
@@ -345,18 +343,17 @@ const UserProfile = ({ user, setView, BACKEND_URL, onViewInvoice, t, lang, toggl
             )}
           </div>
 
-          <div className="profile-loyalty-row" style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+          <div className="profile-loyalty-row flex flex-col gap-[15px]">
+            <div className="flex items-center gap-[15px]">
               <div className="profile-loyalty-icon">pts</div>
-              <div style={{ flex: 1 }}>
+              <div className="flex-1">
                 <div className="profile-loyalty-label">{lang === 'kh' ? 'ពិន្ទុសន្សំ' : 'Loyalty Points'}</div>
                 <div className="profile-loyalty-value">{dbProfile.loyalty_points || 0} pts</div>
               </div>
               {dbProfile.loyalty_points >= 100 && !redeemedCoupon && (
                 <button 
                   type="button" 
-                  className="profile-save-btn" 
-                  style={{ width: 'auto', padding: '8px 16px', fontSize: '13px', margin: 0, height: 'auto' }}
+                  className="profile-save-btn w-auto px-4 py-2 text-[13px] m-0 h-auto"
                   onClick={handleRedeemPoints}
                   disabled={isRedeeming}
                 >
@@ -366,21 +363,21 @@ const UserProfile = ({ user, setView, BACKEND_URL, onViewInvoice, t, lang, toggl
             </div>
             
             {redeemedCoupon && (
-              <div style={{ background: 'var(--bg-app)', padding: '15px', borderRadius: '12px', border: '1px dashed var(--primary-accent)', textAlign: 'center' }}>
-                <div style={{ fontSize: '13px', fontWeight: 800, color: 'var(--text-muted)', marginBottom: '8px' }}>
+              <div className="bg-[var(--bg-app)] p-[15px] rounded-xl border border-dashed border-[var(--primary-accent)] text-center">
+                <div className="text-[13px] font-extrabold text-[var(--text-muted)] mb-2">
                   {lang === 'kh' ? 'គូប៉ុងបញ្ចុះតម្លៃ $2 របស់អ្នក' : 'Your $2 Discount Coupon'}
                 </div>
-                <div style={{ fontSize: '20px', fontWeight: 950, color: 'var(--primary-accent)', letterSpacing: '2px' }}>
+                <div className="text-[20px] font-black text-[var(--primary-accent)] tracking-[2px]">
                   {redeemedCoupon}
                 </div>
-                <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '8px' }}>
+                <div className="text-[11px] text-[var(--text-muted)] mt-2">
                   {lang === 'kh' ? 'សូមចម្លងកូដនេះទៅប្រើនៅពេលទូទាត់ប្រាក់' : 'Copy this code to use at checkout'}
                 </div>
               </div>
             )}
             
             {dbProfile.loyalty_points < 100 && !redeemedCoupon && (
-               <div style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 600 }}>
+               <div className="text-[12px] text-[var(--text-muted)] font-semibold">
                  {lang === 'kh' ? `ត្រូវការ ${100 - dbProfile.loyalty_points} ពិន្ទុទៀត ដើម្បីប្ដូរយកគូប៉ុង $2` : `Need ${100 - dbProfile.loyalty_points} more points to redeem a $2 coupon`}
                </div>
             )}
@@ -437,19 +434,19 @@ const UserProfile = ({ user, setView, BACKEND_URL, onViewInvoice, t, lang, toggl
       )}
 
 
-       <div className="section-header" style={{ padding: '0 0 15px' }}>
-         <h2 style={{ fontSize: 18, fontWeight: 950, color: 'var(--text-bold)' }}>{lang === 'kh' ? 'ប្រវត្តិការទិញ' : 'Purchase History'}</h2>
-         <span style={{ fontSize: 13, color: 'var(--text-muted)', fontWeight: 800 }}>
+       <div className="section-header pb-4">
+         <h2 className="text-[18px] font-black text-[var(--text-bold)]">{lang === 'kh' ? 'ប្រវត្តិការទិញ' : 'Purchase History'}</h2>
+         <span className="text-[13px] text-[var(--text-muted)] font-extrabold">
            {orders.filter(isUserPurchaseHistoryOrder).length} {t('items')}
          </span>
        </div>
 
        {loading ? (
-         <div style={{ height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><div className="loader"></div></div>
+         <div className="h-[200px] flex items-center justify-center"><div className="loader"></div></div>
        ) : orders.filter(isUserPurchaseHistoryOrder).length === 0 ? (
-         <div style={{ textAlign: 'center', padding: '60px 0', background: 'var(--bg-soft)', borderRadius: 20, marginBottom: 20, border: '1.5px dashed var(--border-subtle)' }}>
-            <div style={{ fontSize: 44, marginBottom: 15, opacity: 0.9 }}>🛍️</div>
-            <p style={{ opacity: 0.9, fontWeight: 900, fontSize: 14, color: 'var(--text-main)' }}>{lang === 'kh' ? 'មិនទាន់មានការទិញទេ' : 'No purchase history yet'}</p>
+         <div className="text-center py-[60px] bg-[var(--bg-soft)] rounded-[20px] mb-5 border-[1.5px] border-dashed border-[var(--border-subtle)]">
+            <div className="text-[44px] mb-4 opacity-90">🛍️</div>
+            <p className="opacity-90 font-black text-[14px] text-[var(--text-main)]">{lang === 'kh' ? 'មិនទាន់មានការទិញទេ' : 'No purchase history yet'}</p>
          </div>
        ) : (
         <div className="history-list">
@@ -463,13 +460,12 @@ const UserProfile = ({ user, setView, BACKEND_URL, onViewInvoice, t, lang, toggl
             return (
               <div 
                 key={order.id} 
-                className="order-card-luxury animate-up"
-                style={{ marginBottom: 16, position: 'relative', cursor: paymentConfirmed ? 'pointer' : 'default' }}
+                className={`order-card-luxury animate-up mb-4 relative ${paymentConfirmed ? 'cursor-pointer' : 'cursor-default'}`}
                 onClick={() => paymentConfirmed && onViewInvoice(order)}
               >
-                 <div className="order-meta-lux" style={{ marginBottom: 16 }}>
+                 <div className="order-meta-lux mb-4">
                     <div>
-                       <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 4 }}>
+                       <div className="text-[11px] font-bold text-[var(--text-muted)] mb-1">
                          {lang === 'kh' ? 'លេខសម្គាល់' : 'Order ID'}
                        </div>
                        <div className="order-id-numeric">
@@ -482,7 +478,7 @@ const UserProfile = ({ user, setView, BACKEND_URL, onViewInvoice, t, lang, toggl
                  </div>
 
                  {showTracker && (
-                    <div className="premium-timeline-lux" style={{ margin: '18px 0 8px' }}>
+                    <div className="premium-timeline-lux my-[18px] mb-2">
                        <div className="timeline-track-bg"></div>
                        <div className="timeline-track-fill" style={{ width: `${Math.max(0, (status.step - 1) * 50)}%`, background: status.color }}></div>
                        <div className="timeline-steps-lux">
@@ -511,7 +507,7 @@ const UserProfile = ({ user, setView, BACKEND_URL, onViewInvoice, t, lang, toggl
 
                  {order.tracking_number && (
                     <div className="tracking-pill-lux" onClick={(e) => e.stopPropagation()}>
-                       <div style={{ fontSize: 20 }}>🚚</div>
+                       <div className="text-[20px]">🚚</div>
                        <div className="tracking-info-lux">
                           <div className="tracking-label-lux">{lang === 'kh' ? 'លេខតាមដាន' : 'Tracking'}</div>
                           <div className="tracking-code-lux">{order.tracking_number}</div>
@@ -526,15 +522,15 @@ const UserProfile = ({ user, setView, BACKEND_URL, onViewInvoice, t, lang, toggl
 
                  <div className="order-card-footer">
                     <div>
-                       <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 2 }}>
+                       <div className="text-[11px] font-bold text-[var(--text-muted)] mb-0.5">
                          {lang === 'kh' ? 'សរុប' : 'Total'}
                        </div>
-                       <div className="mega-price-primary" style={{ fontSize: 22 }}>
+                       <div className="mega-price-primary text-[22px]">
                          ${parseFloat(order.total || order.total_amount || 0).toFixed(2)}
                        </div>
                     </div>
                     
-                    <div style={{ display: 'flex', gap: 8 }}>
+                    <div className="flex gap-2">
                        {canRate && (
                           <button 
                              onClick={(e) => { e.stopPropagation(); setRatingOrder(order); }}
@@ -559,24 +555,24 @@ const UserProfile = ({ user, setView, BACKEND_URL, onViewInvoice, t, lang, toggl
 
       {/* ⭐️ Rating Modal */}
       {ratingOrder && (
-        <div className="modal-overlay" style={{ zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.8)' }}>
-           <div className="order-card-luxury animate-up" style={{ width: '90%', maxWidth: 400, maxHeight: '80vh', overflowY: 'auto' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20 }}>
-                 <h2 style={{ fontSize: 20, fontWeight: 950 }}>{lang === 'kh' ? 'វាយតម្លៃទំនិញ' : 'Rate Your Items'}</h2>
-                 <button onClick={() => setRatingOrder(null)} style={{ background: 'none', border: 'none', fontSize: 24 }}>✕</button>
+        <div className="modal-overlay z-[9999] flex items-center justify-center bg-black/80">
+           <div className="order-card-luxury animate-up w-[90%] max-w-[400px] max-h-[80vh] overflow-y-auto">
+              <div className="flex justify-between mb-5">
+                 <h2 className="text-[20px] font-black">{lang === 'kh' ? 'វាយតម្លៃទំនិញ' : 'Rate Your Items'}</h2>
+                 <button onClick={() => setRatingOrder(null)} className="bg-none border-none text-[24px]">✕</button>
               </div>
 
               {JSON.parse(ratingOrder.items || '[]').map((item, idx) => {
                  const data = ratingData[item.id] || { rating: 5, comment: '', submitted: false };
                  return (
-                    <div key={idx} style={{ marginBottom: 25, paddingBottom: 25, borderBottom: '1px solid var(--border-subtle)' }}>
-                       <div style={{ fontWeight: 900, marginBottom: 12 }}>{item.name}</div>
+                    <div key={idx} className="mb-6 pb-6 border-b border-[var(--border-subtle)]">
+                       <div className="font-black mb-3">{item.name}</div>
                        
                        {data.submitted ? (
-                          <div style={{ color: '#10b981', fontWeight: 900, fontSize: 13 }}>✅ {lang === 'kh' ? 'អរគុណសម្រាប់ការវាយតម្លៃ!' : 'Thank you for your rating!'}</div>
+                          <div className="text-[#10b981] font-black text-[13px]">✅ {lang === 'kh' ? 'អរគុណសម្រាប់ការវាយតម្លៃ!' : 'Thank you for your rating!'}</div>
                        ) : (
                           <>
-                             <div style={{ display: 'flex', gap: 8, marginBottom: 15 }}>
+                             <div className="flex gap-2 mb-4">
                                 {[1,2,3,4,5].map(star => (
                                    <div 
                                       key={star} 
@@ -587,16 +583,14 @@ const UserProfile = ({ user, setView, BACKEND_URL, onViewInvoice, t, lang, toggl
                                 ))}
                              </div>
                              <textarea 
-                                className="input-glass-admin" 
-                                style={{ background: 'var(--bg-soft)', borderRadius: 12, fontSize: 13 }}
+                                className="input-glass-admin bg-[var(--bg-soft)] rounded-xl text-[13px]"
                                 placeholder={lang === 'kh' ? 'សរសេរមតិយោបល់...' : 'Write a comment...'}
                                 value={data.comment}
                                 onChange={(e) => setRatingData(prev => ({ ...prev, [item.id]: { ...data, comment: e.target.value } }))}
                              />
                              <button 
                                 onClick={() => submitReview(item.id)}
-                                className="detail-btn-buy-luxury" 
-                                style={{ marginTop: 15, height: 44, fontSize: 13 }}>
+                                className="detail-btn-buy-luxury mt-4 h-[44px] text-[13px]">
                                 {isSubmitting ? '⌛...' : (lang === 'kh' ? 'ផ្ញើមតិ' : 'Submit Review')}
                              </button>
                           </>
@@ -610,20 +604,20 @@ const UserProfile = ({ user, setView, BACKEND_URL, onViewInvoice, t, lang, toggl
 
       {/* About Us Section */}
       {(settings?.shop_history_kh || settings?.shop_history_en) && (
-        <div className="faq-section-lux" style={{ marginTop: 30 }}>
-          <div className="section-header" style={{ padding: '0 0 20px' }}>
-            <h2 style={{ fontSize: 20, fontWeight: 950, color: 'var(--text-bold)' }}>{lang === 'kh' ? 'អំពីយើង' : 'About Us'}</h2>
+        <div className="faq-section-lux mt-[30px]">
+          <div className="section-header pb-5">
+            <h2 className="text-[20px] font-black text-[var(--text-bold)]">{lang === 'kh' ? 'អំពីយើង' : 'About Us'}</h2>
           </div>
-          <div className="glass-card-luxury" style={{ padding: '20px', whiteSpace: 'pre-wrap', lineHeight: '1.6', fontSize: 14 }}>
+          <div className="glass-card-luxury p-5 whitespace-pre-wrap leading-relaxed text-[14px]">
             {lang === 'kh' ? (settings.shop_history_kh || settings.shop_history_en) : (settings.shop_history_en || settings.shop_history_kh)}
           </div>
         </div>
       )}
 
       {faqs.length > 0 && (
-         <div className="faq-section-lux" style={{ marginTop: 30 }}>
-            <div className="section-header" style={{ padding: '0 0 20px' }}>
-               <h2 style={{ fontSize: 20, fontWeight: 950, color: 'var(--text-bold)' }}>{lang === 'kh' ? 'សំណួរដែលសួរញឹកញាប់' : 'FAQs'}</h2>
+         <div className="faq-section-lux mt-[30px]">
+            <div className="section-header pb-5">
+               <h2 className="text-[20px] font-black text-[var(--text-bold)]">{lang === 'kh' ? 'សំណួរដែលសួរញឹកញាប់' : 'FAQs'}</h2>
             </div>
             {faqs.map((faq) => (
                <div key={faq.id} className={`faq-item-lux ${activeFaq === faq.id ? 'open' : ''}`}>
@@ -641,13 +635,13 @@ const UserProfile = ({ user, setView, BACKEND_URL, onViewInvoice, t, lang, toggl
 
       {/* 📱 Contact Us Section */}
       {hasContactSection && (
-         <div className="contact-section-lux" style={{ marginTop: 30, paddingBottom: 120 }}>
+         <div className="contact-section-lux mt-[30px] pb-[120px]">
             <div className="contact-shop-header contact-link-row">
               <div className="contact-link-icon-slot">
                 {shopLogoUrl ? (
                   <img src={shopLogoUrl} alt="" className="contact-shop-logo" />
                 ) : (
-                  <div className="contact-shop-logo contact-shop-logo--placeholder">M</div>
+                  <img src="/logo.webp" alt="Vibe Lifestyle" className="contact-shop-logo" />
                 )}
               </div>
               <div className="contact-link-text-block">

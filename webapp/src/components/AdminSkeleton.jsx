@@ -2,29 +2,29 @@ import React from 'react';
 
 const AdminSkeleton = () => {
   return (
-    <div className="admin-skeleton-container" style={{ padding: 20 }}>
-      <div className="skeleton-tabs" style={{ display: 'flex', gap: 10, marginBottom: 30 }}>
+    <div className="admin-skeleton-container p-5">
+      <div className="skeleton-tabs flex gap-2.5 mb-[30px]">
         {[1, 2, 3, 4].map(i => (
-          <div key={i} className="shimmer-luxury" style={{ width: 80, height: 36, borderRadius: 20, opacity: 0.1 }} />
+          <div key={i} className="shimmer-luxury w-[80px] h-[36px] rounded-[20px] opacity-10" />
         ))}
       </div>
 
-      <div className="skeleton-overview" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <div className="skeleton-overview flex flex-col gap-5">
         {/* Business Health Card */}
-        <div className="shimmer-luxury" style={{ width: '100%', height: 260, borderRadius: 32, opacity: 0.05, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-           <div className="shimmer-luxury" style={{ width: 120, height: 120, borderRadius: '50%', border: '8px solid rgba(255,255,255,0.05)' }} />
+        <div className="shimmer-luxury w-full h-[260px] rounded-[32px] opacity-5 flex items-center justify-center">
+           <div className="shimmer-luxury w-[120px] h-[120px] rounded-full border-8 border-white/5" />
         </div>
 
         {/* Stats Row */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-          <div className="shimmer-luxury" style={{ height: 160, borderRadius: 28, opacity: 0.05 }} />
-          <div className="shimmer-luxury" style={{ height: 160, borderRadius: 28, opacity: 0.05 }} />
+        <div className="grid grid-cols-2 gap-4">
+          <div className="shimmer-luxury h-[160px] rounded-[28px] opacity-5" />
+          <div className="shimmer-luxury h-[160px] rounded-[28px] opacity-5" />
         </div>
 
         {/* Recent Orders List */}
-        <div className="shimmer-luxury" style={{ width: '100%', height: 40, borderRadius: 12, opacity: 0.1, marginBottom: 10 }} />
+        <div className="shimmer-luxury w-full h-[40px] rounded-xl opacity-10 mb-2.5" />
         {[1, 2, 3].map(i => (
-          <div key={i} className="shimmer-luxury" style={{ width: '100%', height: 80, borderRadius: 20, opacity: 0.05, marginBottom: 10 }} />
+          <div key={i} className="shimmer-luxury w-full h-[80px] rounded-[20px] opacity-5 mb-2.5" />
         ))}
       </div>
       

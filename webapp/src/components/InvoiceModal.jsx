@@ -273,17 +273,17 @@ const InvoiceModal = ({ order, onClose, paymentQrUrl, paymentInfo, BACKEND_URL, 
   };
 
   const renderReceipt = () => (
-    <div className="receipt-luxury-paper animate-up" style={{ padding: 0, overflow: 'hidden', background: '#ffffff', color: '#0f172a', borderRadius: '24px' }}>
+    <div className="receipt-luxury-paper animate-up p-0 overflow-hidden bg-white text-slate-900 rounded-[24px]">
 
       {/* ── Receipt Content to Save ── */}
-      <div ref={receiptRef} style={{ background: '#ffffff', color: '#0f172a', padding: '0 0 14px 0' }}>
+      <div ref={receiptRef} className="bg-white text-slate-900 pb-[14px]">
         {/* ── HEADER ── */}
-        <div style={{ textAlign: 'center', padding: '20px 18px 14px', borderBottom: '1px dashed #e2e8f0' }}>
-          <div style={{ display: 'inline-block', padding: 6, background: '#f8fafc', borderRadius: 16, marginBottom: 8 }}>
-            <img src={logoDataUrl || "/favicon.png"} alt="Vibe Lifestyle" crossOrigin="anonymous" style={{ width: 44, height: 44, borderRadius: 10, display: 'block' }} />
+        <div className="text-center px-[18px] pt-[20px] pb-[14px] border-b border-dashed border-slate-200">
+          <div className="inline-block p-1.5 bg-slate-50 rounded-2xl mb-2">
+            <img src={logoDataUrl || "/favicon.png"} alt="Vibe Lifestyle" crossOrigin="anonymous" className="w-[44px] h-[44px] rounded-[10px] block" />
           </div>
-          <div style={{ fontSize: 13, fontWeight: 900, color: '#0f172a', letterSpacing: 2 }}>Vibe Lifestyle</div>
-          <div style={{ fontSize: 10, color: '#64748b', fontWeight: 700, marginTop: 2 }}>
+          <div className="text-[13px] font-black text-slate-900 tracking-[2px]">Vibe Lifestyle</div>
+          <div className="text-[10px] text-slate-500 font-bold mt-0.5">
             {!isDraft && (() => {
               const d = new Date(localOrder.created_at);
               const dateStr = d.toLocaleDateString(lang === 'kh' ? 'km-KH' : 'en-US', { month: 'short', day: 'numeric', year: 'numeric' }).replace(',', '');
@@ -296,20 +296,20 @@ const InvoiceModal = ({ order, onClose, paymentQrUrl, paymentInfo, BACKEND_URL, 
           </div>
         </div>
 
-        <div style={{ padding: '14px 18px' }}>
+        <div className="px-[18px] py-[14px]">
 
           {/* ── TOTAL ── */}
-          <div style={{ textAlign: 'center', marginBottom: 12 }}>
-            <div style={{ fontSize: 9, fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 2 }}>{t('final_total')}</div>
-            <div style={{ fontSize: 36, fontWeight: 950, color: '#d4af37', lineHeight: 1 }}>${parseFloat(localOrder.total).toFixed(2)}</div>
-            <div style={{ marginTop: 6 }}>
-              <span style={{ background: '#dcfce7', color: '#16a34a', fontSize: 10, fontWeight: 900, padding: '3px 12px', borderRadius: 100 }}>
+          <div className="text-center mb-3">
+            <div className="text-[9px] font-extrabold text-slate-500 uppercase tracking-[1.5px] mb-0.5">{t('final_total')}</div>
+            <div className="text-[36px] font-black text-[#d4af37] leading-none">${parseFloat(localOrder.total).toFixed(2)}</div>
+            <div className="mt-1.5">
+              <span className="bg-green-100 text-green-600 text-[10px] font-black px-3 py-[3px] rounded-full">
                 ✓ {lang === 'kh' ? 'ការបញ្ជាទិញបានបញ្ជាក់' : 'Confirmed'}
               </span>
             </div>
           </div>
 
-          <div style={{ borderTop: '1px dashed #e2e8f0', margin: '10px 0' }} />
+          <div className="border-t border-dashed border-slate-200 my-2.5" />
 
           {/* ── CUSTOMER INFO ── */}
           {[
@@ -318,61 +318,61 @@ const InvoiceModal = ({ order, onClose, paymentQrUrl, paymentInfo, BACKEND_URL, 
             { label: lang === 'kh' ? 'អាសយដ្ឋាន' : 'Address', value: `${localOrder.address || ''}${localOrder.province ? ', ' + localOrder.province : ''}` },
             localOrder.delivery_company ? { label: lang === 'kh' ? 'ក្រុមហ៊ុនដឹក' : 'Courier', value: `🚚 ${localOrder.delivery_company}` } : null,
           ].filter(Boolean).map((row, i) => (
-            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: 8, marginBottom: 6 }}>
-              <span style={{ fontSize: 11, color: '#64748b', fontWeight: 700, flexShrink: 0 }}>{row.label}</span>
-              <span style={{ fontSize: 11, fontWeight: 800, color: '#0f172a', textAlign: 'right', wordBreak: 'break-word', maxWidth: '62%' }}>{row.value}</span>
+            <div key={i} className="flex justify-between gap-2 mb-1.5">
+              <span className="text-[11px] text-slate-500 font-bold shrink-0">{row.label}</span>
+              <span className="text-[11px] font-extrabold text-slate-900 text-right break-words max-w-[62%]">{row.value}</span>
             </div>
           ))}
 
-          <div style={{ borderTop: '1px dashed #e2e8f0', margin: '10px 0' }} />
+          <div className="border-t border-dashed border-slate-200 my-2.5" />
 
           {/* ── ITEMS ── */}
           {items && items.map((item, idx) => (
-            <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6, paddingBottom: 6, borderBottom: idx < items.length - 1 ? '1px solid #f1f5f9' : 'none' }}>
-              <span style={{ fontSize: 12, fontWeight: 800, color: '#0f172a', flex: 1 }}>
-                {item.name} <span style={{ color: '#64748b', fontWeight: 700 }}>×{item.quantity}</span>
+            <div key={idx} className={`flex justify-between items-center mb-1.5 pb-1.5 ${idx < items.length - 1 ? 'border-b border-slate-100' : ''}`}>
+              <span className="text-[12px] font-extrabold text-slate-900 flex-1">
+                {item.name} <span className="text-slate-500 font-bold">×{item.quantity}</span>
               </span>
-              <span style={{ fontSize: 12, fontWeight: 900, color: '#0f172a' }}>${(parseFloat(item.price) * item.quantity).toFixed(2)}</span>
+              <span className="text-[12px] font-black text-slate-900">${(parseFloat(item.price) * item.quantity).toFixed(2)}</span>
             </div>
           ))}
 
           {/* ── PRICE BOX ── */}
-          <div style={{ background: '#f8fafc', borderRadius: 10, padding: '8px 12px', marginTop: 8, marginBottom: 10, border: '1px solid #f1f5f9' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-              <span style={{ fontSize: 11, color: '#64748b', fontWeight: 700 }}>{lang === 'kh' ? 'សរុបដើម' : 'Subtotal'}</span>
-              <span style={{ fontSize: 11, fontWeight: 800, color: '#0f172a' }}>${parseFloat(localOrder.subtotal || localOrder.total).toFixed(2)}</span>
+          <div className="bg-slate-50 rounded-[10px] py-2 px-3 mt-2 mb-2.5 border border-slate-100">
+            <div className="flex justify-between mb-1">
+              <span className="text-[11px] text-slate-500 font-bold">{lang === 'kh' ? 'សរុបដើម' : 'Subtotal'}</span>
+              <span className="text-[11px] font-extrabold text-slate-900">${parseFloat(localOrder.subtotal || localOrder.total).toFixed(2)}</span>
             </div>
             {parseFloat(localOrder.discount_amount) > 0 && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, color: '#ef4444' }}>
-                <span style={{ fontSize: 11, fontWeight: 700 }}>{lang === 'kh' ? 'បញ្ចុះតម្លៃ' : 'Discount'}</span>
-                <span style={{ fontSize: 11, fontWeight: 800 }}>-${parseFloat(localOrder.discount_amount).toFixed(2)}</span>
+              <div className="flex justify-between mb-1 text-red-500">
+                <span className="text-[11px] font-bold">{lang === 'kh' ? 'បញ្ចុះតម្លៃ' : 'Discount'}</span>
+                <span className="text-[11px] font-extrabold">-${parseFloat(localOrder.discount_amount).toFixed(2)}</span>
               </div>
             )}
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-              <span style={{ fontSize: 11, color: '#64748b', fontWeight: 700 }}>{lang === 'kh' ? 'ថ្លៃដឹក' : 'Delivery'}</span>
-              <span style={{ fontSize: 11, fontWeight: 800, color: '#10b981' }}>{parseFloat(localOrder.delivery_fee) === 0 ? (lang === 'kh' ? 'ឥតគិតថ្លៃ' : 'Free') : `$${parseFloat(localOrder.delivery_fee).toFixed(2)}`}</span>
+            <div className="flex justify-between mb-1.5">
+              <span className="text-[11px] text-slate-500 font-bold">{lang === 'kh' ? 'ថ្លៃដឹក' : 'Delivery'}</span>
+              <span className="text-[11px] font-extrabold text-emerald-500">{parseFloat(localOrder.delivery_fee) === 0 ? (lang === 'kh' ? 'ឥតគិតថ្លៃ' : 'Free') : `$${parseFloat(localOrder.delivery_fee).toFixed(2)}`}</span>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: 6, borderTop: '1px solid #e2e8f0' }}>
-              <span style={{ fontSize: 13, fontWeight: 950, color: '#0f172a' }}>{t('final_total')}</span>
-              <span style={{ fontSize: 15, fontWeight: 950, color: '#d4af37' }}>${parseFloat(localOrder.total).toFixed(2)}</span>
+            <div className="flex justify-between pt-1.5 border-t border-slate-200">
+              <span className="text-[13px] font-black text-slate-900">{t('final_total')}</span>
+              <span className="text-[15px] font-black text-[#d4af37]">${parseFloat(localOrder.total).toFixed(2)}</span>
             </div>
           </div>
 
           {/* ── REF NUMBER ── */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(212,175,55,0.06)', border: '1px dashed #d4af37', borderRadius: 8, padding: '7px 12px', marginBottom: 10 }}>
-            <span style={{ fontSize: 10, fontWeight: 900, color: '#64748b', textTransform: 'uppercase', letterSpacing: 1 }}>{lang === 'kh' ? 'លេខកូដ' : 'Ref #'}</span>
-            <span style={{ fontSize: 13, fontWeight: 950, color: '#d4af37', fontFamily: 'monospace', letterSpacing: 1.5 }}>
+          <div className="flex justify-between items-center bg-[#d4af37]/5 border border-dashed border-[#d4af37] rounded-lg py-[7px] px-3 mb-2.5">
+            <span className="text-[10px] font-black text-slate-500 uppercase tracking-[1px]">{lang === 'kh' ? 'លេខកូដ' : 'Ref #'}</span>
+            <span className="text-[13px] font-black text-[#d4af37] font-mono tracking-[1.5px]">
               {isDraft ? '...' : (localOrder.order_code || String(localOrder.id))}
             </span>
           </div>
 
           {/* ── QR CODE ── */}
           {miniQrUrl && (
-            <div style={{ textAlign: 'center', marginBottom: 12 }}>
-              <div style={{ display: 'inline-block', background: 'white', padding: 8, borderRadius: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
-                <img src={miniQrUrl} alt="QR" style={{ width: 80, height: 80, display: 'block', borderRadius: 6 }} />
+            <div className="text-center mb-3">
+              <div className="inline-block bg-white p-2 rounded-xl shadow-[0_2px_8px_rgba(0,0,0,0.08)]">
+                <img src={miniQrUrl} alt="QR" className="w-[80px] h-[80px] block rounded-md" />
               </div>
-              <div style={{ fontSize: 9, color: '#64748b', fontWeight: 800, textTransform: 'uppercase', letterSpacing: 1, marginTop: 5 }}>
+              <div className="text-[9px] text-slate-500 font-extrabold uppercase tracking-[1px] mt-1.25">
                 {lang === 'kh' ? 'ស្កេនដើម្បីផ្ទៀងផ្ទាត់' : 'Scan to Verify'}
               </div>
             </div>
@@ -383,7 +383,7 @@ const InvoiceModal = ({ order, onClose, paymentQrUrl, paymentInfo, BACKEND_URL, 
       </div>
 
       {/* ── BUTTONS (Excluded from saved image) ── */}
-      <div style={{ display: 'flex', gap: 8, padding: '12px 18px 14px 18px', background: '#ffffff', borderTop: '1px solid #f1f5f9' }}>
+      <div className="flex gap-2 px-[18px] pt-[12px] pb-[14px] bg-white border-t border-slate-100">
         <button
           onClick={async () => {
             if (!receiptRef.current) return;
@@ -448,14 +448,12 @@ const InvoiceModal = ({ order, onClose, paymentQrUrl, paymentInfo, BACKEND_URL, 
             }
           }}
           disabled={isSaving}
-          className="detail-btn-cart-luxury"
-          style={{ flex: 1, height: 42, fontSize: 12, borderRadius: 10, opacity: isSaving ? 0.7 : 1, background: 'var(--primary-gradient)', color: '#ffffff', fontWeight: 800, border: 'none' }}>
+          className={`detail-btn-cart-luxury flex-1 h-[42px] text-[12px] rounded-[10px] bg-[var(--primary-gradient)] text-white font-extrabold border-none ${isSaving ? 'opacity-70' : 'opacity-100'}`}>
           {isSaving ? '⌛...' : `📥 ${lang === 'kh' ? 'រក្សាទុក' : 'Save'}`}
         </button>
         <button
           onClick={onClose}
-          className="detail-btn-cart-luxury"
-          style={{ flex: 1, height: 42, borderRadius: 10, fontSize: 12, background: '#f1f5f9', color: '#0f172a', fontWeight: 800, boxShadow: 'none', border: '1px solid #e2e8f0' }}>
+          className="detail-btn-cart-luxury flex-1 h-[42px] rounded-[10px] text-[12px] bg-slate-100 text-slate-900 font-extrabold shadow-none border border-slate-200">
           {lang === 'kh' ? 'បិទ' : 'Close'}
         </button>
       </div>
@@ -464,27 +462,27 @@ const InvoiceModal = ({ order, onClose, paymentQrUrl, paymentInfo, BACKEND_URL, 
   );
 
   return (
-    <div className="modal-overlay" style={{ backgroundColor: 'var(--glass-bg)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
-      <div style={{ width: '100%', maxWidth: '400px', maxHeight: '90vh', overflowY: 'auto', borderRadius: '24px' }}>
+    <div className="modal-overlay bg-[var(--glass-bg)] z-[9999] flex items-center justify-center p-5">
+      <div className="w-full max-w-[400px] max-h-[90vh] overflow-y-auto rounded-[24px]">
         {isExpired ? (
-          <div className="order-card-luxury animate-in" style={{ padding: '60px 30px 40px', textAlign: 'center', borderColor: '#fee2e2' }}>
-            <div style={{ fontSize: '70px', marginBottom: '25px' }}>⏳</div>
+          <div className="order-card-luxury animate-in text-center border-[#fee2e2] pt-[60px] pb-[40px] px-[30px]">
+            <div className="text-[70px] mb-[25px]">⏳</div>
             <h2 className="invoice-expired-title">{lang === 'kh' ? 'ការកុម្ម៉ង់ហួសពេល' : 'Order Expired'}</h2>
             <p className="invoice-expired-text">{lang === 'kh' ? 'សុំទោស! រយៈពេលបង់ប្រាក់ ៥ នាទីត្រូវបានបញ្ជប់។ សូមសាកល្បងម្តងទៀត។' : 'Sorry! The 5-minute payment window has closed. Please try again.'}</p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div className="flex flex-col gap-3">
               <button onClick={handleRefreshQR} className="detail-btn-buy-luxury" disabled={isVerifying}>
                 {isVerifying ? '...' : (lang === 'kh' ? '🔄 ធ្វើឱ្យ QR ថ្មី' : '🔄 Refresh QR')}
               </button>
-              <button onClick={onClose} className="back-btn-pill" style={{ opacity: 0.7 }}>{lang === 'kh' ? 'បិទ' : 'Close'}</button>
+              <button onClick={onClose} className="back-btn-pill opacity-70">{lang === 'kh' ? 'បិទ' : 'Close'}</button>
             </div>
           </div>
         ) : orderStatus === 'cancelled' ? (
-          <div className="order-card-luxury animate-in" style={{ padding: '50px 30px 40px', textAlign: 'center', borderColor: 'rgba(239, 68, 68, 0.2)' }}>
-            <div style={{ fontSize: '60px', marginBottom: '20px' }}>❌</div>
-            <h2 style={{ fontSize: '22px', fontWeight: '950', color: 'var(--text-bold)', marginBottom: '10px' }}>
+          <div className="order-card-luxury animate-in text-center border-red-500/20 pt-[50px] pb-[40px] px-[30px]">
+            <div className="text-[60px] mb-5">❌</div>
+            <h2 className="text-[22px] font-black text-[var(--text-bold)] mb-2.5">
               {lang === 'kh' ? 'ការកម្ម៉ង់ត្រូវបានបោះបង់' : 'Order Cancelled'}
             </h2>
-            <p style={{ fontSize: '14px', color: 'var(--text-muted)', marginBottom: 32, lineHeight: 1.5 }}>
+            <p className="text-[14px] text-[var(--text-muted)] mb-8 leading-relaxed">
               {lang === 'kh' ? 'ការកម្ម៉ង់នេះមិនបានបញ្ជាក់ការបង់ប្រាក់ ដូច្នេះមិនមានវិក្កយបត្រ។' : 'Payment was not confirmed, so no receipt is available.'}
             </p>
             <button onClick={onClose} className="back-btn-pill">{lang === 'kh' ? 'បិទ' : 'Close'}</button>
@@ -495,11 +493,11 @@ const InvoiceModal = ({ order, onClose, paymentQrUrl, paymentInfo, BACKEND_URL, 
           <div className="khqr-premium-box animate-up">
             <div className="khqr-terminal-header">
               <div className="khqr-brand-tag">
-                <span style={{ background: '#fff', color: '#ea1c24', padding: '2px 8px', borderRadius: '6px', fontSize: '12px', fontWeight: 950 }}>KHQR</span>
+                <span className="bg-white text-[#ea1c24] px-2 py-0.5 rounded-md text-[12px] font-black">KHQR</span>
               </div>
               <button
                 onClick={onClose}
-                style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: '#fff', width: '28px', height: '28px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: '14px', fontWeight: 'bold' }}
+                className="bg-white/20 border-none text-white w-7 h-7 rounded-full flex items-center justify-center cursor-pointer text-[14px] font-bold"
                 aria-label="Close"
               >
                 ✕
@@ -518,7 +516,7 @@ const InvoiceModal = ({ order, onClose, paymentQrUrl, paymentInfo, BACKEND_URL, 
 
               {isDraft ? (
                 <div className="khqr-preparing-wrap">
-                  <div style={{ fontSize: '36px', marginBottom: '12px', animation: 'spin 2s linear infinite' }}>⏳</div>
+                  <div className="text-[36px] mb-3 animate-spin">⏳</div>
                   <div className="khqr-preparing-title">{lang === 'kh' ? 'កំពុងរៀបចំការកម្ម៉ង់...' : 'Preparing Order...'}</div>
                   <div className="khqr-preparing-sub">{lang === 'kh' ? 'សូមរង់ចាំបន្តិច ពេលកំពុងភ្ជាប់ទៅកាន់ប្រព័ន្ធ...' : 'Please wait while we connect to the system...'}</div>
                 </div>
@@ -528,7 +526,7 @@ const InvoiceModal = ({ order, onClose, paymentQrUrl, paymentInfo, BACKEND_URL, 
                     <>
                       <div className="qr-code-wrapper-lux">
                         {localOrder.bakong_qr_string ? (
-                          <div style={{ display: 'flex', justifyContent: 'center', padding: '10px', background: '#fff', borderRadius: '12px' }}>
+                          <div className="flex justify-center p-2.5 bg-white rounded-xl">
                             <QRCodeSVG value={localOrder.bakong_qr_string} size={180} level="M" includeMargin={true} />
                           </div>
                         ) : dynamicQr ? (
@@ -537,8 +535,8 @@ const InvoiceModal = ({ order, onClose, paymentQrUrl, paymentInfo, BACKEND_URL, 
                           <img src={paymentQrUrl} alt="KHQR" onContextMenu={(e) => e.preventDefault()} />
                         ) : (
                           <div className="khqr-payment-details">
-                            <div className="animate-in" style={{ textAlign: 'center', padding: '10px' }}>
-                              <div style={{ fontSize: '32px', marginBottom: '8px' }}>🏦</div>
+                            <div className="animate-in text-center p-2.5">
+                              <div className="text-[32px] mb-2">🏦</div>
                               <div className="khqr-payment-details-title">{lang === 'kh' ? 'ព័ត៌មានបង់ប្រាក់' : 'Payment Details'}</div>
                               <div className="khqr-payment-details-body">
                                 {paymentInfo || 'ABA KHQR'}
@@ -549,7 +547,7 @@ const InvoiceModal = ({ order, onClose, paymentQrUrl, paymentInfo, BACKEND_URL, 
                       </div>
 
                       <div className={`khqr-timer${timeLeft < 60 ? ' khqr-timer--urgent' : ''}`}>
-                        <span style={{ opacity: 0.6 }}>⏳</span>
+                        <span className="opacity-60">⏳</span>
                         {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}
                       </div>
                     </>
@@ -558,10 +556,10 @@ const InvoiceModal = ({ order, onClose, paymentQrUrl, paymentInfo, BACKEND_URL, 
                       <div className="khqr-summary-title">
                         {lang === 'kh' ? '🛍️ សេចក្តីសង្ខេបការកម្ម៉ង់' : '🛍️ Order Summary'}
                       </div>
-                      <div style={{ maxHeight: '160px', overflowY: 'auto' }}>
+                      <div className="max-h-[160px] overflow-y-auto">
                         {items?.map((item, idx) => (
                           <div key={idx} className="khqr-summary-item">
-                            <span style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                            <span className="flex flex-col gap-0.5">
                               <span>{item.name}</span>
                               <span className="khqr-summary-item-meta">
                                 {item.selectedSize ? `${getCapacityLabel(lang, getVariantUnitMode({ category: item.category, productName: item.name, variantSizes: [item.selectedSize] }))}: ${item.selectedSize} ` : ''}
@@ -569,7 +567,7 @@ const InvoiceModal = ({ order, onClose, paymentQrUrl, paymentInfo, BACKEND_URL, 
                                 Qty: {item.quantity}
                               </span>
                             </span>
-                            <span style={{ fontWeight: 800 }}>${(item.price * item.quantity).toFixed(2)}</span>
+                            <span className="font-extrabold">${(item.price * item.quantity).toFixed(2)}</span>
                           </div>
                         ))}
                       </div>
@@ -587,14 +585,14 @@ const InvoiceModal = ({ order, onClose, paymentQrUrl, paymentInfo, BACKEND_URL, 
                         : '① Scan QR to pay → ② Tap "Upload Receipt" below (don\'t only DM admin) → ③ Wait for admin confirmation.'}
                     </div>
                   ) : (
-                    <div style={{ fontSize: '12px', color: '#10b981', fontWeight: 800, marginBottom: 14, textAlign: 'center', lineHeight: 1.4, background: 'rgba(16, 185, 129, 0.1)', padding: '10px 14px', borderRadius: 12 }}>
+                    <div className="text-[12px] text-emerald-500 font-extrabold mb-3.5 text-center leading-relaxed bg-emerald-500/10 py-2.5 px-3.5 rounded-xl">
                       {lang === 'kh' ? '✅ ទទួលបានជោគជ័យ! អរគុណសម្រាប់ការបង់ប្រាក់។ ក្រុមការងារយើងខ្ញុំកំពុងពិនិត្យ និងរៀបចំការកម្ម៉ង់ជូនលោកអ្នក។' : '✅ Received Successfully! Thank you for your payment. Our team is verifying and preparing your order.'}
                     </div>
                   )}
 
                   <div className="khqr-actions">
                     {uploadError && (
-                      <div style={{ fontSize: '12px', color: '#ef4444', fontWeight: 900, textAlign: 'center', background: 'rgba(239, 68, 68, 0.1)', padding: 8, borderRadius: 10 }}>
+                      <div className="text-[12px] text-red-500 font-black text-center bg-red-500/10 p-2 rounded-[10px]">
                         ⚠️ {uploadError}
                       </div>
                     )}
@@ -602,7 +600,7 @@ const InvoiceModal = ({ order, onClose, paymentQrUrl, paymentInfo, BACKEND_URL, 
                       <>
                         <label className="khqr-upload-btn">
                           {isUploadingReceipt ? (lang === 'kh' ? '⌛ កំពុងផ្ទុក...' : '⌛ Uploading...') : (lang === 'kh' ? '📥 ដាក់វិក្កយបត្របញ្ជាក់ (Screenshot)' : '📥 Upload Payment Screenshot')}
-                          <input type="file" accept="image/*" style={{ display: 'none' }} disabled={isUploadingReceipt || receiptUploaded} onChange={handleReceiptUpload} />
+                          <input type="file" accept="image/*" className="hidden" disabled={isUploadingReceipt || receiptUploaded} onChange={handleReceiptUpload} />
                         </label>
                       </>
                     )}

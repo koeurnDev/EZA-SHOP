@@ -1,9 +1,6 @@
 import { Hono } from 'hono';
-import { eq, desc, and, gte } from 'drizzle-orm';
 import { createDb } from '../db/connection';
-import { products, categories } from '../db/schema';
-import { telegramAuth } from '../middleware/auth';
-import { getEffectivePrice, parseJsonSafe } from '../utils/helpers';
+import { ProductService } from '../services/productService';
 import type { Env, Variables } from '../types';
 
 const app = new Hono<{ Bindings: Env; Variables: Variables }>();
@@ -14,33 +11,9 @@ const app = new Hono<{ Bindings: Env; Variables: Variables }>();
 app.get('/', async (c) => {
   try {
     const db = createDb(c.env);
+    const productService = new ProductService(db);
     
-    const allProducts = await db
-      .select()
-      .from(products)
-      .where(gte(products.stock, 1))
-      .orderBy(desc(products.created_at));
-
-    const formattedProducts = allProducts.map(product => ({
-      id: product.id,
-      name: product.name,
-      price: getEffectivePrice(
-        parseFloat(product.price),
-        product.flash_sale_price ? parseFloat(product.flash_sale_price) : undefined,
-        product.flash_sale_end?.toISOString()
-      ),
-      original_price: parseFloat(product.price),
-      category: product.category,
-      image: product.image,
-      stock: product.stock,
-      variants: parseJsonSafe(product.variants as string, []),
-      flash_sale: {
-        active: product.flash_sale_end ? new Date(product.flash_sale_end) > new Date() : false,
-        price: product.flash_sale_price ? parseFloat(product.flash_sale_price) : null,
-        end_time: product.flash_sale_end?.toISOString() || null,
-      },
-      created_at: product.created_at.toISOString(),
-    }));
+    const formattedProducts = await productService.getAllProducts();
 
     c.header('Cache-Control', 'public, max-age=15, s-maxage=60');
     return c.json({
@@ -69,40 +42,13 @@ app.get('/:id', async (c) => {
     }
 
     const db = createDb(c.env);
-    const product = await db
-      .select()
-      .from(products)
-      .where(eq(products.id, productId))
-      .limit(1);
+    const productService = new ProductService(db);
+    
+    const formattedProduct = await productService.getProductById(productId);
 
-    if (product.length === 0) {
+    if (!formattedProduct) {
       return c.json({ success: false, error: 'Product not found' }, 404);
     }
-
-    const p = product[0];
-    const formattedProduct = {
-      id: p.id,
-      name: p.name,
-      price: getEffectivePrice(
-        parseFloat(p.price),
-        p.flash_sale_price ? parseFloat(p.flash_sale_price) : undefined,
-        p.flash_sale_end?.toISOString()
-      ),
-      original_price: parseFloat(p.price),
-      category: p.category,
-      image: p.image,
-      stock: p.stock,
-      description: p.description,
-      additional_images: parseJsonSafe(p.additional_images as string, []),
-      variants: parseJsonSafe(p.variants as string, []),
-      flash_sale: {
-        active: p.flash_sale_end ? new Date(p.flash_sale_end) > new Date() : false,
-        price: p.flash_sale_price ? parseFloat(p.flash_sale_price) : null,
-        end_time: p.flash_sale_end?.toISOString() || null,
-      },
-      video_url: p.video_url,
-      created_at: p.created_at.toISOString(),
-    };
 
     return c.json({
       success: true,
@@ -125,34 +71,9 @@ app.get('/category/:category', async (c) => {
   try {
     const category = decodeURIComponent(c.req.param('category'));
     const db = createDb(c.env);
+    const productService = new ProductService(db);
     
-    const categoryProducts = await db
-      .select()
-      .from(products)
-      .where(and(eq(products.category, category), gte(products.stock, 1)))
-      .orderBy(desc(products.created_at));
-
-    const formattedProducts = categoryProducts.map(product => ({
-      id: product.id,
-      name: product.name,
-      price: getEffectivePrice(
-        parseFloat(product.price),
-        product.flash_sale_price ? parseFloat(product.flash_sale_price) : undefined,
-        product.flash_sale_end?.toISOString()
-      ),
-      original_price: parseFloat(product.price),
-      category: product.category,
-      image: product.image,
-      stock: product.stock,
-      description: product.description,
-      additional_images: parseJsonSafe(product.additional_images as string, []),
-      flash_sale: {
-        active: product.flash_sale_end ? new Date(product.flash_sale_end) > new Date() : false,
-        price: product.flash_sale_price ? parseFloat(product.flash_sale_price) : null,
-        end_time: product.flash_sale_end?.toISOString() || null,
-      },
-      created_at: product.created_at.toISOString(),
-    }));
+    const formattedProducts = await productService.getProductsByCategory(category);
 
     return c.json({
       success: true,

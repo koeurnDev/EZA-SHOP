@@ -202,8 +202,8 @@ const CartPage = ({
         </div>
         <div className="cart-empty-state">
           <div className="relative mb-8 flex justify-center items-center">
-             <div className="absolute rounded-full opacity-20 blur-3xl" style={{ width: '120px', height: '120px', background: 'var(--text-bold)' }}></div>
-             <svg width="100" height="100" viewBox="0 0 24 24" fill="none" stroke="var(--text-bold)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="relative z-10" style={{ filter: 'drop-shadow(0 8px 16px rgba(0,0,0,0.08))' }}>
+             <div className="absolute rounded-full opacity-20 blur-3xl w-[120px] h-[120px] bg-[var(--text-bold)]"></div>
+             <svg width="100" height="100" viewBox="0 0 24 24" fill="none" stroke="var(--text-bold)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="relative z-10 drop-shadow-[0_8px_16px_rgba(0,0,0,0.08)]">
                 <circle cx="9" cy="21" r="1"></circle>
                 <circle cx="20" cy="21" r="1"></circle>
                 <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
@@ -242,7 +242,7 @@ const CartPage = ({
             <div className="animate-in mb-8">
               <h3 className="text-2xl font-black text-bold mb-6 lowercase">
                 {t('items') || 'items'}
-                <span style={{ marginLeft: 10, fontSize: '0.92rem', fontWeight: 600, color: 'var(--text-muted)', opacity: 0.85 }}>
+                <span className="ml-2.5 text-[0.92rem] font-semibold text-[var(--text-muted)] opacity-85">
                   ({totalItemsCount})
                 </span>
               </h3>
@@ -273,7 +273,7 @@ const CartPage = ({
                       <p className="cart-item-variant">
                         {formatCategory(item.category, lang)}
                         {item.variant && (
-                          <span style={{ display: 'inline-block', marginLeft: '6px', padding: '2px 6px', background: 'rgba(0,0,0,0.05)', borderRadius: '4px', fontSize: '11px', fontWeight: 'bold' }}>
+                          <span className="inline-block ml-1.5 px-1.5 py-0.5 bg-black/5 rounded text-[11px] font-bold">
                             {item.variant.color && `🎨 ${item.variant.color} `}
                             {item.variant.size && `${getCapacityIcon(getVariantUnitMode({ category: item.category, productName: item.name, variantSizes: [item.variant.size] }))} ${item.variant.size}`}
                           </span>
@@ -282,7 +282,7 @@ const CartPage = ({
                       <div className="cart-item-bottom">
                         <span className={`cart-item-price ${isDiscounted ? 'text-red-500' : ''}`}>
                           ${(finalPrice * item.quantity).toFixed(2)}
-                          {isDiscounted && <span style={{display: 'block', fontSize: '10px', color: 'var(--text-muted)', textDecoration: 'line-through'}}>${(item.price * item.quantity).toFixed(2)}</span>}
+                          {isDiscounted && <span className="block text-[10px] text-[var(--text-muted)] line-through">${(item.price * item.quantity).toFixed(2)}</span>}
                         </span>
                         <div className="cart-item-controls">
                           <button className="cart-qty-btn minus" aria-label="Decrease quantity" onClick={() => updateQty(item.cartKey || item.id, -1)}>
@@ -315,27 +315,15 @@ const CartPage = ({
         </div>
 
         <div className="lg:w-80">
-          <div className="sticky top-5 p-6 rounded-[32px] shadow-sm mb-20" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}>
+          <div className="sticky top-5 p-6 rounded-[32px] shadow-sm mb-20 bg-[var(--bg-surface)] border border-[var(--border-subtle)]">
             <h3 className="text-lg font-black text-bold mb-6">{lang === 'kh' ? 'សង្ខេប' : 'Summary'}</h3>
             
             {/* Promo Code Section */}
-            <div className="mb-6 pb-6 border-b border-dashed" style={{ borderColor: 'var(--border-subtle)' }}>
-              <div style={{ position: 'relative', width: '100%', boxSizing: 'border-box' }}>
+            <div className="mb-6 pb-6 border-b border-dashed border-[var(--border-subtle)]">
+              <div className="relative w-full box-border">
                 <input 
                   type="text" 
-                  style={{
-                    width: '100%',
-                    padding: '12px 85px 12px 14px',
-                    borderRadius: '14px',
-                    border: '1px solid var(--border-subtle)',
-                    background: 'var(--bg-soft)',
-                    color: 'var(--text-main)',
-                    fontSize: '13px',
-                    fontWeight: '800',
-                    outline: 'none',
-                    textTransform: 'uppercase',
-                    boxSizing: 'border-box'
-                  }}
+                  className="w-full py-3 pr-[85px] pl-3.5 rounded-[14px] border border-[var(--border-subtle)] bg-[var(--bg-soft)] text-[var(--text-main)] text-[13px] font-extrabold outline-none uppercase box-border"
                   placeholder={lang === 'kh' ? 'លេខកូដបញ្ចុះតម្លៃ' : 'PROMO CODE'}
                   value={promoInput}
                   onChange={(e) => setPromoInput(e.target.value.toUpperCase())}
@@ -343,25 +331,7 @@ const CartPage = ({
                 />
                 {!validatedPromo ? (
                   <button 
-                    style={{
-                      position: 'absolute',
-                      right: '4px',
-                      top: '4px',
-                      bottom: '4px',
-                      padding: '0 16px',
-                      background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                      color: '#ffffff',
-                      border: 'none',
-                      borderRadius: '10px',
-                      fontSize: '12px',
-                      fontWeight: '900',
-                      cursor: (promoLoading || !promoInput.trim()) ? 'not-allowed' : 'pointer',
-                      opacity: (promoLoading || !promoInput.trim()) ? 0.5 : 1,
-                      transition: 'all 0.2s ease',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justify: 'center'
-                    }}
+                    className="absolute right-1 top-1 bottom-1 px-4 bg-gradient-to-br from-emerald-500 to-emerald-600 text-white border-none rounded-[10px] text-xs font-black transition-all duration-200 ease-in-out flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
                     onClick={handleApplyPromo}
                     disabled={promoLoading || !promoInput.trim()}
                   >
@@ -369,23 +339,7 @@ const CartPage = ({
                   </button>
                 ) : (
                   <button 
-                    style={{
-                      position: 'absolute',
-                      right: '4px',
-                      top: '4px',
-                      bottom: '4px',
-                      padding: '0 12px',
-                      background: '#ef4444',
-                      color: '#ffffff',
-                      border: 'none',
-                      borderRadius: '10px',
-                      fontSize: '12px',
-                      fontWeight: '900',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justify: 'center'
-                    }}
+                    className="absolute right-1 top-1 bottom-1 px-3 bg-red-500 text-white border-none rounded-[10px] text-xs font-black cursor-pointer flex items-center justify-center"
                     onClick={() => { setValidatedPromo(null); setPromoInput(''); }}
                   >
                     {lang === 'kh' ? 'លុប' : 'Remove'}
@@ -396,7 +350,7 @@ const CartPage = ({
               {validatedPromo && <div className="text-[#059669] text-xs font-bold mt-2 ml-1 flex items-center gap-1">✅ {lang === 'kh' ? 'បានប្រើប្រាស់ជោគជ័យ' : 'Coupon applied!'}</div>}
             </div>
 
-            <div className="flex flex-col gap-4 mb-6 pb-6 border-b border-dashed" style={{ borderColor: 'var(--border-subtle)' }}>
+            <div className="flex flex-col gap-4 mb-6 pb-6 border-b border-dashed border-[var(--border-subtle)]">
               {cart.map(item => {
                 const best = calculateBestDiscount(item, activeDiscounts);
                 const dPrice = best ? getDiscountedPrice(item, best) : null;
@@ -434,7 +388,7 @@ const CartPage = ({
             </div>
           </div>
           {amountToFreeDelivery > 0 && (
-            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginTop: 6 }}>
+            <div className="text-[11px] font-bold text-[var(--text-muted)] mt-1.5">
               {lang === 'kh'
                 ? `ទិញបន្ថែម $${amountToFreeDelivery.toFixed(2)} ដើម្បីដឹកហ្វ្រី`
                 : `Add $${amountToFreeDelivery.toFixed(2)} more for free delivery`}

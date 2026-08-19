@@ -127,7 +127,7 @@ const ProductGrid = () => {
 
       {/* 🛍 MAIN GRID HEADER */}
       <div className="section-header section-header--compact py-3 flex justify-between items-center">
-        <h2 className="product-section-title text-bold" style={{ wordBreak: 'break-word', lineHeight: 1.2 }}>
+        <h2 className="product-section-title text-bold break-words leading-[1.2]">
           {searchTerm ? `"${searchTerm}"` : selectedCategory === 'all' ? t('all') : selectedCategory === 'flash_sale' ? '⚡ Flash Sale' : formatCategory(selectedCategory, lang)}
         </h2>
         <span className="product-section-count text-muted whitespace-nowrap">

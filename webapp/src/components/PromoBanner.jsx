@@ -77,20 +77,22 @@ const PromoBanner = ({ threshold, promoText, promoBannerUrl, t, lang }) => {
   if (parsedBanners.length > 0) {
     return (
       <div
-        className="ads-hero-container"
-        style={{ position: 'relative' }}
+        className="ads-hero-container relative"
         onMouseEnter={() => setIsPaused(true)}
         onMouseLeave={() => setIsPaused(false)}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       >
-        <div className="ads-hero-wrapper" style={{ overflow: 'hidden', position: 'relative' }}>
-          <div style={{ display: 'flex', height: '100%', transition: 'transform 0.5s ease-in-out', transform: `translateX(-${currentIndex * 100}%)` }}>
+        <div className="ads-hero-wrapper relative overflow-hidden">
+          <div 
+            className="flex h-full transition-transform duration-500 ease-in-out" 
+            style={{ transform: `translateX(-${currentIndex * 100}%)` }}
+          >
             {parsedBanners.map((banner, idx) => (
               <div
                 key={`${banner.url}-${idx}`}
-                style={{ flex: '0 0 100%', minWidth: '100%', height: '100%', position: 'relative', cursor: banner.linkType && banner.targetId ? 'pointer' : 'default' }}
+                className={`flex-[0_0_100%] min-w-full h-full relative ${banner.linkType && banner.targetId ? 'cursor-pointer' : 'cursor-default'}`}
                 onClick={() => handleBannerClick(banner)}
               >
                 <img
@@ -107,19 +109,13 @@ const PromoBanner = ({ threshold, promoText, promoBannerUrl, t, lang }) => {
         </div>
 
         {parsedBanners.length > 1 && (
-          <div style={{ position: 'absolute', bottom: '10px', left: '0', right: '0', display: 'flex', justifyContent: 'center', gap: '6px' }}>
+          <div className="absolute bottom-2.5 left-0 right-0 flex justify-center gap-1.5">
             {parsedBanners.map((_, idx) => (
               <div
                 key={idx}
-                style={{
-                  width: currentIndex === idx ? '18px' : '6px',
-                  height: '6px',
-                  borderRadius: '4px',
-                  background: currentIndex === idx ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.45)',
-                  transition: 'all 0.3s ease',
-                  cursor: 'pointer',
-                  boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
-                }}
+                className={`h-1.5 rounded-sm transition-all duration-300 ease-in-out cursor-pointer shadow-sm ${
+                  currentIndex === idx ? 'w-[18px] bg-white/95' : 'w-[6px] bg-white/45'
+                }`}
                 onClick={() => setCurrentIndex(idx)}
               />
             ))}

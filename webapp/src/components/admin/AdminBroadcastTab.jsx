@@ -72,7 +72,14 @@ const AdminBroadcastTab = React.memo(({
           <button
             type="button"
             className="admin-broadcast-send-btn"
-            style={{ marginTop: 15, background: 'linear-gradient(90deg, #ec4899, #8b5cf6)' }}
+            style={{ 
+              marginTop: 15, 
+              background: 'rgba(255, 255, 255, 0.1)',
+              border: '1px solid rgba(255, 255, 255, 0.15)',
+              color: '#ffffff',
+              backdropFilter: 'blur(10px)',
+              WebkitBackdropFilter: 'blur(10px)'
+            }}
             onClick={async () => {
               if (!window.confirm(lang === 'kh' ? 'តើអ្នកពិតជាចង់ផ្ញើសាររំលឹកនេះមែនទេ?' : 'Trigger abandoned cart reminders?')) return;
               try {

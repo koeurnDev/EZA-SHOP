@@ -48,20 +48,8 @@ const CountdownTimer = ({ endTime, style, className = '' }) => {
   if (!timeLeft) return null;
 
   return (
-    <div className={`countdown-timer ${className}`} style={{
-      display: 'inline-flex',
-      alignItems: 'center',
-      gap: '4px',
-      background: 'linear-gradient(135deg, #ef4444, #dc2626)',
-      color: 'white',
-      padding: '4px 8px',
-      borderRadius: '8px',
-      fontSize: '11px',
-      fontWeight: 'bold',
-      boxShadow: '0 2px 4px rgba(220, 38, 38, 0.3)',
-      ...style
-    }}>
-      <span style={{ fontSize: '10px' }}>⏱️</span>
+    <div className={`countdown-timer inline-flex items-center gap-1 bg-gradient-to-br from-red-500 to-red-600 text-white px-2 py-1 rounded-lg text-[11px] font-bold shadow-[0_2px_4px_rgba(220,38,38,0.3)] ${className}`} style={style}>
+      <span className="text-[10px]">⏱️</span>
       <span>{timeLeft}</span>
     </div>
   );

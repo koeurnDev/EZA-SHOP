@@ -152,7 +152,7 @@ const NotificationsModal = ({ isOpen, onClose, lang = 'kh' }) => {
               )}
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div className="flex items-center gap-2">
               {notifications.length > 0 && (
                 <button type="button" onClick={handleClearAll} className="notif-modal-clear" title={isKhmer ? 'សម្អាតទាំងអស់' : 'Clear All'}>
                   <span>🗑️</span>
@@ -183,23 +183,23 @@ const NotificationsModal = ({ isOpen, onClose, lang = 'kh' }) => {
 
         <div className="notif-modal-body">
           {loading ? (
-            <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)', fontSize: 13, fontWeight: 700 }}>
+            <div className="text-center py-10 text-[var(--text-muted)] text-[13px] font-bold">
               ⌛ {isKhmer ? 'កំពុងផ្ទុកសារ...' : 'Loading notifications...'}
             </div>
           ) : filteredNotifications.length > 0 ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div className="flex flex-col gap-2">
               {filteredNotifications.map((item) => (
                 <div
                   key={item.id}
                   onClick={() => handleItemClick(item.id)}
                   className={`notif-item${item.is_read ? '' : ' unread'}`}
                 >
-                  <div style={{ position: 'relative', flexShrink: 0 }}>
+                  <div className="relative shrink-0">
                     <div className="notif-item-icon">📢</div>
                     {!item.is_read && <div className="notif-item-dot" />}
                   </div>
 
-                  <div style={{ flex: 1, minWidth: 0 }}>
+                  <div className="flex-1 min-w-0">
                     <div className="notif-item-text">
                       {item.message || (isKhmer ? 'បានផ្ញើដំណឹងប្រូម៉ូសិនថ្មី!' : 'Sent a new promotion notice!')}
                     </div>
@@ -208,7 +208,7 @@ const NotificationsModal = ({ isOpen, onClose, lang = 'kh' }) => {
                       <img
                         src={item.photo_url}
                         alt=""
-                        style={{ width: '100%', maxHeight: 180, objectFit: 'cover', borderRadius: 14, marginTop: 8, marginBottom: 6, border: '1px solid var(--border-subtle)' }}
+                        className="w-full max-h-[180px] object-cover rounded-[14px] mt-2 mb-1.5 border border-[var(--border-subtle)]"
                         loading="lazy"
                         onError={(e) => { e.target.onerror = null; e.target.style.display = 'none'; }}
                       />
@@ -232,8 +232,8 @@ const NotificationsModal = ({ isOpen, onClose, lang = 'kh' }) => {
               ))}
             </div>
           ) : (
-            <div style={{ padding: '48px 20px', textAlign: 'center' }}>
-              <div className="notif-empty-icon">✨</div>
+            <div className="py-12 px-5 text-center">
+              <div className="notif-empty-icon">🔍</div>
               <div className="notif-empty-title">
                 {isKhmer ? 'គ្មានសារជូនដំណឹងទេ' : 'All Caught Up!'}
               </div>

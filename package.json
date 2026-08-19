@@ -3,12 +3,9 @@
   "private": true,
   "scripts": {
     "test": "node --test shared/tests/utils.test.js shared/tests/bannerLink.test.js",
-    "bot:start": "npm start --prefix bot",
-    "bot:migrate": "npm run migrate --prefix bot",
-    "bot:smoke": "npm run smoke --prefix bot",
     "webapp:dev": "npm run dev --prefix webapp",
     "webapp:build": "npm run build --prefix webapp",
-    "check": "npm test && npm run bot:smoke && npm run webapp:build"
+    "check": "npm test && npm run webapp:build"
   },
   "devDependencies": {
     "@babel/parser": "^8.0.4"

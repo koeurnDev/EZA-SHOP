@@ -135,26 +135,25 @@ const ShopHeader = ({
 
   return (
     <div className={`shop-header-container${isSearchVisible && isKeyboardVisible ? ' shop-header--sticky' : ''}`}>
-      <div className="shop-header-top" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', gap: '8px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+      <div className="shop-header-top flex justify-between items-center w-full gap-2">
+        <div className="flex items-center gap-2.5">
           {view !== 'home' && view !== 'browse' ? (
-            <button className="shop-back-btn" onClick={() => setView('home')} aria-label="Go back" style={{ flexShrink: 0 }}>
+            <button className="shop-back-btn shrink-0" onClick={() => setView('home')} aria-label="Go back">
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M15 18l-6-6 6-6"/>
               </svg>
             </button>
           ) : null}
 
-          <div className="profile-badge-luxury flex-shrink-0 cursor-pointer" onClick={() => setView('profile')} style={{ padding: '6px 14px' }}>
+          <div className="profile-badge-luxury shrink-0 cursor-pointer px-3.5 py-1.5" onClick={() => setView('profile')}>
             {user?.photo_url && (
-              <div className="avatar-mini-lux" style={{ background: 'transparent' }}>
+              <div className="avatar-mini-lux bg-transparent">
                 <img src={user.photo_url} alt="" className="w-full h-full object-cover" />
               </div>
             )}
             <div className="profile-info-lux">
-              <span className="user-name-lux" style={{ fontSize: '13px' }}>
-                {!user?.photo_url && "👋 "}
-                {user?.first_name && user.first_name !== 'Guest' ? `${lang === 'kh' ? 'សួស្តី,' : 'Hi,'} ${user.first_name}` : (lang === 'kh' ? 'សួស្តី ភ្ញៀវ' : 'Hi, Guest')}
+              <span className="user-name-lux text-[13px]">
+                {user?.first_name && user.first_name !== 'Guest' ? user.first_name : (lang === 'kh' ? 'ភ្ញៀវ' : 'Guest')}
               </span>
             </div>
           </div>

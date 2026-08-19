@@ -10,6 +10,11 @@ export default defineConfig({
       '@shared': path.resolve(__dirname, '../shared')
     }
   },
+  test: {
+    globals: true,
+    environment: 'jsdom',
+    setupFiles: './src/tests/setup.js',
+  },
   server: {
     port: 5173,
     strictPort: true,
@@ -34,7 +39,8 @@ export default defineConfig({
         manualChunks: {
           vendor: ['react', 'react-dom'],
           tfjs: ['@tensorflow/tfjs', '@tensorflow-models/mobilenet'],
-          ui: ['recharts', 'qrcode']
+          charts: ['recharts'],
+          ui: ['qrcode']
         }
       }
     }

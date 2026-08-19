@@ -24,9 +24,11 @@ app.get('/:productId/reviews', async (c) => {
 
     const [reviewsRes, statsRes] = await Promise.all([
       db.execute(sql`
-        SELECT id, user_name, rating, comment, created_at
-        FROM reviews WHERE product_id = ${productId}
-        ORDER BY created_at DESC LIMIT ${limit} OFFSET ${offset}
+        SELECT r.id, r.user_id, r.user_name, r.rating, r.comment, r.created_at, u.photo_url
+        FROM reviews r
+        LEFT JOIN users u ON r.user_id = u.user_id
+        WHERE r.product_id = ${productId}
+        ORDER BY r.created_at DESC LIMIT ${limit} OFFSET ${offset}
       `),
       db.execute(sql`
         SELECT ROUND(AVG(rating), 1) as avg_rating, COUNT(*) as review_count

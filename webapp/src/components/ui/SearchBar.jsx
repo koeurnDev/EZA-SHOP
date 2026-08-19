@@ -86,7 +86,7 @@ const SearchBar = ({ searchTerm, setSearchTerm }) => {
   };
 
   return (
-    <div className="shop-search-block" ref={searchAreaRef} style={{ position: 'relative', marginBottom: '16px' }}>
+    <div className="shop-search-block relative mb-4" ref={searchAreaRef}>
       <div className="shop-search-area animate-in">
         <div className={`shop-search-bar${searchFocused ? ' shop-search-bar--focused' : ''}`}>
           <div className="shop-search-icon">

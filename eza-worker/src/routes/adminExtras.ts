@@ -741,6 +741,83 @@ app.delete('/faqs/:id', async (c) => {
   }
 });
 
+/**
+ * GET /api/admin/analytics - Extended analytics: monthly, category, province breakdown
+ */
+app.get('/analytics', async (c) => {
+  try {
+    const db = createDb(c.env);
+
+    const [monthlyRes, categoryRes, provinceRes, statusRes] = await Promise.all([
+      // Monthly revenue for the last 6 months
+      db.execute(sql`
+        SELECT
+          TO_CHAR(DATE_TRUNC('month', created_at), 'Mon YY') as month,
+          SUM(total::numeric) as revenue,
+          COUNT(*) as orders
+        FROM orders
+        WHERE created_at >= NOW() - INTERVAL '6 months'
+          AND status != 'cancelled'
+        GROUP BY DATE_TRUNC('month', created_at)
+        ORDER BY DATE_TRUNC('month', created_at) ASC
+      `),
+      // Revenue by product category (from items JSON)
+      db.execute(sql`
+        SELECT
+          COALESCE(p.category, 'Other') as category,
+          SUM((item->>'price')::numeric * (item->>'quantity')::numeric) as revenue
+        FROM orders o,
+          jsonb_array_elements(o.items::jsonb) AS item
+        JOIN products p ON p.id = (item->>'id')::int
+        WHERE o.status != 'cancelled'
+        GROUP BY p.category
+        ORDER BY revenue DESC
+        LIMIT 8
+      `),
+      // Revenue by province
+      db.execute(sql`
+        SELECT
+          COALESCE(province, 'Unknown') as province,
+          SUM(total::numeric) as revenue,
+          COUNT(*) as orders
+        FROM orders
+        WHERE status != 'cancelled' AND province IS NOT NULL
+        GROUP BY province
+        ORDER BY revenue DESC
+        LIMIT 10
+      `),
+      // Revenue by status
+      db.execute(sql`
+        SELECT status, COUNT(*) as count, SUM(total::numeric) as revenue
+        FROM orders
+        GROUP BY status
+      `)
+    ]);
+
+    return c.json({
+      success: true,
+      monthly: monthlyRes.rows || [],
+      categoryRevenue: (categoryRes.rows || []).map((r: any) => ({
+        category: r.category,
+        revenue: parseFloat(r.revenue || '0'),
+      })),
+      provinceRevenue: (provinceRes.rows || []).map((r: any) => ({
+        province: r.province,
+        revenue: parseFloat(r.revenue || '0'),
+        orders: parseInt(r.orders || '0'),
+      })),
+      revenueByStatus: (statusRes.rows || []).map((r: any) => ({
+        status: r.status,
+        count: parseInt(r.count || '0'),
+        revenue: parseFloat(r.revenue || '0'),
+      })),
+    });
+  } catch (error) {
+    console.error('Analytics error:', error);
+    return c.json({ success: false, monthly: [], categoryRevenue: [], provinceRevenue: [], revenueByStatus: [] }, 500);
+  }
+});
+
 app.get('/advanced-analytics', async (c) => {
   try {
     const db = createDb(c.env);

@@ -58,7 +58,7 @@ const ProductCard = memo(({
       {hasFlashSale && (
         <CountdownTimer 
           endTime={product.flash_sale_end} 
-          style={{ position: 'absolute', top: 8, right: 8, zIndex: 10 }}
+          className="absolute top-2 right-2 z-10"
         />
       )}
 
@@ -73,12 +73,12 @@ const ProductCard = memo(({
       </div>
       
       {/* Content Below Image */}
-      <div className="standard-card-content" style={{ gap: 8, justifyContent: 'flex-start' }}>
-        <h3 className="standard-card-title" style={{ margin: 0 }}>{product.name}</h3>
-        <div className="standard-card-bottom" style={{ marginTop: 0 }}>
-          <div style={{ display: 'flex', flexDirection: 'column' }}>
+      <div className="standard-card-content gap-2 justify-start">
+        <h3 className="standard-card-title m-0">{product.name}</h3>
+        <div className="standard-card-bottom mt-auto">
+          <div className="flex flex-col">
             <span className="standard-card-price">${finalPrice}</span>
-            {isDiscounted && <span style={{ textDecoration: 'line-through', fontSize: '11px', color: 'var(--text-muted)', marginTop: '-2px' }}>${product.price}</span>}
+            {isDiscounted && <span className="line-through text-[11px] text-[var(--text-muted)] -mt-[2px]">${product.price}</span>}
           </div>
           {!isOutOfStock && (
             <button 

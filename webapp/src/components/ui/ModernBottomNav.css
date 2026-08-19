@@ -49,12 +49,17 @@
   position: relative;
 }
 
+.modern-nav-btn:focus,
+.modern-nav-btn:focus-visible {
+  outline: none !important;
+}
+
 .modern-nav-btn.active {
-  color: var(--primary-accent);
+  color: var(--text-main);
 }
 
 [data-theme='dark'] .modern-nav-btn.active {
-  color: var(--primary-accent);
+  color: #ffffff;
 }
 
 [data-theme='dark'] .modern-nav-btn {

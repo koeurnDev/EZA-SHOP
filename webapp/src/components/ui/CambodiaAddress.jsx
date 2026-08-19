@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import geoData from '../../data/cambodia.json';
 
 const CambodiaAddress = ({ value, onChange, lang }) => {
   // Parse existing value or init empty
@@ -9,11 +8,18 @@ const CambodiaAddress = ({ value, onChange, lang }) => {
   const [communeId, setCommuneId] = useState('');
   const [villageId, setVillageId] = useState('');
 
+  // 🚀 Lazy-load the 897KB geo dataset only when this component mounts
+  const [geoData, setGeoData] = useState([]);
+  useEffect(() => {
+    import('../../data/cambodia.json').then(m => setGeoData(m.default || m));
+  }, []);
+
   // Dropdown lists
   const provinces = geoData;
   const [districts, setDistricts] = useState([]);
   const [communes, setCommunes] = useState([]);
   const [villages, setVillages] = useState([]);
+
 
   // Initialize from value prop if available
   useEffect(() => {
@@ -91,7 +97,7 @@ const CambodiaAddress = ({ value, onChange, lang }) => {
   }, [houseStreet, provinceId, districtId, communeId, villageId, lang]);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+    <div className="flex flex-col gap-2.5">
       
       {/* House & Street */}
       <div>
@@ -107,10 +113,10 @@ const CambodiaAddress = ({ value, onChange, lang }) => {
         />
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+      <div className="grid grid-cols-2 gap-2.5">
         {/* Province */}
         <div>
-          <label style={{ fontSize: 11, fontWeight: 900, opacity: 0.7, marginBottom: 5, display: 'block' }}>
+          <label className="text-[11px] font-black opacity-70 mb-1.5 block">
             {lang === 'kh' ? 'រាជធានី/ខេត្ត' : 'Province'}
           </label>
           <select
@@ -127,7 +133,7 @@ const CambodiaAddress = ({ value, onChange, lang }) => {
 
         {/* District */}
         <div>
-          <label style={{ fontSize: 11, fontWeight: 900, opacity: 0.7, marginBottom: 5, display: 'block' }}>
+          <label className="text-[11px] font-black opacity-70 mb-1.5 block">
             {lang === 'kh' ? 'ស្រុក/ខណ្ឌ' : 'District'}
           </label>
           <select
@@ -145,7 +151,7 @@ const CambodiaAddress = ({ value, onChange, lang }) => {
 
         {/* Commune */}
         <div>
-          <label style={{ fontSize: 11, fontWeight: 900, opacity: 0.7, marginBottom: 5, display: 'block' }}>
+          <label className="text-[11px] font-black opacity-70 mb-1.5 block">
             {lang === 'kh' ? 'ឃុំ/សង្កាត់' : 'Commune'}
           </label>
           <select
@@ -163,7 +169,7 @@ const CambodiaAddress = ({ value, onChange, lang }) => {
 
         {/* Village */}
         <div>
-          <label style={{ fontSize: 11, fontWeight: 900, opacity: 0.7, marginBottom: 5, display: 'block' }}>
+          <label className="text-[11px] font-black opacity-70 mb-1.5 block">
             {lang === 'kh' ? 'ភូមិ' : 'Village'}
           </label>
           <select

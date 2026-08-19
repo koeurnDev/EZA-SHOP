@@ -10,7 +10,8 @@ import { useTelemetry } from './hooks/useTelemetry';
 import { useFeatureFlags } from './context/FeatureFlagContext';
 import { useKeyboardVisibility } from './hooks/useKeyboardVisibility';
 import { useWishlist } from './hooks/useWishlist';
-
+import { usePingServer } from './hooks/usePingServer';
+import { useDeepLink } from './hooks/useDeepLink';
 
 // Components
 import Hero from './components/Hero';
@@ -20,11 +21,10 @@ const WishlistPage = lazy(() => import('./components/WishlistPage'));
 import CategoryNavigator from './components/CategoryNavigator';
 import PromoBanner from './components/PromoBanner';
 import ProductGrid from './components/ProductGrid';
-import ProductDetail from './components/ProductDetail';
-import CartPage from './components/CartPage';
+const ProductDetail = lazy(() => import('./components/ProductDetail'));
+const CartPage = lazy(() => import('./components/CartPage'));
 import ModernBottomNav from './components/ui/ModernBottomNav';
 import SearchBar from './components/ui/SearchBar';
-import VideoFeed from './components/VideoFeed';
 import SplashScreen from './components/ui/SplashScreen';
 import SuccessOverlay from './components/SuccessOverlay';
 import InvoiceModal from './components/InvoiceModal';
@@ -35,7 +35,6 @@ import OfflineBanner from './components/ui/OfflineBanner';
 import OfflineService from './services/OfflineService';
 import ErrorBoundary from './components/ui/ErrorBoundary';
 import FilterModal from './components/ui/FilterModal';
-import { parseProductStartParam } from './utils/shareUtils';
 const VisualSearchModal = lazy(() => import('./components/ui/VisualSearchModal'));
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || '';
@@ -100,51 +99,11 @@ function App() {
     localStorage.setItem('momo_shipping_info', JSON.stringify(formData));
   }, [formData]);
 
-  // 🟢 Online Status Tracking: Ping server every 10 minutes (reduced from 2min to save requests)
-  useEffect(() => {
-    if (!user?.id) return;
-    const isDevelopment = import.meta.env.DEV;
-    const startParam = tg?.initDataUnsafe?.start_param;
-    let referredBy = null;
-    if (startParam && startParam.startsWith('ref_')) {
-      referredBy = startParam.replace('ref_', '');
-    }
+  // 🟢 Online Status Tracking: Ping server every 10 minutes
+  usePingServer(user, tg, BACKEND_URL);
 
-    const pingServer = async () => {
-      try {
-        await fetch(`${BACKEND_URL}/api/ping`, {
-          method: 'POST',
-          headers: { 
-            'x-tg-data': tg?.initData || '',
-            'Content-Type': 'application/json',
-            ...(isDevelopment && { 'X-Debug-Bypass': 'true' })
-          },
-          body: JSON.stringify({ referred_by: referredBy })
-        });
-      } catch (err) {
-        // Silent fail
-      }
-    };
-    pingServer();
-    const interval = setInterval(pingServer, 10 * 60 * 1000); // 10 min
-    return () => clearInterval(interval);
-  }, [user?.id, tg?.initData]);
-
-  // ℹ️ No keepAlive needed — Cloudflare Workers are always-on (no cold start like Render free tier)
-
-  // Open product from shared deep link (?startapp=product_123)
-  useEffect(() => {
-    if (!isSettingsLoaded || !products?.length || !tg) return;
-    const startParam = tg.initDataUnsafe?.start_param;
-    const productId = parseProductStartParam(startParam);
-    if (!productId) return;
-
-    const product = products.find(p => String(p.id) === String(productId));
-    if (product) {
-      setSelectedProduct(product);
-      setView('product_detail');
-    }
-  }, [isSettingsLoaded, products, tg, setSelectedProduct, setView]);
+  // Open product from shared deep link
+  useDeepLink(isSettingsLoaded, products, tg, setSelectedProduct, setView);
 
   // Navigation & BackButton Logic
   useEffect(() => {
@@ -401,52 +360,49 @@ function App() {
               </div>
             )}
             {view === 'checkout' && (
-              <CartPage 
-                formData={formData} 
-                setFormData={setFormData} 
-                onPhoneChange={(val) => {
-                  const cleaned = val.replace(/\D/g, '').slice(0, 10);
-                  let formatted = cleaned;
-                  if (cleaned.length > 3 && cleaned.length <= 6) {
-                    formatted = `${cleaned.slice(0, 3)} ${cleaned.slice(3)}`;
-                  } else if (cleaned.length > 6) {
-                    formatted = `${cleaned.slice(0, 3)} ${cleaned.slice(3, 6)} ${cleaned.slice(6)}`;
-                  }
-                  setFormData(prev => ({ ...prev, phone: formatted }));
-                }} 
-                isPhoneValid={formData.phone.replace(/\s/g, '').length >= 9} 
-                isAddressValid={!!formData.address?.trim()}
-                validationErrors={validationErrors} 
-                onCheckout={handleCheckout} 
-                isPlacingOrder={isPlacingOrder} 
-              />
-            )}
-            {view === 'feed' && (
-              <VideoFeed 
-                products={products} 
-                onProductSelect={(p) => { setSelectedProduct(p); setView('product_detail'); }} 
-                onAddToCart={addToCart} 
-              />
+              <Suspense fallback={<div className="p-5 flex justify-center"><div className="loader border-[var(--primary-accent)] border-t-transparent"></div></div>}>
+                <CartPage 
+                  formData={formData} 
+                  setFormData={setFormData} 
+                  onPhoneChange={(val) => {
+                    const cleaned = val.replace(/\D/g, '').slice(0, 10);
+                    let formatted = cleaned;
+                    if (cleaned.length > 3 && cleaned.length <= 6) {
+                      formatted = `${cleaned.slice(0, 3)} ${cleaned.slice(3)}`;
+                    } else if (cleaned.length > 6) {
+                      formatted = `${cleaned.slice(0, 3)} ${cleaned.slice(3, 6)} ${cleaned.slice(6)}`;
+                    }
+                    setFormData(prev => ({ ...prev, phone: formatted }));
+                  }} 
+                  isPhoneValid={formData.phone.replace(/\s/g, '').length >= 9} 
+                  isAddressValid={!!formData.address?.trim()}
+                  validationErrors={validationErrors} 
+                  onCheckout={handleCheckout} 
+                  isPlacingOrder={isPlacingOrder} 
+                />
+              </Suspense>
             )}
 
           </>
         )}
 
         {view === 'product_detail' && selectedProduct && (
-          <ProductDetail
-            product={selectedProduct}
-            allProducts={products}
-            onAdd={addToCart}
-            onClose={() => setView('browse')}
-            onBuyNow={() => setView('checkout')}
-            activeDiscounts={activeDiscounts}
-            t={t}
-            lang={lang}
-            shopLogoUrl={shopLogoUrl}
-            onSelectRelated={(p) => setSelectedProduct(p)}
-            isFavorited={isFavorited(selectedProduct.id)}
-            onToggleWishlist={() => handleToggleWishlist(selectedProduct.id)}
-          />
+          <Suspense fallback={<div className="fixed inset-0 bg-[var(--bg-app)] z-50 flex flex-col p-4"><ProductSkeleton /></div>}>
+            <ProductDetail
+              product={selectedProduct}
+              allProducts={products}
+              onAdd={addToCart}
+              onClose={() => setView('browse')}
+              onBuyNow={() => setView('checkout')}
+              activeDiscounts={activeDiscounts}
+              t={t}
+              lang={lang}
+              shopLogoUrl={shopLogoUrl}
+              onSelectRelated={(p) => setSelectedProduct(p)}
+              isFavorited={isFavorited(selectedProduct.id)}
+              onToggleWishlist={() => handleToggleWishlist(selectedProduct.id)}
+            />
+          </Suspense>
         )}
 
         <FilterModal />

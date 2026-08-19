@@ -96,20 +96,20 @@ export const TelegramProvider = ({ children }) => {
       
       {/* Custom Confirm Fallback */}
       {confirmData.show && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.7)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(8px)', padding: '20px' }}>
-          <div className="animate-in" style={{ background: 'var(--bg-surface, #1e1e24)', border: '1px solid var(--border-subtle, rgba(255,255,255,0.18))', padding: '28px 24px', borderRadius: '24px', width: '90%', maxWidth: '340px', textAlign: 'center', boxShadow: '0 25px 60px rgba(0,0,0,0.6)' }}>
-            <div style={{ fontSize: '36px', marginBottom: '14px' }}>❓</div>
-            <p style={{ margin: '0 0 24px 0', fontSize: '15px', color: 'var(--text-bold, #ffffff)', fontWeight: '700', lineHeight: '1.6', whiteSpace: 'pre-line' }}>{confirmData.message}</p>
-            <div style={{ display: 'flex', gap: '12px' }}>
+        <div className="fixed inset-0 bg-black/70 z-[99999] flex items-center justify-center backdrop-blur-md p-5">
+          <div className="animate-in bg-[var(--bg-surface,#1e1e24)] border border-[var(--border-subtle,rgba(255,255,255,0.18))] py-7 px-6 rounded-[24px] w-[90%] max-w-[340px] text-center shadow-[0_25px_60px_rgba(0,0,0,0.6)]">
+            <div className="text-[36px] mb-3.5">❓</div>
+            <p className="m-0 mb-6 text-[15px] text-[var(--text-bold,#ffffff)] font-bold leading-relaxed whitespace-pre-line">{confirmData.message}</p>
+            <div className="flex gap-3">
               <button 
                 onClick={() => { setConfirmData({ show: false }); if(confirmData.callback) confirmData.callback(false); }} 
-                style={{ flex: 1, padding: '12px 16px', background: 'var(--bg-soft, rgba(255,255,255,0.08))', color: 'var(--text-bold, #ffffff)', border: '1px solid var(--border-subtle, rgba(255,255,255,0.15))', borderRadius: '14px', fontWeight: '800', fontSize: '14px', cursor: 'pointer', transition: 'all 0.2s ease' }}
+                className="flex-1 px-4 py-3 bg-[var(--bg-soft,rgba(255,255,255,0.08))] text-[var(--text-bold,#ffffff)] border border-[var(--border-subtle,rgba(255,255,255,0.15))] rounded-xl font-extrabold text-[14px] cursor-pointer transition-all duration-200 ease-in-out"
               >
                 បោះបង់
               </button>
               <button 
                 onClick={() => { setConfirmData({ show: false }); if(confirmData.callback) confirmData.callback(true); }} 
-                style={{ flex: 1.2, padding: '12px 16px', background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)', color: '#ffffff', border: 'none', borderRadius: '14px', fontWeight: '900', fontSize: '14px', cursor: 'pointer', boxShadow: '0 4px 14px rgba(239, 68, 68, 0.3)', transition: 'all 0.2s ease' }}
+                className="flex-[1.2] px-4 py-3 bg-gradient-to-br from-red-500 to-red-600 text-white border-none rounded-xl font-black text-[14px] cursor-pointer shadow-[0_4px_14px_rgba(239,68,68,0.3)] transition-all duration-200 ease-in-out"
               >
                 យល់ព្រម
               </button>
@@ -120,13 +120,13 @@ export const TelegramProvider = ({ children }) => {
 
       {/* Custom Alert Fallback */}
       {alertData.show && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.7)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(8px)', padding: '20px' }}>
-          <div className="animate-in" style={{ background: 'var(--bg-surface, #1e1e24)', border: '1px solid var(--border-subtle, rgba(255,255,255,0.18))', padding: '28px 24px', borderRadius: '24px', width: '90%', maxWidth: '340px', textAlign: 'center', boxShadow: '0 25px 60px rgba(0,0,0,0.6)' }}>
-            <div style={{ fontSize: '36px', marginBottom: '14px' }}>✨</div>
-            <p style={{ margin: '0 0 24px 0', fontSize: '15px', color: 'var(--text-bold, #ffffff)', fontWeight: '700', lineHeight: '1.6', whiteSpace: 'pre-line' }}>{alertData.message}</p>
+        <div className="fixed inset-0 bg-black/70 z-[99999] flex items-center justify-center backdrop-blur-md p-5">
+          <div className="animate-in bg-[var(--bg-surface,#1e1e24)] border border-[var(--border-subtle,rgba(255,255,255,0.18))] py-7 px-6 rounded-[24px] w-[90%] max-w-[340px] text-center shadow-[0_25px_60px_rgba(0,0,0,0.6)]">
+            <div className="text-[36px] mb-3.5">✨</div>
+            <p className="m-0 mb-6 text-[15px] text-[var(--text-bold,#ffffff)] font-bold leading-relaxed whitespace-pre-line">{alertData.message}</p>
             <button 
               onClick={() => setAlertData({ show: false })} 
-              style={{ width: '100%', padding: '12px 16px', background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)', color: '#ffffff', border: 'none', borderRadius: '14px', fontWeight: '900', fontSize: '14px', cursor: 'pointer', boxShadow: '0 4px 14px rgba(59, 130, 246, 0.3)', transition: 'all 0.2s ease' }}
+              className="w-full px-4 py-3 bg-gradient-to-br from-blue-500 to-blue-700 text-white border-none rounded-xl font-black text-[14px] cursor-pointer shadow-[0_4px_14px_rgba(59,130,246,0.3)] transition-all duration-200 ease-in-out"
             >
               យល់ព្រម
             </button>

@@ -25,6 +25,7 @@ import AdminFaqsContainer from './admin/AdminFaqsContainer';
 import AdminSettingsContainer from './admin/AdminSettingsContainer';
 import AdminCustomersTab from './admin/AdminCustomersTab';
 import AdminCouponsTab from './admin/AdminCouponsTab';
+import AdminAnalyticsTab from './admin/AdminAnalyticsTab';
 import DarkSelect from './admin/DarkSelect';
 
 // 🗂️ Modular modals
@@ -302,6 +303,7 @@ const AdminDashboard = ({
               ...(userRole === 'admin' ? [{ id: 'overview', label: t('admin_tab_overview') }] : []),
               { id: 'orders', label: t('admin_tab_orders') },
               { id: 'products', label: t('admin_tab_products') },
+              ...(userRole === 'admin' ? [{ id: 'analytics', label: t('admin_tab_analytics') }] : []),
               { id: 'broadcast', label: t('admin_tab_broadcast') },
               { id: 'faqs', label: t('admin_tab_faqs') },
               ...(userRole === 'admin' ? [
@@ -326,6 +328,16 @@ const AdminDashboard = ({
               advancedAnalytics={advancedAnalytics}
               orders={orders}
               statusTags={statusTags}
+            />
+          )}
+
+          {activeTab === 'analytics' && (
+            <AdminAnalyticsTab
+              BACKEND_URL={BACKEND_URL}
+              headers={headers}
+              summary={summary}
+              paddedDailyAnalytics={paddedDailyAnalytics}
+              advancedAnalytics={advancedAnalytics}
             />
           )}
 

@@ -21,20 +21,19 @@ const CategoryNavigator = ({ searchTerm, setSearchTerm, selectedCategory, setSel
   const { products } = useShopState();
 
   const categories = useMemo(() => {
-    // Find out which buckets actually have products
-    const activeBuckets = new Set();
+    // Check if there are any flash sale products
     let hasFlashSale = false;
 
     (products || []).forEach(p => {
-      if (p && (parseInt(p.stock) || 0) > 0) {
+      if (p && (parseInt(p.stock) || 0) > 0 && !p.hidden) {
         if (p.flash_sale_price && p.flash_sale_end && new Date(p.flash_sale_end) > new Date()) {
           hasFlashSale = true;
         }
-        activeBuckets.add(getCategoryBucket(p.category));
       }
     });
 
-    const activePredefined = PREDEFINED_CATEGORIES.filter(c => activeBuckets.has(c.id)).map(c => ({
+    // Show all predefined categories regardless of stock
+    const allPredefined = PREDEFINED_CATEGORIES.map(c => ({
       id: c.id,
       label: lang === 'kh' ? c.kh : c.en,
       icon: c.icon
@@ -42,7 +41,7 @@ const CategoryNavigator = ({ searchTerm, setSearchTerm, selectedCategory, setSel
 
     return [
       { id: 'all', label: t('all'), icon: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='-1 -1 26 26' fill='%23ff72a0'%3E%3Crect x='3' y='3' width='8' height='8' rx='3'/%3E%3Crect x='13' y='3' width='8' height='8' rx='3'/%3E%3Crect x='3' y='13' width='8' height='8' rx='3'/%3E%3Crect x='13' y='13' width='8' height='8' rx='3'/%3E%3C/svg%3E" },
-      ...activePredefined,
+      ...allPredefined,
       ...(hasFlashSale ? [{ id: 'flash_sale', label: '⚡ Flash Sale', icon: '/PROMO & SALE.webp' }] : [])
     ];
   }, [products, lang, t]);

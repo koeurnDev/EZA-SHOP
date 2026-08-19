@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useTelegram } from '../../context/TelegramContext';
-import { getCustomerAvatarSrc, getUiAvatarUrl } from '../../utils/avatarUtils';
+import UserAvatar from '../ui/UserAvatar';
 import { getHeaders } from '../../utils/apiHelpers';
 
 const formatCustomerActive = (user) => {
@@ -27,61 +27,6 @@ const formatCustomerActive = (user) => {
     return { text: new Date(user.last_updated).toLocaleDateString('en-GB'), online: false };
   }
   return { text: '---', online: false };
-};
-
-const CustomerAvatar = ({ user, backendUrl, initData }) => {
-  const [imgFailed, setImgFailed] = useState(false);
-  const initial = user.user_name ? user.user_name.charAt(0).toUpperCase() : '👤';
-  const fallback = getUiAvatarUrl(user.user_name || user.username, user.user_id);
-  const primarySrc = getCustomerAvatarSrc(user, backendUrl, initData);
-  const src = imgFailed ? fallback : primarySrc;
-
-  useEffect(() => {
-    setImgFailed(false);
-  }, [user.user_id, user.photo_url, primarySrc]);
-
-  return (
-    <div style={{
-      width: 40,
-      height: 40,
-      borderRadius: '50%',
-      background: 'var(--bg-soft)',
-      color: '#fff',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      fontWeight: 800,
-      fontSize: 15,
-      flexShrink: 0,
-      overflow: 'hidden',
-      boxShadow: '0 2px 6px rgba(0,0,0,0.1)'
-    }}>
-      {src ? (
-        <img
-          src={src}
-          alt=""
-          referrerPolicy="no-referrer"
-          loading="lazy"
-          decoding="async"
-          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-          onError={() => {
-            if (!imgFailed) setImgFailed(true);
-          }}
-        />
-      ) : (
-        <div style={{
-          width: '100%',
-          height: '100%',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
-        }}>
-          {initial}
-        </div>
-      )}
-    </div>
-  );
 };
 
 const AdminCustomersTab = ({ BACKEND_URL }) => {
@@ -273,7 +218,7 @@ const AdminCustomersTab = ({ BACKEND_URL }) => {
                       onClick={() => setExpandedUser(isExpanded ? null : user.user_id)}
                       style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, cursor: 'pointer', minWidth: 0 }}
                     >
-                      <CustomerAvatar user={user} backendUrl={BACKEND_URL} initData={initData} />
+                      <UserAvatar user={user} backendUrl={BACKEND_URL} initData={initData} />
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ 
                           fontSize: 13, 
