@@ -61,6 +61,9 @@ export default defineConfig({
     esbuild: {
       drop: ['console', 'debugger'], // 🛡️ Zero-Trust Security: Prevent Client-Side Leakage
     },
+    // cambodia.json (~894KB gzipped ~215KB) and tfjs (~1.9MB gzipped ~303KB) are inherently large;
+    // they are already lazy-loaded so they don't affect initial page load.
+    chunkSizeWarningLimit: 2000,
     rollupOptions: {
       output: {
         manualChunks: {
