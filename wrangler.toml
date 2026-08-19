@@ -1,0 +1,11 @@
+# Cloudflare Pages Configuration
+name = "vibe-lifestyle-web"
+compatibility_date = "2024-01-01"
+
+[pages]
+# Build configuration
+build.command = "npm run webapp:build"
+build.output_directory = "webapp/dist"
+
+# Production branch
+production_branch = "main"
