@@ -44,11 +44,17 @@ const AdminCustomersTab = ({ BACKEND_URL }) => {
         headers: getHeaders(BACKEND_URL, initData)
       });
       const data = await res.json();
+      console.log('🔍 [AdminCustomersTab] API Response:', data);
       if (data.success) {
         setCustomers(data.customers || []);
+        console.log('✅ [AdminCustomersTab] Loaded customers:', data.customers?.length || 0);
+      } else {
+        console.error('❌ [AdminCustomersTab] API returned success: false', data);
+        showAlert('មិនអាចទាញយក customers: ' + (data.error || 'Unknown error'));
       }
     } catch (err) {
-      console.error('Failed to fetch customers', err);
+      console.error('❌ [AdminCustomersTab] Failed to fetch customers', err);
+      showAlert('មានបញ្ហាក្នុងការតភ្ជាប់ទៅ server: ' + err.message);
     } finally {
       setLoading(false);
     }
@@ -190,8 +196,17 @@ const AdminCustomersTab = ({ BACKEND_URL }) => {
 
         {loading ? (
           <div style={{ textAlign: 'center', padding: '40px 0' }}>កំពុងទាញយក...</div>
+        ) : customers.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--text-muted)' }}>
+            <div style={{ fontSize: 48, marginBottom: 16 }}>👥</div>
+            <div style={{ fontSize: 16, fontWeight: 800, marginBottom: 8 }}>មិនទាន់មាន Customers</div>
+            <div style={{ fontSize: 13, opacity: 0.7 }}>នឹងបង្ហាញនៅពេលដែលមានអតិថិជនចុះឈ្មោះ</div>
+          </div>
         ) : filteredCustomers.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)' }}>រកមិនឃើញទេ</div>
+          <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)' }}>
+            <div style={{ fontSize: 32, marginBottom: 12 }}>🔍</div>
+            <div style={{ fontSize: 14, fontWeight: 700 }}>រកមិនឃើញ "{searchTerm}"</div>
+          </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {filteredCustomers.map(user => {
