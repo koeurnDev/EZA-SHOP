@@ -41,4 +41,4 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy webapp/dist --project-name=vibe-lifestyle --commit-dirty=true
+          command: pages deploy webapp/dist --project-name=vibe-lifestyle-web --commit-dirty=true
