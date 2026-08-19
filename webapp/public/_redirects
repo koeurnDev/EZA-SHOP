@@ -1,3 +1,0 @@
-# Redirect all non-API routes to index.html for SPA routing
-# API routes are handled by _routes.json
-/*    /index.html   200
