@@ -96,14 +96,22 @@ export class UserService {
 
     return userOrders.map(order => ({
       id: order.id,
+      order_code: order.order_code,
       status: order.status,
       total: parseFloat(order.total),
+      subtotal: parseFloat(order.subtotal || '0'),
+      delivery_fee: parseFloat(order.delivery_fee || '0'),
+      discount_amount: parseFloat(order.discount_amount || '0'),
       created_at: order.created_at.toISOString(),
       items: parseJsonSafe(order.items as string, []),
-      delivery_address: order.delivery_address,
+      address: order.address,
+      province: order.province,
+      phone: order.phone,
+      note: order.note,
       payment_method: order.payment_method,
+      delivery_company: order.delivery_company,
       tracking_number: order.tracking_number,
-      delivery_date: order.delivery_date?.toISOString(),
+      receipt_url: order.receipt_url,
     }));
   }
 }

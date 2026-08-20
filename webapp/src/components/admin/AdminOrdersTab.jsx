@@ -28,7 +28,7 @@ const getCourierTheme = (name) => {
   const low = name.toLowerCase();
   if (low.includes('grab')) return COURIER_THEME.grab;
   if (low.includes('virak') || low.includes('វីរៈ') || low.includes('buntham')) return COURIER_THEME.virak;
-  if (low.includes('j&t') || low.includes('j and t') || low.includes('jnt')) return COURIER_THEME.jnt;
+  if (low.includes('j&t') || low.includes('jnt') || low.includes('j and t')) return COURIER_THEME.jnt;
   return { ...COURIER_THEME.other, label: `🚚 ${name}` };
 };
 
@@ -179,8 +179,8 @@ const AdminOrdersTab = React.memo(({
     if (!name) return '';
     const low = name.toLowerCase();
     if (low.includes('grab')) return 'GrabExpress (ហ្រ្គេប)';
-    if (low.includes('vet') || low.includes('virak') || low.includes('វីរៈ')) return 'Virak Buntham (វីរៈ ប៊ុនថាំ)';
-    if (low.includes('j') || low.includes('t') || low.includes('express')) return 'J&T Express';
+    if (low.includes('virak') || low.includes('វីរៈ') || low.includes('buntham')) return 'Virak Buntham (វីរៈ ប៊ុនថាំ)';
+    if (low.includes('j&t') || low.includes('j and t') || low.includes('jnt') || low.includes('j&t express')) return 'J&T Express';
     return name;
   };
 
