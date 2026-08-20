@@ -87,7 +87,7 @@ const AdminDashboard = ({
 
   // Derived state from consolidated query
   const { data: advancedAnalyticsData } = useQuery('admin-advanced-analytics', `${BACKEND_URL}/api/admin/advanced-analytics`, { headers, revalidateOnMount: true });
-  const advancedAnalytics = advancedAnalyticsData?.data || { topProducts: [], topCustomers: [], aov: { aov: 0, aov_30d: 0 } };
+  const advancedAnalytics = advancedAnalyticsData || { topProducts: [], topCustomers: [], aov: { aov: 0 } };
 
   const summary = dashboardData?.summary || { totalRevenue: 0, totalOrders: 0, activeOrders: 0, totalCustomers: 0, businessHealth: 100 };
   const orders = dashboardData?.orders || [];
