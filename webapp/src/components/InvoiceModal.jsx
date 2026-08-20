@@ -327,14 +327,25 @@ const InvoiceModal = ({ order, onClose, paymentQrUrl, paymentInfo, BACKEND_URL, 
           <div className="border-t border-dashed border-slate-200 my-2.5" />
 
           {/* ── ITEMS ── */}
-          {items && items.map((item, idx) => (
-            <div key={idx} className={`flex justify-between items-center mb-1.5 pb-1.5 ${idx < items.length - 1 ? 'border-b border-slate-100' : ''}`}>
-              <span className="text-[12px] font-extrabold text-slate-900 flex-1">
-                {item.name} <span className="text-slate-500 font-bold">×{item.quantity}</span>
-              </span>
-              <span className="text-[12px] font-black text-slate-900">${(parseFloat(item.price) * item.quantity).toFixed(2)}</span>
-            </div>
-          ))}
+          {items && items.map((item, idx) => {
+            const sizeLabel = item.selectedSize
+              ? `${getCapacityLabel(lang, getVariantUnitMode({ category: item.category, productName: item.name, variantSizes: [item.selectedSize] }))}: ${item.selectedSize}`
+              : '';
+            const colorLabel = item.selectedColor ? `${lang === 'kh' ? 'ពណ៌' : 'Color'}: ${item.selectedColor}` : '';
+            const variantMeta = [sizeLabel, colorLabel].filter(Boolean).join(' · ');
+            return (
+              <div key={idx} className={`flex justify-between items-start mb-1.5 pb-1.5 ${idx < items.length - 1 ? 'border-b border-slate-100' : ''}`}>
+                <span className="text-[12px] font-extrabold text-slate-900 flex-1 pr-2">
+                  <span>{item.name}</span>
+                  <span className="text-slate-500 font-bold"> ×{item.quantity}</span>
+                  {variantMeta && (
+                    <span className="block text-[10px] font-semibold text-slate-400 mt-0.5">{variantMeta}</span>
+                  )}
+                </span>
+                <span className="text-[12px] font-black text-slate-900 shrink-0">${(parseFloat(item.price) * item.quantity).toFixed(2)}</span>
+              </div>
+            );
+          })}
 
           {/* ── PRICE BOX ── */}
           <div className="bg-slate-50 rounded-[10px] py-2 px-3 mt-2 mb-2.5 border border-slate-100">
