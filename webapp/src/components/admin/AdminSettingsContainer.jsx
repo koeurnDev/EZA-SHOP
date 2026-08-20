@@ -3,7 +3,6 @@ import AdminSettingsTab from './AdminSettingsTab';
 import { useShopDispatch } from '../../context/ShopContext';
 import { useApi } from '../../hooks/useApi';
 import { useTelegram } from '../../context/TelegramContext';
-import { compressImage } from '../../utils/imageUtils';
 import { parseBannerEntries, serializeBannerEntries } from '../../utils/bannerLinkUtils';
 
 const AdminSettingsContainer = ({
@@ -52,13 +51,13 @@ const AdminSettingsContainer = ({
   const [shopHistoryKh, setShopHistoryKh] = useState('');
   const [shopHistoryEn, setShopHistoryEn] = useState('');
 
-  // Fresh fetch on every mount to avoid stale data
+  // Single source of truth: always fetch fresh settings on mount.
+  // Drops the settingsData prop effect to avoid stale-prop race condition.
   useEffect(() => {
     const tgData = window.Telegram?.WebApp?.initData || '';
-    fetch(`${BACKEND_URL}/api/settings`, {
+    fetchWithRetry(`${BACKEND_URL}/api/settings`, {
       headers: { 'X-TG-Data': tgData }
     })
-      .then(r => r.json())
       .then(data => {
         if (data.success && data.settings) {
           const s = data.settings;
@@ -91,36 +90,6 @@ const AdminSettingsContainer = ({
       .catch(err => console.warn('Failed to fetch fresh settings:', err));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [BACKEND_URL]);
-
-  useEffect(() => {
-    if (settingsData?.success && settingsData?.settings) {
-      const s = settingsData.settings || {};
-      setShopStatus(s.shop_status || 'open');
-      setDeliveryThreshold(s.delivery_threshold !== undefined ? String(s.delivery_threshold) : '50');
-      setDeliveryFee(s.delivery_fee !== undefined ? String(s.delivery_fee) : '1.50');
-      setProvincialDeliveryFee(s.provincial_delivery_fee !== undefined ? String(s.provincial_delivery_fee) : '2.50');
-      setPromoText(s.promo_text || '');
-      setPromoBannerUrl(s.promo_banner_url || '');
-      setShopLogoUrl(s.shop_logo_url || '');
-      setPaymentQrUrl(s.payment_qr_url || '');
-      setPaymentInfo(s.payment_info || '');
-      setReceiptShopName(s.receipt_shop_name || 'Vibe Lifestyle');
-      setReceiptSubtitle(s.receipt_subtitle || 'អីវ៉ាន់បោះដុំ និងរាយ');
-      setReceiptNote(s.receipt_note || 'សូមអរគុណសម្រាប់ការគាំទ្រ!');
-      setSocialFb(s.social_fb || '');
-      setSocialTg(s.social_tg || '');
-      setSocialIg(s.social_ig || '');
-      setSocialTt(s.social_tt || '');
-      setSocialEmail(s.social_email || '');
-      setSocialWa(s.social_wa || '');
-      setShopPhone(s.shop_phone || '');
-      setShopAddress(s.shop_address || '');
-      setShopHours(s.shop_hours || '');
-      setTelegramChannelId(s.telegram_channel_id || '');
-      setShopHistoryKh(s.shop_history_kh || '');
-      setShopHistoryEn(s.shop_history_en || '');
-    }
-  }, [settingsData]);
 
   const updateSettingValue = async (key, value) => {
     try {
@@ -167,8 +136,7 @@ const AdminSettingsContainer = ({
 
   const handleBannerUpload = async (file) => {
     const formData = new FormData();
-    const compressed = await compressImage(file);
-    formData.append('image', compressed);
+    formData.append('image', file); // already compressed by the caller
     try {
       const res = await fetchWithRetry(`${BACKEND_URL}/api/admin/upload`, { method: 'POST', headers: headers, body: formData });
       if (res.success && (res.url || res.data?.url)) {
@@ -216,8 +184,7 @@ const AdminSettingsContainer = ({
 
   const handleLogoUpload = async (file) => {
     const formData = new FormData();
-    const compressed = await compressImage(file);
-    formData.append('image', compressed);
+    formData.append('image', file); // already compressed by the caller
     try {
       const res = await fetchWithRetry(`${BACKEND_URL}/api/admin/upload`, { method: 'POST', headers: headers, body: formData });
       if (res.success && (res.url || res.data?.url)) {
@@ -237,8 +204,7 @@ const AdminSettingsContainer = ({
 
   const handleQrUpload = async (file) => {
     const formData = new FormData();
-    const compressed = await compressImage(file);
-    formData.append('image', compressed);
+    formData.append('image', file); // already compressed by the caller
     try {
       const res = await fetchWithRetry(`${BACKEND_URL}/api/admin/upload`, { method: 'POST', headers: headers, body: formData });
       if (res.success && (res.url || res.data?.url)) {

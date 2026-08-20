@@ -54,6 +54,7 @@ const AdminSettingsTab = React.memo(({
   const persistDeliveryField = (key, rawValue, fallback) => {
     const normalized = String(parseDeliverySetting(rawValue, fallback));
     if (key === 'delivery_fee') setDeliveryFee(normalized);
+    else if (key === 'provincial_delivery_fee') setProvincialDeliveryFee(normalized);
     else setDeliveryThreshold(normalized);
     updateSettingValue(key, normalized);
   };

@@ -76,4 +76,6 @@ export const CONFIRMED_PAYMENT_STATUSES = ['paid', 'processing', 'shipped', 'del
 
 export const isPaymentConfirmed = (status) => CONFIRMED_PAYMENT_STATUSES.includes(status);
 
-export const isUserPurchaseHistoryOrder = (status) => isPaymentConfirmed(status);
+// Show all orders to the user — including pending and cancelled so they never think their order vanished
+export const isUserPurchaseHistoryOrder = (status) => 
+  ['pending', 'paid', 'processing', 'shipped', 'delivering', 'delivered', 'completed', 'cancelled'].includes(status);

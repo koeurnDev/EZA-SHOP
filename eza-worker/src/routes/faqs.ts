@@ -16,7 +16,7 @@ app.get('/', async (c) => {
     const res = await db.execute(sql`
       SELECT * FROM faqs WHERE is_active = true ORDER BY sort_order ASC, id ASC
     `);
-    return c.json({ success: true, faqs: res.rows || [] });
+    return c.json({ success: true, faqs: Array.isArray(res) ? res : (res.rows || []) });
   } catch (error) {
     return c.json({ success: false, faqs: [] });
   }
@@ -37,7 +37,7 @@ app.post('/', telegramAuth, adminAuth, async (c) => {
       VALUES (${q_kh}, ${q_en}, ${a_kh}, ${a_en}, ${sort_order}, ${Boolean(is_active)})
       RETURNING *
     `);
-    return c.json({ success: true, faq: res.rows[0] });
+    return c.json({ success: true, faq: (Array.isArray(res) ? res : (res.rows || []))[0] });
   } catch (error) {
     return c.json({ success: false, error: 'Failed to create FAQ' }, 500);
   }
@@ -66,10 +66,11 @@ app.put('/:id', telegramAuth, adminAuth, async (c) => {
       RETURNING *
     `);
 
-    if (!(res.rows as any[]).length) {
+    const rows = Array.isArray(res) ? res : (res.rows || []);
+    if (!rows.length) {
       return c.json({ success: false, error: 'FAQ not found' }, 404);
     }
-    return c.json({ success: true, faq: res.rows[0] });
+    return c.json({ success: true, faq: rows[0] });
   } catch (error) {
     return c.json({ success: false, error: 'Failed to update FAQ' }, 500);
   }

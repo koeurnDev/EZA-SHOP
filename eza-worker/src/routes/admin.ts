@@ -111,7 +111,7 @@ app.get('/dashboard', async (c) => {
         businessHealth: 100
       },
       analytics: {
-        daily: dailyAnalytics.rows || [],
+        daily: (Array.isArray(dailyAnalytics) ? dailyAnalytics : (dailyAnalytics.rows || [])),
         status: orderStats.map(stat => ({
           status: stat.status,
           count: stat.count,

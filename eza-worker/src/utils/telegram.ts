@@ -26,6 +26,7 @@ export async function sendAdminOrderNotification(env: any, orderData: any, notif
     // Format purchase date
     const dateObj = createdAt ? new Date(createdAt) : new Date();
     const formattedDate = dateObj.toLocaleString('en-GB', {
+      timeZone: 'Asia/Phnom_Penh',
       day: '2-digit', month: '2-digit', year: 'numeric',
       hour: '2-digit', minute: '2-digit', hour12: true
     });
@@ -159,6 +160,7 @@ export async function sendCustomerStatusNotification(env: any, orderData: any, n
     // Format date: 12/08/2026, 4:37:37 pm
     const dateObj = createdAt ? new Date(createdAt) : new Date();
     const formattedDate = dateObj.toLocaleString('en-GB', {
+      timeZone: 'Asia/Phnom_Penh',
       day: '2-digit', month: '2-digit', year: 'numeric',
       hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true
     }).replace(',', '');

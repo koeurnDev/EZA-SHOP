@@ -9,7 +9,7 @@ const AdminCouponsTab = ({ BACKEND_URL }) => {
   const { fetchWithRetry } = useApi();
   const headers = { 'X-TG-Data': initData || '' };
 
-  const { data: couponsData, loading, refetch } = useQuery('admin-coupons', `${BACKEND_URL}/api/admin/coupons`, { headers });
+  const { data: couponsData, loading, refetch } = useQuery('admin-coupons', `${BACKEND_URL}/api/admin/coupons`, { headers, revalidateOnMount: true });
   const coupons = couponsData?.coupons || [];
 
   const [isAdding, setIsAdding] = useState(false);

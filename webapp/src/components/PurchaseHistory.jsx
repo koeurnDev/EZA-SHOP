@@ -29,7 +29,7 @@ const PurchaseHistory = ({ setView, BACKEND_URL }) => {
     .then(res => res.json())
     .then(data => {
       if (data.success) {
-        setOrders((data.orders || []).filter(isUserPurchaseHistoryOrder));
+        setOrders((data.orders || []).filter(o => isUserPurchaseHistoryOrder(o.status)));
       }
       setLoading(false);
     });
@@ -63,7 +63,7 @@ const PurchaseHistory = ({ setView, BACKEND_URL }) => {
                         {order.order_code || order.id}
                     </div>
                     <div className="text-[13px] font-extrabold text-[var(--text-bold)]">
-                        {new Date(order.created_at).toLocaleDateString()}
+                        {new Date(order.created_at).toLocaleString('en-GB', { timeZone: 'Asia/Phnom_Penh', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })}
                     </div>
                   </div>
                </div>

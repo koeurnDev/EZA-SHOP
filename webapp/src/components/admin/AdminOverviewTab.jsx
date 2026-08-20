@@ -107,7 +107,7 @@ const AdminOverviewTab = React.memo(({ summary, paddedDailyAnalytics, advancedAn
 
         <div className="admin-overview-aov">
           <div className="admin-overview-aov-label">{t('admin_avg_order_value')}</div>
-          <div className="admin-overview-aov-value">${advancedAnalytics.aov?.aov?.toFixed(2) || '0.00'}</div>
+          <div className="admin-overview-aov-value">${(parseFloat(advancedAnalytics.aov?.aov) || 0).toFixed(2)}</div>
         </div>
 
         <div className="admin-overview-lists">

@@ -156,11 +156,14 @@ const UserProfile = ({ user, setView, BACKEND_URL, onViewInvoice, t, lang, toggl
     .then(res => res.json())
     .then(data => {
       if (data.success) {
-        setOrders(data.orders);
+        setOrders((data.orders || []).filter(o => isUserPurchaseHistoryOrder(o.status)));
       }
       setLoading(false);
     })
-    .catch(() => setLoading(false));
+    .catch(err => {
+      console.error('Failed to fetch orders:', err);
+      setLoading(false);
+    });
   };
 
   const submitReview = async (productId) => {

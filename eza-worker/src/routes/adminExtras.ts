@@ -761,28 +761,32 @@ app.get('/analytics', async (c) => {
         GROUP BY DATE_TRUNC('month', created_at)
         ORDER BY DATE_TRUNC('month', created_at) ASC
       `),
-      // Revenue by product category (from items JSON)
+      // Revenue by product category — LEFT JOIN so unmatched items are grouped as 'Other'
       db.execute(sql`
         SELECT
           COALESCE(p.category, 'Other') as category,
           SUM((item->>'price')::numeric * (item->>'quantity')::numeric) as revenue
         FROM orders o,
-          jsonb_array_elements(o.items::jsonb) AS item
-        JOIN products p ON p.id = (item->>'id')::int
+          jsonb_array_elements(
+            CASE WHEN jsonb_typeof(o.items::jsonb) = 'array' THEN o.items::jsonb ELSE '[]'::jsonb END
+          ) AS item
+        LEFT JOIN products p ON p.id = (item->>'id')::int
         WHERE o.status != 'cancelled'
+          AND (item->>'price') IS NOT NULL
+          AND (item->>'quantity') IS NOT NULL
         GROUP BY p.category
         ORDER BY revenue DESC
         LIMIT 8
       `),
-      // Revenue by province
+      // Revenue by province — include empty string province as 'Unknown'
       db.execute(sql`
         SELECT
-          COALESCE(province, 'Unknown') as province,
+          CASE WHEN province IS NULL OR province = '' THEN 'Unknown' ELSE province END as province,
           SUM(total::numeric) as revenue,
           COUNT(*) as orders
         FROM orders
-        WHERE status != 'cancelled' AND province IS NOT NULL
-        GROUP BY province
+        WHERE status != 'cancelled'
+        GROUP BY CASE WHEN province IS NULL OR province = '' THEN 'Unknown' ELSE province END
         ORDER BY revenue DESC
         LIMIT 10
       `),
@@ -796,17 +800,21 @@ app.get('/analytics', async (c) => {
 
     return c.json({
       success: true,
-      monthly: monthlyRes.rows || [],
-      categoryRevenue: (categoryRes.rows || []).map((r: any) => ({
+      monthly: (Array.isArray(monthlyRes) ? monthlyRes : (monthlyRes.rows || [])).map((r: any) => ({
+        month: r.month,
+        revenue: parseFloat(r.revenue || '0'),
+        orders: parseInt(r.orders || '0'),
+      })),
+      categoryRevenue: (Array.isArray(categoryRes) ? categoryRes : (categoryRes.rows || [])).map((r: any) => ({
         category: r.category,
         revenue: parseFloat(r.revenue || '0'),
       })),
-      provinceRevenue: (provinceRes.rows || []).map((r: any) => ({
+      provinceRevenue: (Array.isArray(provinceRes) ? provinceRes : (provinceRes.rows || [])).map((r: any) => ({
         province: r.province,
         revenue: parseFloat(r.revenue || '0'),
         orders: parseInt(r.orders || '0'),
       })),
-      revenueByStatus: (statusRes.rows || []).map((r: any) => ({
+      revenueByStatus: (Array.isArray(statusRes) ? statusRes : (statusRes.rows || [])).map((r: any) => ({
         status: r.status,
         count: parseInt(r.count || '0'),
         revenue: parseFloat(r.revenue || '0'),
@@ -826,17 +834,18 @@ app.get('/advanced-analytics', async (c) => {
       db.execute(sql`
         SELECT user_name, SUM(total::numeric) as total_spent
         FROM orders
-        WHERE status != 'cancelled'
+        WHERE status NOT IN ('cancelled', 'expired', 'pending')
+          AND user_name IS NOT NULL AND user_name != ''
         GROUP BY user_name
         ORDER BY total_spent DESC
         LIMIT 5
       `),
       db.execute(sql`
         SELECT COALESCE(AVG(total::numeric), 0) as aov
-        FROM orders 
-        WHERE status != 'cancelled'
+        FROM orders
+        WHERE status NOT IN ('cancelled', 'expired', 'pending')
       `),
-      db.execute(sql`SELECT items FROM orders WHERE status != 'cancelled'`)
+      db.execute(sql`SELECT items FROM orders WHERE status NOT IN ('cancelled', 'expired', 'pending')`)
     ]);
 
     const productCounts: Record<string, number> = {};
@@ -844,11 +853,14 @@ app.get('/advanced-analytics', async (c) => {
     for (const row of ordersRows) {
       if (row.items) {
         try {
-          const itemsStr = typeof row.items === 'string' ? row.items : JSON.stringify(row.items);
-          const items = JSON.parse(itemsStr);
+          // items is jsonb — comes back as object already, no need to JSON.parse
+          const items = Array.isArray(row.items)
+            ? row.items
+            : (typeof row.items === 'string' ? JSON.parse(row.items) : []);
           for (const item of items) {
-            if (item.name) {
-              productCounts[item.name] = (productCounts[item.name] || 0) + (item.quantity || 1);
+            const name = item.name || item.product_name || item.productName;
+            if (name) {
+              productCounts[name] = (productCounts[name] || 0) + (item.quantity || 1);
             }
           }
         } catch(e){}
@@ -874,7 +886,8 @@ app.get('/advanced-analytics', async (c) => {
       }
     });
   } catch (error) {
-    return c.json({ success: true, data: { topProducts: [], topCustomers: [], aov: { aov: 0 } } });
+    console.error('advanced-analytics error:', error);
+    return c.json({ success: true, data: { topProducts: [], topCustomers: [], aov: { aov: 0 } }, _error: String(error) });
   }
 });
 

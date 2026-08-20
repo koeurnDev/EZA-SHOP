@@ -244,14 +244,15 @@ const AdminDashboard = ({
     });
   };
   const statusTags = {
-    'pending': { label: 'រង់ចាំការបញ្ជាក់', color: 'var(--text-main)', icon: '⏳' },
-    'paid': { label: 'កំពុងរៀបចំ', color: 'var(--text-main)', icon: '📦' },
-    'processing': { label: 'កំពុងរៀបចំ', color: 'var(--text-main)', icon: '📦' },
-    'shipped': { label: 'ប្រគល់ជូនអ្នកដឹក', color: 'var(--text-main)', icon: '🚚' },
-    'delivering': { label: 'ប្រគល់ជូនអ្នកដឹក', color: 'var(--text-main)', icon: '🚚' },
-    'delivered': { label: 'ប្រគល់ជូនអ្នកដឹក', color: 'var(--text-main)', icon: '🚚' },
-    'completed': { label: 'ទទួលបានជោគជ័យ', color: '#16a34a', icon: '✅' },
-    'cancelled': { label: 'បដិសេធ', color: '#dc2626', icon: '❌' }
+    'pending':    { label: 'រង់ចាំបង់',         color: '#f59e0b', icon: '⏳' },
+    'paid':       { label: 'បញ្ជាក់ — រៀបចំ',    color: '#10b981', icon: '✅' },
+    'processing': { label: 'កំពុងរៀបចំ',         color: '#3b82f6', icon: '📦' },
+    'shipped':    { label: 'ប្រគល់ជូនអ្នកដឹក',   color: '#a855f7', icon: '🚚' },
+    'delivering': { label: 'ដឹកដល់ផ្ទះ',         color: '#a855f7', icon: '🚚' },
+    'delivered':  { label: 'ដឹកដល់ហើយ',         color: '#14b8a6', icon: '📬' },
+    'completed':  { label: 'ទទួលបានជោគជ័យ',     color: '#10b981', icon: '🎉' },
+    'cancelled':  { label: 'បានបោះបង់',          color: '#ef4444', icon: '❌' },
+    'expired':    { label: 'ផុតកំណត់',           color: '#94a3b8', icon: '⌛' },
   };
 
   return (

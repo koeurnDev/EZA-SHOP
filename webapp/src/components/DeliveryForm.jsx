@@ -59,14 +59,14 @@ const DeliveryForm = ({ formData, setFormData, onPhoneChange, t, lang, validatio
            
            <div className="carrier-selection-grid">
               <div 
-                className={`carrier-option-card ${formData.deliveryCompany === 'j&t' ? 'active' : ''}`}
-                onClick={() => setFormData(prev => ({ ...prev, deliveryCompany: 'j&t' }))}
+                className={`carrier-option-card ${formData.deliveryCompany === 'J&T Express' ? 'active' : ''}`}
+                onClick={() => setFormData(prev => ({ ...prev, deliveryCompany: 'J&T Express' }))}
               >
-                 <div className="carrier-check">{formData.deliveryCompany === 'j&t' ? '✓' : ''}</div>
+                 <div className="carrier-check">{formData.deliveryCompany === 'J&T Express' ? '✓' : ''}</div>
                  {!imgErrors.jt ? (
                     <img 
                       src="/jt.png" 
-                      alt="J&T" 
+                      alt="J&T Express" 
                       className="carrier-logo-img" 
                       onError={() => setImgErrors(prev => ({ ...prev, jt: true }))}
                     />
@@ -80,14 +80,14 @@ const DeliveryForm = ({ formData, setFormData, onPhoneChange, t, lang, validatio
               </div>
 
               <div 
-                className={`carrier-option-card ${formData.deliveryCompany === 'vet' ? 'active' : ''}`}
-                onClick={() => setFormData(prev => ({ ...prev, deliveryCompany: 'vet' }))}
+                className={`carrier-option-card ${formData.deliveryCompany === 'Virak Buntham (វីរៈ ប៊ុនថាំ)' ? 'active' : ''}`}
+                onClick={() => setFormData(prev => ({ ...prev, deliveryCompany: 'Virak Buntham (វីរៈ ប៊ុនថាំ)' }))}
               >
-                 <div className="carrier-check">{formData.deliveryCompany === 'vet' ? '✓' : ''}</div>
+                 <div className="carrier-check">{formData.deliveryCompany === 'Virak Buntham (វីរៈ ប៊ុនថាំ)' ? '✓' : ''}</div>
                  {!imgErrors.vet ? (
                     <img 
                       src="/vet.png" 
-                      alt="VET" 
+                      alt="Virak Buntham" 
                       className="carrier-logo-img" 
                       onError={() => setImgErrors(prev => ({ ...prev, vet: true }))}
                     />
@@ -101,12 +101,12 @@ const DeliveryForm = ({ formData, setFormData, onPhoneChange, t, lang, validatio
               </div>
 
               <div 
-                className={`carrier-option-card ${formData.deliveryCompany === 'grab' ? 'active' : ''}`}
-                onClick={() => setFormData(prev => ({ ...prev, deliveryCompany: 'grab' }))}
+                className={`carrier-option-card ${formData.deliveryCompany === 'GrabExpress (ហ្រ្គេប)' ? 'active' : ''}`}
+                onClick={() => setFormData(prev => ({ ...prev, deliveryCompany: 'GrabExpress (ហ្រ្គេប)' }))}
               >
-                 <div className="carrier-check">{formData.deliveryCompany === 'grab' ? '✓' : ''}</div>
+                 <div className="carrier-check">{formData.deliveryCompany === 'GrabExpress (ហ្រ្គេប)' ? '✓' : ''}</div>
                  <div className="vet-logo-fallback bg-[#00b14f] text-white rounded-lg px-2 py-1 font-black text-[12px]">
-                    🛵 Grab
+                    🛵 GrabExpress
                  </div>
               </div>
            </div>

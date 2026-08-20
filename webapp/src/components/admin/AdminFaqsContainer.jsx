@@ -14,7 +14,7 @@ const AdminFaqsContainer = ({
 }) => {
   const { fetchWithRetry } = useApi();
 
-  const { data: faqsData, loading: faqsLoading, refetch: refetchFaqs } = useQuery('admin-faqs', `${BACKEND_URL}/api/admin/faqs`, { headers });
+  const { data: faqsData, loading: faqsLoading, refetch: refetchFaqs } = useQuery('admin-faqs', `${BACKEND_URL}/api/faqs`, { headers, revalidateOnMount: true });
   const faqsList = faqsData?.faqs || [];
   const [isFaqModalOpen, setIsFaqModalOpen] = useState(false);
   const [editingFaq, setEditingFaq] = useState(null);
@@ -22,7 +22,7 @@ const AdminFaqsContainer = ({
   const handleSaveFaq = async () => {
     try {
       const isEdit = !!editingFaq.id;
-      const url = isEdit ? `${BACKEND_URL}/api/admin/faqs/${editingFaq.id}` : `${BACKEND_URL}/api/admin/faqs`;
+      const url = isEdit ? `${BACKEND_URL}/api/faqs/${editingFaq.id}` : `${BACKEND_URL}/api/faqs`;
       const method = isEdit ? 'PUT' : 'POST';
 
       const res = await fetchWithRetry(url, {
@@ -46,7 +46,7 @@ const AdminFaqsContainer = ({
 
   const handleDeleteFaq = (id) => {
     showConfirm('តើអ្នកពិតជាចង់លុបសំណួរនេះមែនទេ?', () => {
-      fetchWithRetry(`${BACKEND_URL}/api/admin/faqs/${id}`, {
+      fetchWithRetry(`${BACKEND_URL}/api/faqs/${id}`, {
         method: 'DELETE',
         headers
       }).then(() => {
