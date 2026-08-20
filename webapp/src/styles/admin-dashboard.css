@@ -172,15 +172,15 @@
   min-height: 40px;
 }
 .admin-order-btn--blue {
-  background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(29, 78, 216, 0.2)) !important;
-  border: 1px solid rgba(59, 130, 246, 0.3) !important;
+  background: linear-gradient(135deg, #2563eb, #1d4ed8) !important;
+  border: 1px solid #1d4ed8 !important;
   color: #ffffff !important;
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
 }
 .admin-order-btn--purple {
-  background: linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(109, 40, 217, 0.2)) !important;
-  border: 1px solid rgba(139, 92, 246, 0.3) !important;
+  background: linear-gradient(135deg, #7c3aed, #6d28d9) !important;
+  border: 1px solid #6d28d9 !important;
   color: #ffffff !important;
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
