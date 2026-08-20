@@ -7,6 +7,21 @@ import { useApi } from '../../hooks/useApi';
 import { compressImage } from '../../utils/imageUtils';
 import ProductDetail from '../ProductDetail';
 import { useTelegram } from '../../context/TelegramContext';
+import { parseProductSections } from '../../utils/productContentUtils';
+
+// Merge description + howToUse + ingredients back into a single string with markers
+const buildDescription = ({ description, howToUse, ingredients }) => {
+  let result = (description || '').trim();
+  if (howToUse && howToUse.trim()) result += `\n[HOW_TO_USE]\n${howToUse.trim()}`;
+  if (ingredients && ingredients.trim()) result += `\n[INGREDIENTS]\n${ingredients.trim()}`;
+  return result;
+};
+
+const EMPTY_NEW_PRODUCT = {
+  name: '', price: '', stock: '', category: 'ទឹកអប់ (Perfume)',
+  image: '', description: '', howToUse: '', ingredients: '',
+  additional_images: [], flash_sale_price: '', flash_sale_end: '', video_url: ''
+};
 
 const AdminProductsContainer = ({
   BACKEND_URL,
@@ -30,12 +45,9 @@ const AdminProductsContainer = ({
 
   const [isSaving, setIsSaving] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
-  const [editFormData, setEditFormData] = useState({ name: '', price: '', stock: '' });
+  const [editFormData, setEditFormData] = useState({ name: '', price: '', stock: '', howToUse: '', ingredients: '' });
   const [isAddingProduct, setIsAddingProduct] = useState(false);
-  const [newProductData, setNewProductData] = useState({
-    name: '', price: '', stock: '', category: 'ទឹកអប់ (Perfume)',
-    image: '', description: '', additional_images: [], flash_sale_price: '', flash_sale_end: '', video_url: ''
-  });
+  const [newProductData, setNewProductData] = useState(EMPTY_NEW_PRODUCT);
 
   const { tg } = useTelegram();
   const [isUploading, setIsUploading] = useState(false);
@@ -75,11 +87,17 @@ const AdminProductsContainer = ({
     if (!newProductData.name || !newProductData.price) return showAlert('សូមបំពេញឈ្មោះ និងតម្លៃ!');
     setIsSaving(true);
     try {
+      const mergedDescription = buildDescription({
+        description: newProductData.description,
+        howToUse: newProductData.howToUse,
+        ingredients: newProductData.ingredients,
+      });
       const res = await fetchWithRetry(`${BACKEND_URL}/api/admin/products`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...headers },
         body: JSON.stringify({
           ...newProductData,
+          description: mergedDescription,
           price: parseFloat(newProductData.price),
           stock: parseInt(newProductData.stock) || 0,
           additional_images: JSON.stringify(newProductData.additional_images || []),
@@ -103,7 +121,7 @@ const AdminProductsContainer = ({
             }));
           }
         }
-        setNewProductData({ name: '', price: '', stock: '', category: 'ទឹកអប់ (Perfume)', image: '', description: '', additional_images: [] });
+        setNewProductData(EMPTY_NEW_PRODUCT);
         refetchData(true);
         refetchShopData(true);
         setToastMessage('បន្ថែមទំនិញបានជោគជ័យ!');
@@ -121,12 +139,18 @@ const AdminProductsContainer = ({
     if (!editingProduct) return;
     setIsSaving(true);
     try {
+      const mergedDescription = buildDescription({
+        description: editFormData.description,
+        howToUse: editFormData.howToUse,
+        ingredients: editFormData.ingredients,
+      });
       const res = await fetchWithRetry(`${BACKEND_URL}/api/admin/products/${editingProduct.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', ...headers },
         body: JSON.stringify({
           ...editingProduct,
           ...editFormData,
+          description: mergedDescription,
           price: parseFloat(editFormData.price),
           stock: parseInt(editFormData.stock),
           additional_images: JSON.stringify(editFormData.additional_images || []),

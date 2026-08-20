@@ -1,5 +1,6 @@
 import React from 'react';
 import { PREDEFINED_CATEGORIES } from '../../../utils/langUtils';
+import { isSkincareProduct } from '../../../utils/productContentUtils';
 import DarkSelect from '../DarkSelect';
 import { useUser } from '../../../context/UserContext';
 import AdminVariationsEditor from './AdminVariationsEditor';
@@ -14,6 +15,7 @@ const AdminEditProductModal = React.memo(({
 
   const categoryInList = PREDEFINED_CATEGORIES.some(c => c.id === editFormData.category);
   const categorySelectValue = categoryInList ? editFormData.category : 'OTHER';
+  const showSkincareHint = isSkincareProduct({ category: editFormData.category, name: editFormData.name });
 
   return (
     <div className="admin-coupon-form" style={{ marginTop: 10, display: 'flex', flexDirection: 'column' }}>
@@ -111,6 +113,33 @@ const AdminEditProductModal = React.memo(({
           <div style={{ marginBottom: 14 }}>
             <label style={{ display: 'block', fontSize: 11, fontWeight: 800, marginBottom: 8, opacity: 0.6 }}>{t('admin_product_desc')}</label>
             <textarea className="input-glass-admin" rows="3" value={editFormData.description} onChange={e => setEditFormData({ ...editFormData, description: e.target.value })} placeholder={t('admin_product_desc')}></textarea>
+          </div>
+
+          {/* How To Use & Ingredients — always visible so admin can add to any product */}
+          <div style={{ marginBottom: 14, padding: '12px 14px', background: 'var(--bg-soft)', borderRadius: 12, border: '1px solid var(--border-soft)' }}>
+            {showSkincareHint && (
+              <div style={{ fontSize: 11, fontWeight: 700, opacity: 0.7, marginBottom: 10 }}>{t('admin_skincare_section_hint')}</div>
+            )}
+            <div style={{ marginBottom: 10 }}>
+              <label style={{ display: 'block', fontSize: 11, fontWeight: 800, marginBottom: 6, opacity: 0.6 }}>💧 {t('admin_how_to_use')}</label>
+              <textarea
+                className="input-glass-admin"
+                rows="3"
+                value={editFormData.howToUse || ''}
+                onChange={e => setEditFormData({ ...editFormData, howToUse: e.target.value })}
+                placeholder={t('admin_how_to_use_placeholder')}
+              />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: 11, fontWeight: 800, marginBottom: 6, opacity: 0.6 }}>🧪 {t('admin_ingredients')}</label>
+              <textarea
+                className="input-glass-admin"
+                rows="2"
+                value={editFormData.ingredients || ''}
+                onChange={e => setEditFormData({ ...editFormData, ingredients: e.target.value })}
+                placeholder={t('admin_ingredients_placeholder')}
+              />
+            </div>
           </div>
 
           <div className="admin-gallery-editor" style={{ marginBottom: 16 }}>

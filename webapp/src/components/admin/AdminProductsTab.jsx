@@ -3,6 +3,7 @@ import { useUser } from '../../context/UserContext';
 import DarkSelect from './DarkSelect';
 import ProductImage from '../ProductImage';
 import { resolveProductImageUrl } from '../../utils/imageUtils';
+import { parseProductSections } from '../../utils/productContentUtils';
 
 const stripCategoryEmoji = (text) =>
   (text || '').replace(/[\u{1F300}-\u{1FAFF}\u2600-\u27BF]/gu, '').replace(/\s*\(.*?\)/g, '').trim();
@@ -113,9 +114,13 @@ const AdminProductsTab = React.memo(({
                   <button style={{ background: 'transparent', border: 'none', color: 'var(--text-main)', padding: '10px 16px', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 13, fontWeight: 700 }} onClick={() => {
                     setOpenMenu(null);
                     setEditingProduct(p);
+                    const sections = parseProductSections(p.description || '');
                     setEditFormData({
                       name: p.name, price: p.price, stock: p.stock, category: p.category,
-                      description: p.description || '', image: p.image || '',
+                      description: sections.description,
+                      howToUse: sections.howToUse,
+                      ingredients: sections.ingredients,
+                      image: p.image || '',
                       additional_images: typeof p.additional_images === 'string' ? JSON.parse(p.additional_images) : (p.additional_images || []),
                       flash_sale_price: p.flash_sale_price || '',
                       flash_sale_end: p.flash_sale_end ? new Date(p.flash_sale_end).toISOString().slice(0, 16) : '',
